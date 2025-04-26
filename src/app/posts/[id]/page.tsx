@@ -46,7 +46,7 @@ export default function PostDetail() {
   }
 
   const githubUsername = "YOUR_GITHUB_USERNAME"; // 본인 GitHub 사용자 이름으로 변경
-  const githubProfileUrl = `https://github.com/${githubUsername}`;
+  // const githubProfileUrl = `https://github.com/${githubUsername}`;
 
   return (
       <main className="w-full max-w-3xl mx-auto py-10 px-4">
