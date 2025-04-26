@@ -41,43 +41,74 @@ const dummyPosts: Post[] = [
     date: "2025-04-10",
     tags: ["React", "Hooks", "성능"],
   },
+  {
+    id: 5,
+    title: "Next.js 라우팅 완벽 이해",
+    description: "Next.js의 다양한 라우팅 방식을 자세히 알아봅니다.",
+    date: "2025-04-05",
+    tags: ["Next.js", "라우팅"],
+  },
+  {
+    id: 6,
+    title: "Python 데코레이터 활용법",
+    description: "Python의 강력한 데코레이터 기능을 예제와 함께 설명합니다.",
+    date: "2025-03-30",
+    tags: ["Python", "데코레이터"],
+  },
 ];
 
 export default function Main() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filteredPosts, setFilteredPosts] = useState<Post[]>(dummyPosts);
   const [autocompleteTags, setAutocompleteTags] = useState<string[]>([]);
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
 
   useEffect(() => {
-    const results = dummyPosts.filter((post) =>
-        post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        post.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        post.tags.some((tag) => tag.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
+    let results = dummyPosts;
+
+    if (searchTerm) {
+      results = results.filter((post) =>
+          post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          post.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          post.tags.some((tag) => tag.toLowerCase().includes(searchTerm.toLowerCase()))
+      );
+    }
+
+    if (selectedTag) {
+      results = results.filter((post) =>
+          post.tags.includes(selectedTag)
+      );
+    }
+
     setFilteredPosts(results);
 
-    // 자동 완성 태그 필터링
     if (searchTerm) {
       const suggestions = Array.from(new Set(dummyPosts.flatMap(post => post.tags)))
       .filter(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
-      .slice(0, 5); // 최대 5개 추천
+      .slice(0, 5);
       setAutocompleteTags(suggestions);
     } else {
       setAutocompleteTags([]);
     }
-  }, [searchTerm]);
+  }, [searchTerm, selectedTag]);
 
   const handleTagClick = (tag: string) => {
-    setSearchTerm(tag);
+    setSelectedTag(tag);
   };
 
-  const allTags = new Set<string>();
+  const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+    setSelectedTag(null);
+  };
+
+  const tagCounts: { [key: string]: number } = {};
   dummyPosts.forEach((post) => {
     post.tags.forEach((tag) => {
-      allTags.add(tag);
+      tagCounts[tag] = (tagCounts[tag] || 0) + 1;
     });
   });
-  const uniqueTags = Array.from(allTags);
+
+  const uniqueTagsWithCount = Object.entries(tagCounts).map(([tag, count]) => ({ tag, count }));
 
   return (
       <main className="w-full max-w-6xl mx-auto py-10 px-4">
@@ -90,7 +121,7 @@ export default function Main() {
                   placeholder="블로그 글 검색..."
                   className="w-full p-2 border rounded-md"
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={handleSearchInputChange}
               />
               {autocompleteTags.length > 0 && (
                   <ul className="absolute w-full bg-white border border-gray-200 rounded-md shadow-sm mt-1 z-10">
@@ -124,22 +155,32 @@ export default function Main() {
                     </article>
                   </Link>
               ))}
-              {filteredPosts.length === 0 && searchTerm !== "" && (
+              {filteredPosts.length === 0 && searchTerm !== "" && selectedTag === null && (
                   <p className="text-gray-500">검색 결과가 없습니다.</p>
+              )}
+              {filteredPosts.length === 0 && selectedTag !== null && (
+                  <p className="text-gray-500">'{selectedTag}' 태그와 관련된 글이 없습니다.</p>
+              )}
+              {filteredPosts.length > 0 && selectedTag !== null && (
+                  <p className="text-gray-500">'{selectedTag}' 태그로 필터링된 글 {filteredPosts.length}개</p>
               )}
             </div>
           </div>
           {/* 오른쪽 - 프로필 카드 및 태그 리스트 */}
-          <div className="w-full lg:w-80 shrink-0 flex flex-col gap-6">
+          <div className="w-full lg:w-80 shrink-0 flex flex-col gap-6 sticky top-20"> {/* sticky 적용 */}
             <ProfileCard />
             {/* 태그 리스트 */}
             <div className="bg-white rounded-2xl shadow p-6">
               <h3 className="text-lg font-semibold mb-4">🏷️ 모든 태그</h3>
               <div className="flex flex-wrap gap-2">
-                {uniqueTags.map((tag, index) => (
-                    <Link key={index} href={`/tags/${tag}`} className="px-2 py-1 bg-gray-100 text-sm rounded-full hover:bg-gray-200 transition">
-                      #{tag}
-                    </Link>
+                {uniqueTagsWithCount.map(({ tag, count }, index) => (
+                    <button
+                        key={index}
+                        className="px-2 py-1 bg-gray-100 text-sm rounded-full hover:bg-gray-200 transition cursor-pointer"
+                        onClick={() => handleTagClick(tag)}
+                    >
+                      #{tag} <span className="text-gray-500 text-xs">({count})</span>
+                    </button>
                 ))}
               </div>
             </div>
