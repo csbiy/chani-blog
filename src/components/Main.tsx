@@ -1,8 +1,7 @@
 "use client";
-
+import { useState, useEffect } from "react";
 import ProfileCard from "./ProfileCard";
 import Link from "next/link";
-import { useState, useEffect } from "react";
 
 type Post = {
   id: number;
@@ -12,62 +11,19 @@ type Post = {
   tags: string[];
 };
 
-const dummyPosts: Post[] = [
-  {
-    id: 1,
-    title: "Next.js로 블로그 만들기",
-    description: "Next.js와 Tailwind를 활용해서 개인 블로그를 만드는 과정 기록!",
-    date: "2025-04-26",
-    tags: ["Next.js", "Tailwind", "블로그"],
-  },
-  {
-    id: 2,
-    title: "FastAPI로 백엔드 구축하기",
-    description: "FastAPI를 사용해서 빠르게 API 서버를 구축한 경험 공유",
-    date: "2025-04-20",
-    tags: ["FastAPI", "Python"],
-  },
-  {
-    id: 3,
-    title: "새로운 JavaScript 기능 탐험",
-    description: "ES2023에 추가된 흥미로운 기능들을 살펴봅니다.",
-    date: "2025-04-15",
-    tags: ["JavaScript", "ES2023"],
-  },
-  {
-    id: 4,
-    title: "React Hooks 성능 최적화",
-    description: "React Hooks를 사용할 때 성능을 개선할 수 있는 몇 가지 팁!",
-    date: "2025-04-10",
-    tags: ["React", "Hooks", "성능"],
-  },
-  {
-    id: 5,
-    title: "Next.js 라우팅 완벽 이해",
-    description: "Next.js의 다양한 라우팅 방식을 자세히 알아봅니다.",
-    date: "2025-04-05",
-    tags: ["Next.js", "라우팅"],
-  },
-  {
-    id: 6,
-    title: "Python 데코레이터 활용법",
-    description: "Python의 강력한 데코레이터 기능을 예제와 함께 설명합니다.",
-    date: "2025-03-30",
-    tags: ["Python", "데코레이터"],
-  },
-];
+type MainProps = {
+  posts: Post[];
+};
 
-export default function Main() {
+export default function Main({ posts }: MainProps) {
   const [searchTerm, setSearchTerm] = useState("");
-  const [filteredPosts, setFilteredPosts] = useState<Post[]>(dummyPosts);
+  const [filteredPosts, setFilteredPosts] = useState<Post[]>(posts);
   const [autocompleteTags, setAutocompleteTags] = useState<string[]>([]);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
 
   useEffect(() => {
-    let results = dummyPosts;
-
     if (searchTerm) {
-      results = results.filter((post) =>
+      posts = posts.filter((post) =>
           post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
           post.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
           post.tags.some((tag) => tag.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -75,15 +31,15 @@ export default function Main() {
     }
 
     if (selectedTag) {
-      results = results.filter((post) =>
+      posts = posts.filter((post) =>
           post.tags.includes(selectedTag)
       );
     }
 
-    setFilteredPosts(results);
+    setFilteredPosts(posts);
 
     if (searchTerm) {
-      const suggestions = Array.from(new Set(dummyPosts.flatMap(post => post.tags)))
+      const suggestions = Array.from(new Set(posts.flatMap(post => post.tags)))
       .filter(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
       .slice(0, 5);
       setAutocompleteTags(suggestions);
@@ -102,7 +58,7 @@ export default function Main() {
   };
 
   const tagCounts: { [key: string]: number } = {};
-  dummyPosts.forEach((post) => {
+  posts.forEach((post) => {
     post.tags.forEach((tag) => {
       tagCounts[tag] = (tagCounts[tag] || 0) + 1;
     });
@@ -112,7 +68,7 @@ export default function Main() {
 
   return (
       <main className="w-full max-w-6xl mx-auto py-10 px-4">
-        <div className="flex flex-col lg:flex-row gap-10">
+        <div className="flex flex-col lg:flex-row gap-10 relative">
           {/* 왼쪽 - 포스트 리스트 */}
           <div className="flex-1">
             <div className="mb-8 relative">
@@ -137,7 +93,7 @@ export default function Main() {
                   </ul>
               )}
             </div>
-            <h2 className="text-3xl font-bold mb-8">📚 개발 블로그</h2>
+            {/*<h2 className="text-3xl font-bold mb-8">📚 개발 블로그</h2>*/}
             <div className="flex flex-col gap-6">
               {filteredPosts.map((post) => (
                   <Link key={post.id} href={`/posts/${post.id}`} className="block">
@@ -167,7 +123,7 @@ export default function Main() {
             </div>
           </div>
           {/* 오른쪽 - 프로필 카드 및 태그 리스트 */}
-          <div className="w-full lg:w-80 shrink-0 flex flex-col gap-6 sticky top-20"> {/* sticky 적용 */}
+          <div className="w-full lg:w-80 shrink-0 flex flex-col gap-6 sticky top-20 self-start">
             <ProfileCard />
             {/* 태그 리스트 */}
             <div className="bg-white rounded-2xl shadow p-6">
