@@ -1,0 +1,97 @@
+---
+id: 119
+title: "Spring IoC container"
+description: ""
+date: "2021-07-25 17:50:56"
+tags: ['spring', '토비의 spring']
+---
+###
+토비의 spring
+이전까지는 Spring 을 적용하지 않고, IoC에 대해서 살펴보았다.
+지금부터는 Spring이 IoC를 어떤형태로 구현하였는지 살펴보겠다.
+그전에 spring에서 사용하는 용어를 정리하면 다음과 같다.
+
+<hr>
+- <strong>Bean</strong> <p style="display:inline-block">: spring이 제어권을 가지고 직접 만들고 , 관계를 설정하는 객체</p>
+<hr>
+- <strong>Bean Factory</strong> <p style="display:inline-block">: Bean의 생성과 관계설정과 같은 제어를 담당하는 IoC 객체 </p>
+  (=이를 확장된 의미에서는 <strong>Application Context</strong>라고 한다.)
+<hr>
+
+
+#### Bean Factory vs Application Context (=IoC container,Spring container)
+- Bean Factory : Bean을 생성하고 관계를 설정하는 IoC의 기본기능. 
+    
+- Application Context : application 전반에 걸쳐 모든 구성 요소의 제어를 담당하는  IoC 엔진 (Bean Factory에 Spring이 제공하는 application 지원 기능이 포함되었다고 생각하면 된다.) 으로, application context는 Bean Factory를 상속받는다. 
+
+이전시간까지 만들었던 IoC기능을 하던 DaoFactory class를 spring의 IoC 설정정보로 변경하면 다음과 같다. 
+
+```java
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+// application context가 사용할 설정 정보임을 명시
+@Configuration
+public class DaoFactory {
+    // spring bean 객체를 만드는 method임을 명시 , method이름이 Bean이 된다.
+    @Bean
+    public ConnectionMaker connectionMaker(){
+        return  new DconnectionMaker();
+    }
+
+    @Bean
+    public UserDao userDao(){
+        return new UserDao(connectionMaker());
+    }
+}
+```
+
+이제 위 설정정보를 기반으로 application context(=IoC 역할을 해주는 객체)를 다음과 같이 만들 수 있다. 
+```java
+    public static void main(String[] args) {
+
+        ApplicationContext applicationContext = new 
+        // AnnotationConfigApplicationContext("설정정보.class");
+        AnnotationConfigApplicationContext(DaoFactory.class);
+
+        // getBean(bean이름,bean.class);
+
+        UserDao dao = applicationContext.getBean("userDao", UserDao.class);
+        System.out.println("dao = " + dao);
+    }
+```
+ApplicationContext는 interface type이고 그 구체 type으로는 여러 종류가 있다. 여기는 annotation기반으로 설정정보를 만들었음으로, AnnotationConfigApplication을 사용하였다.
+
+![](/images/application_context.jpg)
+
+위 코드의 흐름을 요약하면 annotation기반의 설정정보를 통해서 IoC 역할(=bean객체의 생명주기 및 의존성 관리)을 담당하는 application context를 만들었고, application context는 설정정보에 @Bean을 보고 bean 목록을 만들어둔다. 
+client가 getBean("@Bean Method명","bean.class");을 호출하면 이 목록에 해당 bean이 있는지 확인하고 있다면 , @Bean method를 호출해서 Bean 객체를 반환받아 넘겨준다. 
+
+#### 그렇다면 기존의 IoC Container와 spring application context간에는 무슨 차이점이 있을까? 
+spring application context에서는 싱글톤으로 하나의 bean 객체만 반환한다. 떄문에 spring application context를 singleton registry라고도 부르기도 한다. 
+
+```java
+    public static void main(String[] args) {
+
+
+        DaoFactory daoFactory = new DaoFactory();
+        UserDao userDao1 = daoFactory.userDao();
+        UserDao userDao2 = daoFactory.userDao();
+        System.out.printf("same userDao : %b ",userDao1 == userDao2 );
+        // false
+
+        ApplicationContext applicationContext = new AnnotationConfigApplicationContext(DaoFactory.class);
+        UserDao spring_dao1 = applicationContext.getBean("userDao", UserDao.class);
+        UserDao spring_dao2 = applicationContext.getBean("userDao", UserDao.class);
+        System.out.printf("same bean obj : %b"  , spring_dao1 == spring_dao2); 
+        // true
+    }
+```
+
+#### 왜 spring은 singleton으로 bean 객체를 관리하는 것일까?
+
+spring은 thread-based concurrent server다. 
+client reqeuest가 오면 , network layer에서 I/O demultiplexing을 통해서 어느 TCP socket으로 client request를 mapping한지 결정할것이다. (당연히 Http는 잘 알겠지만, TCP 위에서 동작하는 application layer protocol이다. )
+thread기반 concurrent 서버에서는 master thread가 listen  file descriptor를 통해 client 요청을 기다리면서 blocking 되었다가, client 요청이 오면 이를 accept하고 peer thread를 만들어 준 뒤, connected file descriptor를 넘겨주고, peer thread가 client request에 mapping되어 client 요청을 수행하고, 응답한뒤, kernel에서 thread resource를 reaping한다. 
+
+위와 같은 상황에서 client 요청이 수천개가 들어오면 각각의 peer thread가 모두 동일한 객체를 new해서 생성한다고 하면 서버에 부하가 상당 할 것이다.

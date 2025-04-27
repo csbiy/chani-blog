@@ -1,0 +1,73 @@
+---
+id: 42
+title: "Item81. wait와 notify보다는 동시성 유틸리티를 애용하라"
+description: ""
+date: "2022-03-27 17:37:43"
+tags: ['Java', 'Effective Java 3/E']
+---
+wait 와 notify 에 대한 개념을 정리하기 앞서,  java의 Monitor라는 동시성 이슈를 해결하기 위한 동기화 mechanism 이 있다고 한다.
+
+- Monitor는 한번에 한 thread만 공유자원에 접근할수 있도록 critical section 에 하나의 thread만 존재할 수 있도록 보장해준다. 일종의 lock 개념과 유사하다. 
+
+- Monitor는 Java에서 synchrnoized keyword로 구현되어 있다고 한다. 
+
+(reference  - https://www.geeksforgeeks.org/difference-between-lock-and-monitor-in-java-concurrency/)
+
+- wait method : 객체의 monitor를 가지고 있는 thread ( synchronized block 안에 있는 thread)가 실행이 멈춘다. monitor를 가지고 있지 않는 thread가 이 method를 호출하게 되면 IllegalMonitorStateException 을 던진다.
+
+![](/images/Item81-01.jpg)
+
+- notify method : wait하고 있는 thread중에 하나의 thread를 꺠운다. 
+
+
+wait와 notify에 대한 간략한 개념정리는 위와같고, 책에서는 wait와 notify는 올바르게 사용하기 매우 까다로우니 고수준 동시성 유틸리티를 사용하라고 권고하고 있다. 
+
+java.util.concurrent 의 고수준 utility는 세 범주로 나눌 수 있는데, 
+
+1. 실행자 framework
+2. 동시성 collection 
+3. 동시성 장치 (synchronizer)
+
+
+## 동시성 Collection 
+
+- List,Queue,Map과 같은 표준 collection 인터페이스에 동기화 개념을 추가해 구현한 고성능 collection 이다. 
+
+- collection 내부적으로 동기화를 수행한다. 따라서 동기화를 무력화할수없으며, 외부에서 lock을 사용하게 되면 오히려 성능이 느려진다.
+
+- 동시성 collection에서 동기화를 무력화하지 못하므로 여러 method를 원자적으로 묶어 호출하는 일 역시 불가능하다. 따라서 여러 기본 동작을 하나의 원자적 동작으로 묶는 '상태 의존적 수정' method들이 추가됬다. 
+
+상태 의존적 수정 method의 예를 들면 Map의 putIfAbsent(key,value) method는 주어진 키에 매핑된 값이 없을떄만 새 값을 집어넣고 기존값이 있었다면 그 값을 반환하고 없었다면 null을 반환한다.  이 method를 사용해서 thread safe한 map을 쉽게 구현할 수 있다. 
+
+```java
+public static final ConcurrentMap<String,String> map = new ConcurrentHashMap<>();
+
+public static String intern(String s){
+    String previousValue = map.putIfAbsent(s,s);
+    return previousValue == null ? s: previousValue;
+}
+```
+
+이를 조금 더 최적화하여 get를 먼저 호출하고 필요할떄만 putIfAbsent method를 호출하면 더 빠르다. 
+
+```java
+public static String intern(String s){
+    String result = map.get(s);
+    if(result == null){
+        result = map.putIfAbsent(s,s);
+        if( result == null ){
+            result = s;
+        }
+    }
+}
+```
+
+- 동시성 Collection(ConcurrentHashMap)을 사용하는게 동기화한 Collection (Collections.synchronizedMap) 을 사용하는 것 보다 휠씬 좋다. 
+
+- Collection interface 중에 일부는 작업이 성공적으로 완료될 떄까지 기다리도록 확장되었다. 예를 들면 Queue를 호가장한 BlockingQueue 에 추가된 method중 take는 queue의 첫 원소를 꺼내는데 만약 queue가 비었다면 새로운 원소가 추가될떄까지 기다린다. 
+
+이러한 특성 덕분에 BlockingQueue는 작업 큐 (생산자-소비자 queue)에 쓰기에 적합하다고 한다. 실제로 ThreadPoolExecutor를 포함한 대부분의 실행자 서비스 구현체에서 BlockingQueue를 사용한다고 한다. 
+
+## 동기화 장치 
+
+- 동기화 장치는 thread가 다른 thread를 기다릴 수 있게 하여 서로 작업을 조율할 수 있게 해준다. ?

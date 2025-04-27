@@ -1,0 +1,51 @@
+---
+id: 47
+title: "packet switching"
+description: ""
+date: "2022-01-09 22:17:11"
+tags: ['Computer Science', 'Network']
+---
+## network 구성 요소
+- network edge : application (ex) web server ) , host 
+- network core : routers 
+- communication link : network 구성요소들을 이어주는 물리적인 cable
+
+## protocol 
+
+- 둘 이상의 통신 개체간에 교환되는 메시지 포맷과 순서뿐 아니라 , 메시지의 송수신과 다른 이벤트에 따른 행동들을 정의한다. (통신매체간 통신 규약)
+
+## network core 내 router간 데이터 교환 방식 
+
+1. circuit switching (회선 교환) 
+
+종단 system (network edge)간에 통신을 제공하기 위해 경로상에 필요한 자원 (link 전송률,buffer)를 통신 기간동안 미리 확보(예약) 해두는 방식
+
+2. packet switching(패킷 교환) : 현재 인터넷에서 사용중인 방식 
+
+
+circuit switching 방식과는 다르게 on-demand방식으로 네트워크 자원을 사용하기 떄문에 더 많은 사용자 수용가능 
+
+- 송신측은 송신할 데이터를 packet이라고 하는 단위로 분할해서 송신. 
+- router 에서 packet을 store-and-forwarding transmission (저장-후-전달 전송) 방식으로 전달함 
+
+
+
+## sources of packet delay 
+
+![](/images/packet_delay.png)
+
+router에서 packet을 받고난뒤에 packet를 queue에 저장하고, packet의 목적지를 확인해서 다음 hob(router)에 forwarding하는데 packet delay로 인해 router내 packet queue가 꽉차면 packet loss가 생길 수 있다. 
+
+예를 들면 해당 router로 도착하는 packet은 router 내 queue에 저장되고 한 link로 전송되야하는데 해당 link에 이미 다른 packet이 전송중이라면 queue에 대기해야 하는데 queue가 꽉차면 packet이 소실될 수 있다는 말이다. 
+
+
+1. Nodal processing delay : packet 검사해서 bit error가 있는지 확인하고 , 적절한 output link 를 결정 
+2. Queuing delay : pakcet이 queue 에서 transmission 되기 전까지 기다리는 시간 
+3. Transimission delay : packet (bit 집합) 의 첫번쨰 bit부터 마지막 bit 까지 출력링크로 나가는데 걸리는 시간 
+   
+Transmission delay 는 다음과 같이 정의된다. 
+
+<blockquote>
+Transmission delay = L/R  (L : packet lenghts (bits) , R = link bandwidth(bps,전송률))
+</blockquote>
+4. Propagation delay : 다음 router까지 packet이 전송되는 시간으로 link 길이에 비례

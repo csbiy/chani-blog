@@ -1,0 +1,146 @@
+---
+id: 128
+title: "Decorator pattern"
+description: ""
+date: "2021-08-02 01:06:11"
+tags: ['Design Pattern']
+---
+<strong>Decorator Pattern</strong>은 객체에서 추가적인 요건을 동적으로 추가할 수 있다. 
+
+```java
+Target target = new concreteTarget();
+target = new Condition(target); //마치 wrapper class처럼 감싸서 사용한다.
+```
+- <strong>Decorator 의 super class는 장식할 객체의 super class와 같다. </strong>
+- Decorator 구현체는 Decorator 추상 class를 상속하여 기능을 추가할 수 있다. 
+- <strong>한 객체를 여러 개의 Decorator 구현체로 감싸서 기능을 추가할 수 있다. </strong>
+- Decorator는 장식할 객체에 어떤 행동을 위임하는 것외에도 추가적인 작업을 수행할 수 있다. 
+
+
+
+![decorator_pattern](/images/decorator-pattern.jpg)
+
+
+
+- Component는 장식할 객체의 추상 class로 Concrete Component에서 수행해야 할 공통적인 메소드, property를 가지고 있다.
+- Decorator는 concrete component에 추가적인 작업을 동적으로 추가하는 Concrete Decorator의 추상 class이다. 
+
+
+decorator pattern 을 이해하기 위해서 , 예시를 가지고 왔다.
+카페에서 음료수를 판다고 가정하였을떄, 음료수에 default가격이 있고, 거기에 휘핑크림이나 , mocha 추가하였을떄 추가금액이 붙는다고 가정하자.
+
+이를 상속구조에서 super class에서 추가적인 요건(휘핑크림,모카.. etc)등을 가져간다고 하면 매 첨가물이 추가될떄마다 super class의 코드가 변경되고, subclass를 필요도 없는 method를 상속받을 수도 있다. (OCP에 적합하지 않은 설계)
+
+반면 decorator pattern은 동적으로 행동을 설정할 수 있다.
+
+```java
+// Decorator가 장식할 객체의 추상 class
+public abstract class Beverage {
+    String description = "none";
+    public String getDescription(){
+        return  this.description;
+    }
+    public abstract double cost();
+}
+```
+
+```java
+// 장식될 구현 class
+public class Espresso extends Beverage{
+    public Espresso() {
+        this.description = "espresso";
+    }
+    @Override
+    public double cost() {
+        return 1.99;
+    }
+}
+
+public class HouseBlend extends Beverage{
+    public HouseBlend() {
+        this.description = "houseblend";
+    }
+    @Override
+    public double cost() {
+        return .89;
+    }
+}
+```
+
+```java
+// Decorator의 부모 class는 장식할 객체의 부모 class와 같다.  
+public abstract class CondimentDecorator extends Beverage{
+    public abstract String getDescription();
+}
+
+```
+
+```java
+// Decorator 구현 class로 장식할 객체에 추가적인 요건을 동적으로 추가 할 수 있다. 
+public class Mocha extends CondimentDecorator{
+    
+    private Beverage beverage;
+    public Mocha(Beverage beverage) {
+        this.beverage = beverage;
+    }
+    @Override
+    public double cost() {
+        return .20 + beverage.cost();
+    }
+    @Override
+    public String getDescription() {
+        return beverage.getDescription() + " mocha";
+    }
+}
+
+
+public class Whip extends CondimentDecorator{
+
+    private Beverage beverage;
+    public Whip(Beverage beverage) {
+        this.beverage =beverage;
+    }
+    @Override
+    public double cost() {
+        return .1 + beverage.cost();
+    }
+    @Override
+    public String getDescription() {
+        return beverage.getDescription() + " whip ";
+    }
+}
+```
+
+
+```java
+public class Test {
+
+    public static void main(String[] args) {
+        Beverage espresso = new Espresso();
+        Beverage houseBlend = new HouseBlend();
+
+        espresso = new Mocha(espresso);
+        espresso = new Whip(espresso);
+        System.out.println("espresso.getDescription() = " + espresso.getDescription());
+        System.out.println("espresso.cost() = " + espresso.cost());
+
+        houseBlend = new Whip(houseBlend);
+        System.out.println("houseBlend.getDescription() = " + houseBlend.getDescription());
+        System.out.println("houseBlend.cost() = " + houseBlend.cost());
+    }
+
+    /***
+        espresso.getDescription() = espresso mocha whip 
+        espresso.cost() = 2.29
+        houseBlend.getDescription() = houseblend whip 
+        houseBlend.cost() = 0.99
+    ***/
+}
+
+```
+#### decorator 적용 예시
+
+대표적으로 Java.io의 Reader/Writer stream이 Decorator pattern을 사용하여 구현되어 있다. 
+
+- Reference 
+1. Head First Design Patterns: A Brain-Friendly Guide ([Head First Design Patterns: A Brain-Friendly Guide](https://www.amazon.com/Head-First-Design-Patterns-Brain-Friendly/dp/0596007124))

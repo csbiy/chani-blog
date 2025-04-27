@@ -1,0 +1,132 @@
+---
+id: 133
+title: "플루이드의 토끼와 거북이 알고리즘"
+description: ""
+date: "2021-07-30 01:36:07"
+tags: ['Computer Science', 'Algorithm']
+---
+플루이드의 토끼와 거북이 알고리즘은 <strong>Linked List에서   cycle 존재 유무와 cycle의 길이 및 , 시작점 </strong>을 확인할 수 있는 알고리즘으로 2개의 다른 속도로 움직이는 포인터를 사용한다. , (알고리즘 이름이 왜 토끼와 거북이인지 알 것 같다)
+
+알고리즘은 크게 2 phase로 나뉜다. 
+<strong>
+Phase 1. 다른 속도로 움직이는 두 pointer의 교차점을 찾고, 
+Phase 2. cycle의 진입로를 찾는다. 
+</strong>
+먼저 phase 1을 세부적으로 살펴보면,
+
+
+1. 다른속도로 움직이는 두개의 pointer를 선언한다.
+
+```python
+tortoise = head ## 한번에 하나의 노드를 이동하는 포인터
+hare = head ## 한번에 두개의 노드를 이동하는 포인터 
+```
+2. 두개의 pointer의 교차점을 찾을떄까지 각 pointer를 이동시킨다. 
+
+```python 
+while hare != None and hare.next != None:
+    tortoise = tortoise.next; # 느린 포인터는 한번에 하나의 노드씩 이동 
+    hare = hare.next.next; #빠른 포인터는 한번에 두개 노드씩 이동 
+    if tortoise == hare:
+        ## 두 포인터가 교차점을 찾으면 phase 1목표달성 
+        return tortoise; #  == intersect 
+
+    ## cycle이 존재하지 않음
+    return None;
+
+```
+
+다음으로 phase 2 를 살펴보면,
+1. head를 가르키는 pointer와 , phase 1에서 찾은 두 pointer의 교차점을 가르키는 pointer 선언 
+
+```python
+ptr1 = head;
+prt2 = intersect;
+```
+
+2. 이제 두 포인터를 서로 만날때까지 한칸씩 앞으로 이동한다.
+```python
+while ptr1 != ptr2:
+    ptr1 = ptr1.next;
+    ptr2 = ptr2.next;
+return ptr1;
+
+```
+
+3. 두 포인터가 서로 만나는 지점이 cycle의 진입로이다. 
+
+
+만약에 cycle의 길이를 추가로 계산하고 싶다면 다음과 같이 얻을 수 있을것이다.
+```python
+
+self_ptr1=ptr1.next;
+cycle_length = 1;
+
+while self_ptr1 != ptr1:
+    ptr1 = ptr1.next;
+    cycle_length+=1;
+```
+python version. 
+```python
+#phase I 
+ def getIntersect(head):
+        tortoise = head
+        hare = head
+        while hare != None and hare.next !=None:
+            tortoise = tortoise.next;
+            hare = hare.next.next;
+            if( tortoise == hare ):
+                return tortoise;
+        return None
+#phase II
+def detectCycle(head):
+    if head == None:
+        return None
+    intersect = getIntersect(head);
+    if(intersect == None):
+        return None;
+    ptr1 = head;
+    ptr2 = intersect 
+    while (ptr1 != ptr2):
+        ptr1 = ptr1.next;
+        ptr2 = ptr2.next;
+    return ptr1;
+```
+java version. (python과 약간의 문법빼고는 흐름 자체는 동일하다 )
+```java
+public class Solution {
+    public ListNode getIntersect(ListNode head){
+        ListNode tortoise = head;
+        ListNode hare = head;
+        while( hare != null && hare.next != null){
+            tortoise = tortoise.next;
+            hare = hare.next.next;
+            if(tortoise == hare){
+                return tortoise;
+            }
+        }
+        return null;
+    }
+    public ListNode detectCycle(ListNode head) {
+            if(head == null){
+                return null;
+            }
+            ListNode inter = getIntersect(head);
+            if(inter == null){
+                return null;
+            }
+            ListNode ptr1 = head;
+            ListNode ptr2 = inter;
+            while (ptr1 != ptr2){
+                ptr1=ptr1.next;
+                ptr2=ptr2.next;
+            }
+            return ptr1;
+    }
+}
+```
+
+### 시간복잡도 
+- 단일 반복문으로 O(n)의 시간복잡도를 갖는다
+### 공간복잡도 
+-  입력의 크기 n과 무관하게 상수개의 포인터 (4) 만을 선언하여 해결 가능하다. O(1)의 공간복잡도를 갖는다.

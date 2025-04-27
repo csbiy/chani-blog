@@ -1,0 +1,318 @@
+---
+id: 21
+title: "spring api 에러 처리"
+description: ""
+date: "2021-11-17 07:26:58"
+tags: []
+---
+API 예외처리는 단순히 오류 페이지를 반환하는 것보다 서버간 통신 규약에 따라 오류 응답 스펙을 정해놓고, JSON (또는 XML등 ) 으로 데이터를 내려준다. 
+
+API 예외 처리도 스프링 부트가 기본으로 제공하는 BasicErrorController 을 사용할 수 있긴하지만, 서버간 통신규약에 맞게 json을 반환하려면 customizing 할 수 있어야 한다. 
+
+
+
+
+
+아래 BasicErrorController 를 보면 기본 path가 /error 임을 알 수 있고, 
+
+errorHtml() , error() method 2개가 있는데, 
+
+accept 헤더를 text/html 인 경우에는 errorHtml() 가 호출되고, accept 헤더를 application/json으로 요청하면, error() method가 호출되면서 http message body내 json 데이터를 서버로부터 받을 수 있다. 
+
+```java
+
+@Controller
+@RequestMapping("${server.error.path:${error.path:/error}}")
+public class BasicErrorController extends AbstractErrorController {
+
+    // errorHtml method : html view 제공 
+	@RequestMapping(produces = MediaType.TEXT_HTML_VALUE)
+	public ModelAndView errorHtml(HttpServletRequest request, HttpServletResponse response) {
+		HttpStatus status = getStatus(request);
+		Map<String, Object> model = Collections
+				.unmodifiableMap(getErrorAttributes(request, getErrorAttributeOptions(request, MediaType.TEXT_HTML)));
+		response.setStatus(status.value());
+		ModelAndView modelAndView = resolveErrorView(request, response, status, model);
+		return (modelAndView != null) ? modelAndView : new ModelAndView("error", model);
+	}
+
+    // error : json 반환 
+	@RequestMapping
+	public ResponseEntity<Map<String, Object>> error(HttpServletRequest request) {
+		HttpStatus status = getStatus(request);
+		if (status == HttpStatus.NO_CONTENT) {
+			return new ResponseEntity<>(status);
+		}
+		Map<String, Object> body = getErrorAttributes(request, getErrorAttributeOptions(request, MediaType.ALL));
+		return new ResponseEntity<>(body, status);
+	}
+
+
+}
+
+```
+
+서버에서 예외를 발생시키면 다음과 같은 BasicErrorController의 에러 메세지를 확인할 수 있다.
+
+```bash
+{
+    "timestamp": "2021-11-17T15:17:47.090+00:00",
+    "status": 500,
+    "error": "Internal Server Error",
+    "path": "/api/members/ex"
+}
+```
+
+* 예외 메세지 customizing  - HandlerExceptionResolver 
+
+spring MVC는 controller 밖으로 예외가 던져진 경우 , 예외를 해결하고 동작을 새로 정의할 수 있는 org.springframework.web.servlet.HandlerExceptionResolver 인터페이스를 제공한다. 
+
+```java
+public interface HandlerExceptionResolver {
+
+	@Nullable
+	ModelAndView resolveException(
+			HttpServletRequest request, HttpServletResponse response, @Nullable Object handler, Exception ex);
+        // handler == controller , ex == exception from controller 
+}
+
+```
+
+위 인터페이스를 아래와 같이 구현해서, 상태코드를 변경해주거나, 임의의 json값으로 반환할 수 있다. 
+
+```java
+@Slf4j
+public class MyHandlerExceptionResolver implements HandlerExceptionResolver {
+
+    @Override
+    public ModelAndView resolveException(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) {
+
+        try{
+            if(ex instanceof IllegalArgumentException){
+                log.info("IllegalArgumentException resolver to 400");
+                response.sendError(HttpServletResponse.SC_NOT_FOUND,ex.getMessage());
+                // exception을 정상흐름으로 변경 => 상태 코드는 400으로 변경하고 빈 modelAndView 반환
+                return new ModelAndView();
+                // 빈 modelAndView가 반환되면 view가 렌더링 되지 않고, 정상흐름으로 처리
+                // view 넣어주면 view 렌더링
+                // null 반환시 , 다음 ExceptionResolver 를 찾고, 없다면 예외를 던짐
+            }
+        }catch (IOException e){
+            log.error("resolver ex",e);
+        }
+
+        return null;
+    }
+}
+
+```
+
+구현한 HandlerExceptionResolver는 아래와 같이 등록할 수 있다. 
+
+
+```java
+
+@Configuration
+public class WebConfig implements WebMvcConfigurer {
+
+    @Override
+    public void extendHandlerExceptionResolvers(List<HandlerExceptionResolver> resolvers) {
+        // handlerExceptionResolver 등록 
+        resolvers.add(new MyHandlerExceptionResolver());
+    }
+
+}
+
+```
+
+HandlerExceptionResolver 의 반환 값에 따른 DispatcherServlet의 동작방식은 다음과 같다. 
+
+1. 빈 ModelAndView 를 반환하는 경우 : 뷰가 없으므로, 뷰를 렌더링하지 않고, 정상흐름으로 servlet이 반환된다. 
+
+2. ModelAndView 지정해서 반환하는 경우  : ModelAndView에 Model또는 View를 넣는 경우에는 넣어준 뷰를 렌더링한다.
+
+3. null을 반환하는 경우 : 다음 ExceptionResolver를 찾아서 실행하고, 만약 처리할 수 있는 ExceptionResolver가 없으면 예외처리가 안되고, 기존에 발생한 예외를 servlet 밖으로 던진다.
+
+
+정리를 하면 controller에서 터진 예외가 WAS까지 올라가지 않고, handlerExceptionResolver를 거침으로서, 예외 처리를 수행해줄수 있다는 것이 핵심이다. 
+
+* spring이 기본적으로 제공하는 handlerExceptionResolver 구현체는 다음과 같이 3종류가 있다. 
+
+ <strong> 1) ExceptionHandlerExceptionResolver </strong>
+ <strong> 2) ResponseStatusExceptionResolver : HTTP 상태코드 지정 </strong>
+ <strong> 3) DefaultHandlerExceptionResolver : spring 내부 기본 예외 처리 </strong>
+
+
+### ResponseStatusExceptionResolver 
+
+- 예외에 따라 HTTP 상태 코드를 지정해주는 역할을 수행한다. 
+- @ResponseStatus가 달려있는 예외를 처리해주거나, ResponseStatusException 예외를 처리해준다. 
+
+예를 들면 다음과 같이 예외에 @ResponseStatus가 달려있는 경우, ResponseStatusExceptionResolver가 처리해준다. 
+
+```java
+@ResponseStatus(code = HttpStatus.BAD_REQUEST , reason = "잘못된 요청 오류" )
+public class BadRequestException extends RuntimeException{
+}
+
+```
+
+controller 에서 예외가 발생 하면  handlerExceptionResolver 가 작동한다고 했다.
+
+ResponseStatusExceptionResolver 는 spring이 기본으로 제공해주는 handlerExceptionResolver의 구현체 중 하나로서 , @ResponseStatus가 붙은 예외와 ResponseStatusException 예외를 처리해주는 것이다. 
+
+```java
+
+
+
+/**
+ * A {@link org.springframework.web.servlet.HandlerExceptionResolver
+ * HandlerExceptionResolver} that uses the {@link ResponseStatus @ResponseStatus}
+ * annotation to map exceptions to HTTP status codes.
+ *
+ * <p>This exception resolver is enabled by default in the
+ * {@link org.springframework.web.servlet.DispatcherServlet DispatcherServlet}
+ * and the MVC Java config and the MVC namespace.
+ *
+ * <p>As of 4.2 this resolver also looks recursively for {@code @ResponseStatus}
+ * present on cause exceptions, and as of 4.2.2 this resolver supports
+ * attribute overrides for {@code @ResponseStatus} in custom composed annotations.
+ *
+ * <p>As of 5.0 this resolver also supports {@link ResponseStatusException}.
+ *
+ * @author Arjen Poutsma
+ * @author Rossen Stoyanchev
+ * @author Sam Brannen
+ * @since 3.0
+ * @see ResponseStatus
+ * @see ResponseStatusException
+ */
+public class ResponseStatusExceptionResolver extends AbstractHandlerExceptionResolver implements MessageSourceAware {
+}
+
+```
+
+ResponseStatusExceptionResolver 소스코드를 쭉 따라가보면 결국에는 다음과 같이 response.sendError(응답코드,메시지) 를 반환한다.
+
+```java
+
+	protected ModelAndView applyStatusAndReason(int statusCode, @Nullable String reason, HttpServletResponse response)
+			throws IOException {
+
+		if (!StringUtils.hasLength(reason)) {
+			response.sendError(statusCode);
+		}
+		else {
+			String resolvedReason = (this.messageSource != null ?
+					this.messageSource.getMessage(reason, null, reason, LocaleContextHolder.getLocale()) :
+					reason);
+			response.sendError(statusCode, resolvedReason);
+		}
+		return new ModelAndView();
+	}
+
+```
+
+추가로 다음과 같이 @ResponseStatus에 reason 속성을 message에서 찾아서 처리해줄 수도 있다. 
+
+```java
+
+@ResponseStatus(code = HttpStatus.BAD_REQUEST , reason = "error.bad" )
+public class BadRequestException extends RuntimeException{
+   // resources/messages.properties 아래 error.bad 값을 찾아 메세지로 넣어줌. 
+}
+
+```
+
+ResponseStatusExceptionResolver는  ResponseStatusException 을 처리해준다. 일종의 에러를 또 감싸주는 wrapper 에러라고 생각하면 편하다. 
+
+```java
+
+    @GetMapping("/api/response-status-ex2")
+    public String responseStatusEx2(){
+        // 404 로 illeganArgumentException을 반환 
+        throw new ResponseStatusException(HttpStatus.NOT_FOUND,"error.bad",new IllegalArgumentException());
+    }
+
+
+
+```
+
+### DefaultHandlerExceptionResolver 
+
+- spring 내부의 예외를 처리해준다. ex) parameter binding시점의 TypeMismatchException 를 400 오류로 반환해줌 
+
+
+### ExceptionHandlerExceptionResolver 
+
+- 예외를 처리하고 싶은 controller에서 처리하고 싶은 예외를  @ExceptionHandler 로 지정해주고, 해당 controller에서 예외가 발생하면 ExceptionHandlerExceptionResolver가 호출되어, @ExceptionHandler가 붙은 메소드를 실행시켜준다. 
+  
+- 처리하고 싶은 예외의 상속구조에 있는 자식 예외들도 동일하게 호출된다. 
+
+```java
+@RestController
+@Slf4j
+public class ExampleController {
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(IllegalArgumentException.class)
+    // IllegalArgumentException 또는 그 자식 예외가 들어올떄 실행된다. 
+    public ErrorResult illegalExHandler(IllegalArgumentException e){
+        log.error("[exceptionHandle] ex",e);
+        return new ErrorResult("BAD",e.getMessage());
+    }
+
+    @ExceptionHandler
+    // 예외 class를 별도로 지정해주지 않는 경우에는 parameter의 예외를 처리해준다 즉 아래의 경우에는 UserException이 들어올떄 실행된다. 
+    public ResponseEntity<ErrorResult> userExHandle(UserException e){
+        log.error("[exceptionHandle] ex",e);
+        ErrorResult errorResult = new ErrorResult("USER-EX", e.getMessage());
+        return new ResponseEntity<>(errorResult,HttpStatus.BAD_REQUEST);
+    }
+
+}
+    
+```
+
+위 방식의 단점은 controller에 예외처리코드와 controller 본연의 requestMapping 코드가 섞여있다. spring에서는 위와 같은 책임을 분리할 수 있는 방법도 제공하고 있다. 
+
+@ControllerAdvice annotaion을 활용하면 에러코드 로직을 별개의 class로 분리할 수 있다. 
+
+- 대상 controller을 지정해주지 않으면 global 적용된다. 
+
+
+```java
+
+@Slf4j
+@RestControllerAdvice // 
+public class ExControllerAdvice {
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ErrorResult illegalExHandler(IllegalArgumentException e){
+        log.error("[exceptionHandle] ex",e);
+        return new ErrorResult("BAD",e.getMessage());
+    }
+
+    @ExceptionHandler
+    public ResponseEntity<ErrorResult> userExHandle(UserException e){
+        log.error("[exceptionHandle] ex",e);
+        ErrorResult errorResult = new ErrorResult("USER-EX", e.getMessage());
+        return new ResponseEntity<>(errorResult,HttpStatus.BAD_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    @ExceptionHandler
+    public ErrorResult exHandle(Exception e){
+        log.error("[exceptionHandle] ex",e);
+        return new ErrorResult("EX","내부 오류");
+    }
+
+}
+
+```
+
+
+Reference 
+
+1. 스프링 MVC 2편 - 백엔드 웹 개발 활용 기술 , 김영한(https://www.inflearn.com/course/%EC%8A%A4%ED%94%84%EB%A7%81-mvc-2/dashboard)

@@ -1,0 +1,46 @@
+---
+id: 154
+title: "Item86. Serializable 구현할지는 신중히 결정하라"
+description: ""
+date: "2022-04-03 10:50:50"
+tags: ['Java', 'Effective Java 3/E']
+---
+어떤 클래스의 객체를 직렬화 할 수 있게 하려면 클래스 선언에 implments Serializable만 덧붙이면 된다. 
+
+Serializable을 구현하면 release한뒤에는 수정하기 어렵다. 클래스가 Serializable을 구현하면 직렬화된 byte stream 인코딩도 하나의 공개 API가 된다. (직렬화한 형태도 계속 지원해야 한다.)
+
+또한 custom 직렬화 형태를 설계하지않고, default로 두게 되면 private와 package-private 필드마저도 공개가 된다. 따라서 직렬화를 한다고 하면 직렬화 형태도 주의해서 설계해야 한다고 한다. 
+
+## 직렬화의 단점 
+
+- stream 고유 식별자 (직렬 버전 UID) : 모든 직렬화된 class는 고유 식별 번호를 부여받는다.
+1. seraialVersionUID라는 이름의 static final long 필드로 이 번호를 명시하지 않으면 시스템이 runtime에 암호 해시 함수(SHA-1)을 생성해 자동으로 클래스안에 넣는다. 이떄 클래스 멤버들이 고려되서 생성되기 떄문에 클래스가 수정되면 이 UID값도 같이 수정된다.
+
+2. 버그와 보안 구멍이 생길 위험이 높아진다. 역직렬화는 숨은 생성자를 통해 객체를 만들며, 클래스 불변식 꺠짐과 허가되지 않은 접근에 쉽게 노출된다는 단점을 가지고 있다. 
+
+3. 해당 class의 신버전을 release할때 테스트할점이 늘어난다.
+   직렬화 가능한 class가 수정되면 신버전 class도 구버전 직렬화 형태로 역직렬화 되는지, 직렬화 되는지 모두 테스트해보아야 한다. 따라서 매 release 횟수에 비례하여 테스트양이 증가한다. 
+
+
+
+## 일반적인 사용 사례 
+
+- BigInteger,Instant와 같은 값 타입 클래스와 Collection 클래스들은 Serializable을 구현하고, Thread Pool 처럼 동작하는 객체를 표현하는 클래스들은 대부분 Serializable을 구현하지 않는다고 한다. 
+
+
+## 직렬화시 고려사항 
+
+- 상속용으로 설계된 Class들은 대부분 Serializable을 구현하면 안되며, 인터페이스도 대부분 Serializable을 확장해서는 안된다. 
+- 만약 사용할 클래스가 확장,직렬화 모두 가능하고 클래스 내 불변식을 보장해야할 게 있다면 finalizer method를 final로 재정의해서 finalizer 공격을 방어해야 한다. 
+
+- 멤버필드중 기본값으로 초기화되면 위배되는 불변식이 있다면 클래스에 다음의 method를 반드시 추가해야 하고, 기본값으로 초기화되는 것을 방지해야 한다. 
+
+```java
+private void readObjectNoData() throws InvalidObjectException {
+    throw new InvalidObjectException("스트림 데이터가 필요합니다.");
+}
+```
+
+- 만약 직렬화를 하지 않기로 결정을 했는데 이를 상속하는 하위 class에서 직렬화할때 한가지만 고려하면 된다. 대부분 하위 class에서 직렬화시에 상위 class에 매개변수 없는 기본 생성자를 추가해야 하는데, 이게 싫다면 어쩔수없이 proxy 패턴을 사용해야 한다. 
+
+- 내부 클래스는 직렬화를 구현하지 말아야 한다. 내부 클래스는  (static이 아닐경우) 외부 클래스의 참조값을 가지고 있으며, 기본 직렬화 형태가 분명하지 않기 떄문이다.

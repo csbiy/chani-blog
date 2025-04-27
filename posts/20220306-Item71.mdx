@@ -1,0 +1,54 @@
+---
+id: 155
+title: "Item71. 필요 없는 검사 예외 사용은 피하라"
+description: ""
+date: "2022-03-06 17:35:03"
+tags: ['Java', 'Effective Java 3/E']
+---
+- 검사 예외를 제대로 활용하면 API를 사용하는 client가 예외에서 발생한 문제를 처리하여 프로그램의 안정성을 높일 수 있으나, 불필요한 검사 예외는 프로그램 복잡성만 늘린다.
+
+예를 들면 다음과 같이 검사 예외를 던졌는데 client가 아래와 같이 처리해야 된다면 오히려 코드만 불필요하게 길게 만든다. 
+```java
+catch(TheCheckedException e){
+    throw new AssertionError();
+}
+```
+```java
+catch(TheCheckedException e){
+    e.printStackTrace();
+    System.exit(1);
+}
+```
+
+- 그외에 단점으로 검사 예외를 던지는 method는 Stream 안에서 직접 사용할 수 없다. 
+
+
+
+## 검사 예외를 회피하는 방법
+
+1. 적절한 결과 타입을 담은 Optional을 반환한다. 이 방법의 단점은 예외가 발생한 이유를 알려주는 부가정보를 client에게 전달해주지 못한다.
+
+2. 검사 예외를 던지는 method에 검사 예외를 발생하는 지 여부를 boolean으로 반환하는 상태 검사 method를 추가한다. 
+
+예를 들어 다음과 같은 비검사 예외를 던지는 method가 있다고 가정하자.
+
+```java
+try{
+    obj.action(args);
+}catch(TheCheckedException e){
+    //예외 상황 대처 
+}
+```
+
+이를 아래와 같이 상태검사 method를 추가해서 예외상황일 경우의 로직을 else문제 작성해줄 수 있다.
+
+```java
+
+if(obj.actionPermitted(args)){ // 상태 검사 method 
+    obj.action(args);
+}else{
+    // 예외 상황 대처
+}
+```
+
+이 방법은 앞선 Item69번의 상태검사method를 사용하면 안되는 상황을 유의해서 사용해야 한다 (ex) multi-thread 상황)

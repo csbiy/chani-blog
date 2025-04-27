@@ -1,0 +1,238 @@
+---
+id: 43
+title: "PL/SQL 예외처리"
+description: ""
+date: "2022-05-11 22:34:31"
+tags: ['database', 'oracle']
+---
+## 예외처리 구문 
+
+```
+EXCEPTION WHEN 예외명1 THEN 예외처리 구문1
+WHEN 예외명2 THEN 예외처리 구문2
+...
+WHEN OTHERS THEN 예외처리 구문n;
+```
+
+- case문과 같이 WHEN "처리할예외명" THEN "처리로직" 형태이다. 
+- 구체적인 예외명을 알 수 없을 떄는 OTHERS를 사용한다. 
+
+### 예외처리 예시
+
+다음과 ORA-01476 예외가 터지는 프로시저 로직이 있다.
+
+```sql
+DECLARE
+    vi_num NUMBER := 0;
+BEGIN 
+    vi_num := 10 /0;
+    -- ORA-01476: divisor is equal to zero 
+    DBMS_OUTPUT.PUT_LINE('Success!');
+END;
+```
+
+이를 다음과 같이 예외 처리할 수 있다.
+
+```
+DECLARE
+    vi_num NUMBER := 0;
+BEGIN 
+    vi_num := 10 /0;
+    DBMS_OUTPUT.PUT_LINE('Success!');
+
+EXCEPTION WHEN OTHERS THEN  -- ORA-01476예외를 잡아서 처리 
+    DBMS_OUTPUT.PUT_LINE('오류가 발생했습니다.');
+END;
+```
+
+## 예외정보 참조
+
+- 실제로는 '오류가 발생했습니다'와 같은 예외처리 문구는 예외를 해결하는데 아무런 도움도 주지 못할 것이다. 
+- 발생한 예외에 대한 정보가 필요하면 Oraclem에서는 SQLCODE , SQLERRM 이라는 내장함수를 제공한다. 
+
+- SQLCODE : 실행부에서 발생한 예외에 해당되는 코드를 반환한다. 즉 ORA-예외코드에서 예외 코드를 반환한다는 뜻이다. 
+- SQLERRM : 예외 메시지를 반환한다. 
+
+```sql
+EXCEPTION WHEN OTHERS THEN 
+    DBMS_OUTPUT.PUT_LINE('SQL ERROR CODE : ' || SQLCODE);
+    DBMS_OUTPUT.PUT_LINE('SQL ERROR MESSAGE : ' || SQLERRM);
+    DBMS_OUTPUT.PUT_LINE(SQLERRM(SQLCODE));
+END;
+```
+
+- Oracle 내장 패키지 (DBMS_UTILITY) 에서 제공하는 FORMAT_ERROR_BACKTRACE라는 빌트인 함수를 사용하면 정확히 예외가 몇번쨰 줄에서 터졌는지도 알 수 있다. 
+
+```
+DBMS_OUTPUT.PUT_LINE(DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+```
+
+## 시스템 예외
+
+- 예외처리시 OTHERS 외에도 시스템 예외명을 사용할 수 있다. 이렇게 미리 정의되어 있는 예외의 리스트는 다음과 같다. 
+(https://docs.oracle.com/cd/B10501_01/appdev.920/a96624/07_errs.htm)
+
+
+![](/images/plsql-04-01.jpg)
+
+- 따라서 위의 0으로 나눴을떄 터지는 예외도 미리 정의된 시스템 예외명으로 대체 가능하다.
+
+
+
+```SQL
+EXCEPTION WHEN ZERO_DIVIDE THEN 
+    DBMS_OUTPUT.PUT_LINE('오류가 발생했습니다.');
+    DBMS_OUTPUT.PUT_LINE('SQL ERROR CODE : ' || SQLCODE);
+    DBMS_OUTPUT.PUT_LINE('SQL ERROR MESSAGE : ' || SQLERRM);
+    DBMS_OUTPUT.PUT_LINE(SQLERRM(SQLCODE));
+    DBMS_OUTPUT.PUT_LINE(DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+    DBMS_OUTPUT.PUT_LINE(DBMS_UTILITY.FORMAT_ERROR_STACK);
+    DBMS_OUTPUT.PUT_LINE(DBMS_UTILITY.FORMAT_CALL_STACK);
+END;
+```
+
+- 여러개 예외처리시 EXCEPTION 절에 명시한 순서대로 처리된다. 즉 OTHERS를 제일 앞에 두면 해당 로직을 처리하고 그 뒤의 예외 처리 로직은 실행되지 않고 프로시저가 종료된다. 따라서 구체적인 것에서 추상적인것 순서대로 명시해야 한다. 
+
+
+### 예외처리 예시 
+
+다음과 같이 employees 테이블에서 특정 job_id를 가진 tuple을 업데이트하는 로직이 있다고 가정했을떄, job_id가 없다면 프로시저를 종료하도록 IF문을 넣는 방법으로 구현할 수 있을 것이다.
+
+```SQL
+CREATE OR REPLACE PROCEDURE upload_jobid_proc
+( p_employee_id employees.employee_id%TYPE , 
+  p_job_id jobs.job_id%TYPE)
+IS 
+    vn_cnt NUMBER := 0;
+BEGIN 
+    SELECT COUNT(*)
+    INTO vn_cnt 
+    FROM JOBS
+    WHERE JOB_ID = p_job_id;
+
+    IF vn_cnt = 0 THEN
+        DBMS_OUTPUT.PUT_LINE('job_id가 없습니다.');
+        RETURN;
+    ELSE
+        UPDATE employees
+        SET    job_id = p_job_id
+        WHERE  employee_id = p_employee_id;
+    END IF;
+    COMMIT;
+END;
+
+EXEC upload_jobid_proc(200,'TEST_ID');
+
+```
+
+두번째 방법은 앞서 정리한 예외처리로도 구현할 수 있다. NO_DATA_FOUND 라는 예외를 사용하여 구현할 수도 있다. 
+
+```SQL
+CREATE OR REPLACE PROCEDURE upload_jobid_proc
+( p_employee_id employees.employee_id%TYPE , 
+  p_job_id jobs.job_id%TYPE)
+IS 
+    vn_cnt NUMBER := 0;
+BEGIN 
+    SELECT COUNT(*)
+    INTO vn_cnt 
+    FROM JOBS
+    WHERE JOB_ID = p_job_id;
+
+    UPDATE employees
+    SET    job_id = p_job_id
+    WHERE  employee_id = p_employee_id;
+    COMMIT;
+    
+EXCEPTION 
+WHEN NO_DATA_FOUND THEN 
+    DBMS_OUTPUT.PUT_LINE(SQLERRM);
+WHEN OTHERS THEN 
+    DBMS_OUTPUT.PUT_LINE('기타 에러 : ' || SQLERRM);
+END;
+```
+
+## 사용자 정의 예외 
+
+- 사용자 정의 예외를 사용하려면 변수처럼 PL/SQL 블록의 선언부에 예외를 정의해야 한다. 
+- 시스템 예외는 해당 예외가 자동으로 검출되지만, 사용자 정의 예외는 직접 예외를 발생시켜주어야 한다. 
+
+```SQL
+RAISE '사용자정의예외명'
+```
+
+사용예시를 보면 다음과 같다. 
+
+```SQL
+CREATE OR REPLACE PROCEDURE upload_jobid_proc
+( p_employee_id employees.employee_id%TYPE , 
+  p_job_id jobs.job_id%TYPE)
+IS 
+    vn_cnt NUMBER := 0;
+    ex_invalid_depid EXCEPTION; -- 사용자 정의 예외 선언
+BEGIN 
+    SELECT COUNT(*)
+    INTO vn_cnt 
+    FROM JOBS
+    WHERE JOB_ID = p_job_id;
+
+    IF vn_cnt = 0 THEN
+        RAISE ex_invalid_depid; -- 사용자 정의 예외 발생 
+    END IF;
+
+    UPDATE employees
+    SET    job_id = p_job_id
+    WHERE  employee_id = p_employee_id;
+    COMMIT;
+    
+EXCEPTION 
+WHEN ex_invalid_depid THEN -- 사용자 정의 예외처리  
+    DBMS_OUTPUT.PUT_LINE('존재하지 않는 job_id 입니다.');
+WHEN NO_DATA_FOUND THEN 
+    DBMS_OUTPUT.PUT_LINE(SQLERRM);
+WHEN OTHERS THEN 
+    DBMS_OUTPUT.PUT_LINE('기타 에러 : ' || SQLERRM);
+END;
+```
+
+## 사용자 정의 예외명과 예외 코드 연결하기 
+
+- 프로시저 선언부에서 PRAGMA EXCEPTION_INIT 명령어를 통해서 예외코드와 사용자예외를 매핑할 수 있다. 
+
+```sql
+-- 선언부 
+IS 
+    ex_invalid_depid EXCEPTION;
+    PRAGMA EXCEPTION_INIT (ex_invalid_depid , -1913); -- ORA-1913 
+BEGIN 
+```
+
+- 주의할점은 당연한 말이지만 동일한 예외코드를 여러개의 예외에 매핑할 수 없다. 또한 예외코드 100 이하는 사용할 수 없다. 
+
+## RAISE_APPLICATION_ERROR
+
+- RAISE 이외에도 사용자 정의 예외를 명시적으로 터트릴 수 있는 시스템 프로시저이다. 
+- 선언부에 사용자 정의 예외를 명시할 수 없이 다음과 같이 사용하면 된다.
+
+```
+RAISE_APPLICATION_ERROR(-20000, '양수만 입력받을 수 있습니다.');
+```
+
+```SQL
+CREATE OR REPLACE PROCEDURE raise_test_proc(p_num NUMBER)
+IS 
+    v_num NUMBER;
+BEGIN 
+    v_num := p_num;
+    IF v_num < 0 THEN
+        RAISE_APPLICATION_ERROR(-20000, '양수만 입력해주세요');
+    END IF;
+    
+    EXCEPTION WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE(SQLCODE); -- -20000
+END;
+```
+
+만약 입력값이 음수면 RAISE_APPLICATION_ERROR 를 통해 -20000 예외코드에 예외 메시지는 '양수만 입력해주세요' 로 사용자 정의 예외가 터지고, 이를 예외 처리부에서 잡아서 처리한다. 
+
+- 예외코드는 -20000 ~ -20999 번까지만 사용 가능하며 , 이 이유는 이외의 코드들은 Oracle에서 시스템 예외들이 사용하지 않는 코드들이기 때문이라고 한다.

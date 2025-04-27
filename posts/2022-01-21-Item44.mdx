@@ -1,0 +1,237 @@
+---
+id: 24
+title: "Item44. 표준 함수형 인터페이스를 사용하라"
+description: ""
+date: "2022-01-21 21:57:43"
+tags: ['Java', 'Effective Java 3/E']
+---
+## 표준 함수형 인터페이스 
+
+Java가 람다를 지원하면서 API를 작성하는 모범사례도 크게 바뀌었는데, 대표적으로 template pattern이 함수 객체를 받는 정적 팩토리 method나 생성자를 제공하는 형태로 변경되었다. 즉 함수 객체를 매개변수로 받는 생성자와 method를 더 많이 만들어야 하는데 , 이때 함수형 매개변수 타입을 올바르게 선택해야 한다. 
+
+예시로 LinkedHashMap의 removeEldestEntry method는 put method에 의해 호출되어 true를 반환하면 map에서 가장 오래된 원소를 제거한다.
+```java
+protected boolean removeEldestEntry(Map.Entry<K,V> eldest){
+    return size() > 100;
+}
+```
+다음과 같이 100개 미만의 크기를 가진 map의 경우에는 원소를 제거하지 않고, 100개 이상부터 오래된 원소를 제거하도록 구현할 수 있는데, 이를 함수형 인터페이스로 변경가능하다.
+
+주의할점은 위 method가 instance method이기 떄문에, 람다를 사용할떄에는 Map instance도 매개변수로 받아야 한다. 
+
+```java
+@FunctionalInterface
+public interface EldestEntryRemovalFunction<K,V> {
+   boolean remove(Map<K,V> map , Map.Entry<K, V> eldest);
+}
+```
+
+위처럼 직접 선언하는 것도 가능은 하지만 java 내장 library (java.util.function) 에 다양한 용도의 표준 함수형 인터페이스가 담겨 있다. 따라서 적절한게 있다면 직접 구현하지말고 표준 함수형 인터페이스를 사용하는게 좋다. 
+
+위의 직접 구현한 함수형 인터페이스인 EldestEntryRemovalFunction도 표준 함수형 인터페이스인 BiPredicate\<Map\<K,V> , Map.Entry\<K,V>>  로  대체할 수 있다. 
+
+## 표준 함수형 인터페이스 종류 
+
+- java.util.function에 총 43개의 함수형 인터페이스가 존재한다. 
+- 대표적인 표준 함수형 인터페이스들은 다음과 같다. 
+
+
+<hr>
+
+- Operator\<T> 
+
+반환값과 매개변수의 타입이 같은 함수로, 인수가 1개인 UnaryOperator, 인수가 2개인 BinaryOperator로 나뉜다. 
+
+1. UnaryOperator\<T> 
+
+```java
+@ParameterizedTest
+@CsvSource({"ABC,abc"})
+void testUnaryOperator(String upperCase , String lowerCase ){
+    UnaryOperator<String> function = String::toLowerCase;
+    assertThat(function.apply(upperCase)).isEqualTo(lowerCase);
+}
+```
+
+2. BinaryOperator\<T>
+
+```java
+@ParameterizedTest
+@CsvSource({"100,200,300"})
+void testBinaryOperator(Integer x , Integer y  , Integer expectResult){
+    BinaryOperator<Integer> function = Integer::sum;
+    assertThat(function.apply(x,y)).isEqualTo(expectResult);
+}
+```
+<hr>
+
+- Predicate\<T>
+
+인수를 하나 받아서 boolean을 반환 하는 함수
+
+```java
+@FunctionalInterface
+public interface Predicate<T> {
+    /**
+     * Evaluates this predicate on the given argument.
+     *
+     * @param t the input argument
+     * @return {@code true} if the input argument matches the predicate,
+     * otherwise {@code false}
+     */
+    boolean test(T t);
+```
+다음과 같이 빈리스트인지 여부를 판단하는 함수를 만들 수 있다. 
+```java
+@Test
+void testPredicate(){
+    Predicate<List> function = List::isEmpty;
+    assertThat(function.test(new ArrayList())).isTrue();
+}
+```
+
+<hr>
+
+- Supplier\<T> 
+
+인수를 받지 않고 값을 제공하는 함수 
+
+```java
+public interface Supplier<T> {
+    /**
+     * Gets a result.
+     * @return a result
+     */
+    T get();
+```
+사용예시는 다음과 같이 객체를 생성해주는 제공자로서도 사용할 수 있다.
+
+```java
+@Test
+void testSupplier(){
+    Supplier<Food> function = Food::new;
+    assertThat(function.get()).isInstanceOf(Food.class);
+}
+private static class Food{}
+```
+<hr>
+
+- Consumer\<T>
+
+인수를 하나 받고 반환값이 없이, 인수를 소비하는 함수 
+
+```java
+public interface Consumer<T> {
+    /**
+     * Performs this operation on the given argument.
+     * @param t the input argument
+     */
+    void accept(T t);
+```
+
+```java
+@Test
+void testConsumer(){
+    Consumer<List> consumer = (list) -> list.forEach(System.out::println);
+    consumer.accept(List.of("a","b","c","d","e","f","g"));
+    // a
+    // b
+    // c
+    // d
+    // e
+    // f
+    // g
+}
+```
+
+<hr>
+
+- Function \<T.R>
+  
+T type 매개변수를 받아서 R type 반환 하는 함수 
+```java
+public interface Function<T, R> {
+
+    /**
+     * Applies this function to the given argument.
+     *
+     * @param t the function argument
+     * @return the function result
+     */
+    R apply(T t);
+```
+
+사용 예시는 다음과 같다. 
+```java
+@ParameterizedTest
+@CsvSource({"ABC,abc"})
+void main(String upperCase , String lowerCase) {
+    Function<String,String> function = String::toLowerCase;
+    assertThat(function.apply(upperCase)).isEqualTo(lowerCase);
+}
+```
+
+<hr>
+
+위의 Java.util.Function의 표준 함수형 인터페이스들은 primitive type인 int,long,double 별로 각각 3개씩의 변형이 생겨난다. 
+
+예를 들면 int를 받는 Predicate는 IntPredicate , long을 받는 predicate는 LongPredicate , double를 받는 predicate는 DoublePredicate 가 있다. 
+
+특히 FunctionInterface에서는 기본 타입을 반환하는 변형이 9개가 더 있는데, 예를 들면 다음과 같은 형식이다.
+
+```bash
+Result srcToResultFunction(Src value);
+```
+```java
+public interface LongToDoubleFunction {
+
+    /**
+     * Applies this function to the given argument.
+     *
+     * @param value the function argument
+     * @return the function result
+     */
+    double applyAsDouble(long value);
+```
+추가로 입력매개변수만 generic으로 받고, 반환타입은 정해져있는 형식도 있다.
+
+```bash
+Result ToResultFunction(T value);
+```
+
+```java
+public interface ToLongFunction<T> {
+
+    /**
+     * Applies this function to the given argument.
+     *
+     * @param value the function argument
+     * @return the function result
+     */
+    long applyAsLong(T value);
+}
+```
+
+이외에도 인수를 2개씩 받는 변형들이 존재한다. 예를 들면 BiPredicate\<T,U>,BiFunction\<T,U,r> , BiConsumer\<T,U> 가 있다. 
+
+인터페이스 자체가 43개기 떄문에 외우는건 당연히 불가능하고 필요할떄마다 API문서를 뒤져서 찾아서 사용하면 된다. 
+
+
+
+
+## 어떨때 표준 함수 인터페이스 대신 직접 함수 인터페이스를 정의해야 하는가?
+
+- Compartor\<T> 인터페이스 경우에는 구조적으로 ToIntBiFunction\<T,U>과 동일한데도, 표준 함수 인터페이스를 사용하지 않았다. 다음과 같은 특징을 갖는다면 직접 정의할 것을 고려해볼만하다.
+
+1. 자주 쓰이며 이름이 용도를 명확하게 설명해준다.
+2. 반드시 따라야 하는 규약이 존재한다.
+3. 유용한 Default Method 제공 
+
+
+## 함수형 인터페이스 사용 주의점 
+
+- 기본 타입을 받는 함수형 인터페이스에 박싱된 기본 타입을 넣어서 사용하면 성능적 이슈가 있어 사용에 주의해야 한다. 
+
+- 추가로 직접 만든 함수형 인터페이스에는 @FuntionalInterface를 달아 명시적으로도 람다용으로 설계되었음을 표기하고,  method를 추가로 정의시에 compile error를 던지도록 만드는 것을 권고한다. 
+
+- 서로 다른 함수형 인터페이스를 같은 위치의 인수로 사용하는 overloading을 피해야 한다. client에게 혼동을 줄 수도 있다.

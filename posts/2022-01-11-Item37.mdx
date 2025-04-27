@@ -1,0 +1,181 @@
+---
+id: 2
+title: "Item37. ordinal indexing 대신 EnumMap을 사용하라"
+description: ""
+date: "2022-01-11 22:57:43"
+tags: ['Java', 'Effective Java 3/E']
+---
+다음과 같이 식물 class가 있고 이 class를 LifeCycle enum type을 key로 set에 분류해서 담고 싶다고 가정하자. 
+
+```java
+public class Plant {
+
+    enum LifeCycle{ANNUAL,PERENNIAL , BIENNIAL}
+
+    final String name;
+    final LifeCycle lifeCycle;
+
+    public Plant(String name, LifeCycle lifeCycle) {
+        this.name = name;
+        this.lifeCycle = lifeCycle;
+    }
+
+    @Override
+    public String toString() {
+        return name;
+    }
+}
+```
+
+한가지 방법은 Set 배열에 ordinal method()로 가져온 LifeCycle Enum type의 index 값으로 배열에 indexing 해 저장하는 것이다. 
+
+
+```java
+Set<Plant>[] plantsByLifeCycle = (Set<Plant>[]) new Set[Plant.LifeCycle.values().length];
+for(int  i = 0 ; i <plantsByLifeCycle.length; i++){
+    plantsByLifeCycle[i] = new HashSet<>();
+}
+for (Plant p : garden) {
+    plantsByLifeCycle[p.lifeCycle.ordinal()].add(p);
+}
+
+for(int i = 0; i< plantsByLifeCycle.length ; i++){
+    System.out.printf("%s: %s %n", Plant.LifeCycle.values()[i],plantsByLifeCycle[i]);
+}
+```
+
+위 코드는 다음과 같은 문제점을 가지고 있다.
+
+1. Generic 배열 : 타입안전하지 않음 
+2. 배열은 각 Index가 무슨 Enum type인지 모름 
+3. 상수의 위치가 변경될 경우 바로 고장남 (Item 35. ordinal() method는 사용하지 말라고 권고 )
+
+## EnumMap 
+
+EnumMap을 쓰면 위와 같이 ordinal method로 indexing 하는 단점을 제거해주고, 추가로 출력 문자열도 자체로 제공해준다. 
+EnumMap은 runtime에서 generic type 정보 제공을 위해 생성자에서 key 로 사용할 class 객체를 받는다. 
+```java
+Map<Plant.LifeCycle, Set<Plant>> plantsByLifeCycle = new EnumMap<>(Plant.LifeCycle.class);
+for(Plant.LifeCycle lc : Plant.LifeCycle.values()){
+    plantsByLifeCycle.put(lc,new HashSet<>());
+}
+for (Plant p : garden) {
+    plantsByLifeCycle.get(p.lifeCycle).add(p);
+}
+System.out.println("plantsByLifeCycle = " + plantsByLifeCycle);
+```
+
+
+## Stream 방식 
+
+아래와 같이 stream을 사용해서 맵을 관리하면 코드를 더 줄일 수 있으나,EnumMap 구현체를 사용한게 아니라 고유한 Map 구현체를 사용했기 때문에 공간과 성능 이점이 사라진다. EnumMap 은 항상 enum 당 하나의 중첩 map을 만들지만, stream은 해당 enum type이 있을때에만 만든다. 
+```java
+Map<Plant.LifeCycle, List<Plant>> result 
+        = garden.stream().collect(Collectors.groupingBy(Plant::getLifeCycle));
+```
+groupBy의 2번쨰 parameter인 결과가 삼입될 map을 다음과 같이 EnumMap 객체를 생성해주는 람다식을 넣어주면 EnumMap 객체의 장점을 활용할 수 있다. 
+```java
+garden.stream().collect(groupingBy(Plant::getLifeCycle,()->new EnumMap<>(LifeCycle.class),toSet()));
+```
+
+- 추가로 3개의 parameter 를 받는 groupBy Function의 1번쨰 parameter는 분류 방식, 2번쨰 parameter는 결과가 삼입될 빈 Map 객체를 반환해주는 supplier , 3번째 parameter는 결과를 집계해줄 collector를 받는다. 
+
+```java
+Collector<T, ?, M> groupingBy(Function<? super T, ? extends K> classifier,
+                                Supplier<M> mapFactory,
+                                Collector<? super T, A, D> downstream) 
+```
+
+![](/images/Item37-group-by.jpg)
+
+
+ordinal method를 사용하는 안좋은 예를 또 들면, 두 가지 상태(Phase) Enum 를 전이(Transition) Enum과 매핑하도록 구현한 프로그램이다.
+
+```java
+public enum Phase {
+    SOLID, LIQUID , GAS;
+    
+    public enum Transition{
+        
+        MELT,FREEZE,BOIL,CONDENSE,SUBLIME,DEPOSIT;
+        // 행은 from의 ordinal 을 , 열은 to의 ordinal을 index로 사용한다.
+        public static final Transition[][] TRANSITIONS = {
+                {null,MELT,SUBLIME},
+                {FREEZE,null,BOIL},
+                {DEPOSIT,CONDENSE,null}
+        };
+        
+        // 한 상태에서 다른 사앹로의 전이를 반환한다. 
+        public static Transition from(Phase from, Phase to){
+            return TRANSITIONS[from.ordinal()][to.ordinal()];
+        }
+    }
+}
+```
+마찬가지로 ordinal method는 위에 설명한 이유들로 사용하면 안된다.
+이를 EnumMap으로 다음과 같이 구현할 수 있다. 아래는 중첩 map으로 \<이전상태,\<이후상태,전이>> 형태로 EnumMap을 초기화하였다. 
+
+```java
+public enum Phase {
+SOLID, LIQUID , GAS;
+
+public enum Transition {
+    MELT(SOLID,LIQUID),FREEZE(LIQUID,SOLID),
+    BOIL(LIQUID,GAS),CONDENSE(GAS,LIQUID),
+    SUBLIME(SOLID,GAS),DEPOSIT(GAS,SOLID);
+
+    private final Phase from;
+    private final Phase to;
+
+    Transition(Phase from, Phase to) {
+        this.from = from;
+        this.to = to;
+    }
+
+    public Phase getFrom() {
+        return from;
+    }
+
+    public static final Map<Phase, Map<Phase,Transition>> m =
+            Stream.of(values()).collect(
+                    groupingBy(Transition::getFrom,
+                            ()->new EnumMap<>(Phase.class),
+                            toMap(
+                                    t->t.to,
+                                    t->t,
+                                    (x,y)->y,
+                                    ()->new EnumMap<>(Phase.class)
+                            )));
+}
+```
+
+groupBy method에서 이전 상태를 기준으로 묶고, 이를 결과로 받을 EnumMap을 생성하고, 다시 Map으로 집계하는데, Map으로 집계할때는 다음과 같이 4개의 parameter가 사용되었다.
+
+```java
+   toMap(
+        t->t.to, // 이후 상태를 key로 사용
+        t->t, // value는 전이값
+        (x,y)->y, // 동일 key 시 처리 로직인데, 실제로는 사용되지 않음
+        ()->new EnumMap<>(Phase.class) // 결과를 담을 빈 Map 객체 생성 
+)
+```
+
+toMap method api 설명을 보면 첫번쨰 parameter는 key를 생성해주는 함수, 두번쨰는 value를 생성해주는 함수 , 세번째는 같은 key 를 가지는 value를 어떻게 merge 할지에 대한 처리로직, 네번쨰는 결과가 삼입될 빈 map 객체를 만들어주는 함수를 작성하면 된다고 한다. 
+
+![](/images/Item37-toMap.jpg)
+
+이전 oridinal method 방식에 비해 요구사항이 변경되었을때도 map을 생성하는 로직이 변경되지 않는다. 
+
+```java
+public enum Phase {
+    SOLID, LIQUID , GAS , PLASMA;
+
+    public enum Transition {
+        MELT(SOLID,LIQUID),FREEZE(LIQUID,SOLID),
+        BOIL(LIQUID,GAS),CONDENSE(GAS,LIQUID),
+        SUBLIME(SOLID,GAS),DEPOSIT(GAS,SOLID),
+        IONIZE(GAS,PLASMA),DEIONIZE(PLASMA,GAS);
+        // ...코드 변경되지 않음
+    }
+}
+```

@@ -1,0 +1,118 @@
+---
+id: 147
+title: "Java Virutal Machine - Memory,실행 엔진 내부 구성요소"
+description: ""
+date: "2022-01-01 22:07:14"
+tags: ['Java', 'Jvm']
+---
+## JVM의 목표
+
+Java 코드를 작성하고 compile하면 bytecode (.class) 가 생성된다. 이 bytecode를 실행해주는 역할이 Jvm의 역할이다. byte code는 최종적으로 machine code (native code)로 변경되서 실행되는데 이는 CPU에 종속적이다. Jvm은 OS별로 구현체가 여러개 있어, Java source 코드는 운영체제와는 독립적으로 작성될 수 있도록 해준다. 
+
+Jvm은 bytecode (.class)를 실행해주는데, 사실 Java  이외에도 .class file이 생성되는 타 프로그래밍 언어들을 실행할 수 있다 예를 들면 Kotlin ,Scala 가 있다.  
+
+
+
+## JRE, JDK , JVM 
+
+JVM은 우리가 흔히 사용하는 JRE, JDK에 포함되어있다. 
+
+그렇다면 Jre와 Jdk간의 차이점은 무엇일까? 
+
+- Jre (Java Runtime Environment) : java를 실행할 수 있게 해주는 JVM과 핵심 라이브러리만 가지고 있다.(javac 가지고 있지 않음 ) 
+- Jdk ( Java ) : JRE 에 개발에 필요한 여러 tool들을 함께 제공하고,Java11부터는 Jdk만을 제공한다.  
+
+![](/images/Jre-Jdk.png)
+
+## Jvm 구조 
+
+Jvm은 다음과 같은 구성요소로 이루어진다.
+
+1. 클래스 로더 시스템
+2. 메모리
+3. 실행 엔진
+4. 네이티브 메소드 인터페이스 (JNI)
+5. 네이티브 메소드 라이브러리 
+
+## Class loader system 
+
+compile된 class file을 Jvm 이 OS로부터 할당받은 메모리에 배치하는 역할을 한다. 
+
+classs loader system은 loading,linking ,initialization 3가지 task를 수행하는데 다음과 같다. 
+
+1. loading : class file을 읽어오는 과정 
+2. linking : reference 연결 
+3. intialization : static 값 초기화 
+
+## Memory 구조 
+
+Jvm이 할당받은 메모리 공간을 크게 3가지로 나누고 내부적으로 사용하는 PC register , Native method stack이 존재한다.
+
+PC register는 현재 thread가 실행중인 명령어의 위치를 가르키는 pointer가 저장된다. 당연히 thread 별로 독립적으로 할당되고, native method stack도 thread별로 할당된다.  
+native method란 java에 native keyword가 들어간 c,c++로 구현된 method를 말한다.
+
+
+
+```java
+
+    @HotSpotIntrinsicCandidate
+    public static native Thread currentThread();
+```
+
+1. Method 영역 - Thread 간 공유
+2. Stack 영역 - Threaad별로 독립적으로 할당됨 
+3. Heap 영역  - Thread간 공유
+
+web과 같이 client reqeust가 thread에 mapping되서 실행되는 상황에서는 thread간 race condition이 생길 수 있는데 이는 method,heap영역에 있는 thread간 공유자원을 동시에 접근해서 생기는 문제들이다.  
+
+## Memory - Method area
+
+method 영역에는 method의 bytecode  와 class 변수 (static 변수)  가 저장된다. 
+
+java main method 호출로부터 프로그램이 시작되는데, 사실상 main method 의 byte code는 program의 흐름을 구성하는 byte code이기때문에 컴파일된 코드의 거의 대부분이 method 영역에 올라간다.
+
+method 영역은 bytecode를 저장함으로 class 정보 (클래스 로딩 시점)
+를 처음 메모리에 올릴떄 저장되는 메모리 공간이다.
+
+따라서 method 영역에는 클래스 수준의 정보를 저장된다. (클래스 이름, 부모클래스명 , method , 변수)
+
+method 영역은 jvm permanent generation영역의 일부이다.  permananat generation의또 다른 영역은  runtime constant pool 로서, string literal 등이 보관된다. 
+
+## Memory - Heap 
+
+Heap 영역에는 객체가 저장된다.
+
+Heap 영역은 객체 생성 시점에 따라 Young Generation ,  Old Generation 에 나누어 진다. 새로 생성된 객체는 young generation에 보관되었다가 young generation 영역이 모두 차면 GC가 수행되는데 이를 minor Gc라고 한다. 
+
+ Young Generation은 3개의 요소로 나뉘어진다. 1. Eden Memory 2. two Survivor Memory spaces.
+
+여러번의 minor GC 에도 참조가 계속 남아있어서 살아있는 객체는 old genration영역으로 옮겨진다. 마찬가지로 old generation 영역도 모두 차면 GC가 수행되는데 이를 major GC라고 한다. 
+
+
+(ref- https://www.journaldev.com/2856/java-jvm-memory-model-memory-management-in-java )
+
+
+
+## Memory - stack
+
+thread 마다 할당되는 메모리 영역이다. 지역변수, 매개변수가 저장되는 공간이다.
+
+지역변수,매개변수는 해당 method 내에서만 유효한 변수들인데, 조금 더 자세히 정리하면 해당 method를 빠져나가면 바로 소멸되는 영역이다. 
+
+![](/images/Jvm-memory.png)
+
+공부한 내용을 바탕으로 메모리 구조를 정리하면 위와 같다.사실 heap 내 young generation내 eden 영역도 있고, gc에 의해 관리되는 메카니즘도 또 있는데 기회가 되면 깊숙한 메카니즘까지 공부해보고 싶다. 
+
+## Native method - JNI, library
+
+- Native method library: c,c++로 작성된 library
+- JNI(Java native Interface) : java 실행엔진의 요소로서 c,c++,assembly code로 작성된 함수를 사용할 수 있게 해준다.
+
+
+## JVM 실행엔진
+
+JVM 실행엔진은 interpreter , JIT Compiler , GC(garabage collector) 로 구성된다.
+
+- interpreter : bytecode를 한줄씩 machine code로 compile
+- Just In time(JIT) compiler : bytecode내 반복적인 code를 한꺼번에 machine code로 compile 
+- GC : 참조되지 않은 객체를 메모리에서 제거한다.

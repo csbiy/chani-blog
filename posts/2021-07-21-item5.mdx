@@ -1,0 +1,105 @@
+---
+id: 136
+title: "Item5. 자원을 직접 명시하지 말고, DI를 통해 객체를 주입받자"
+description: ""
+date: "2021-07-21 21:51:06"
+tags: ['Java', 'Effective Java 3/E']
+---
+#### 의존관계에 있는 class를 직접 명시하는 방식(static field)은 변경에 유연성을 가지기 힘들다. 그렇다면 어떤 구조가 적합할까?
+
+
+많은 class는 다른 class들과 의존관계를 갖는다. 
+이때 정적 유틸리티성 class로 의존관계를 맺는 것을 자주 볼 수 있다 ([Item4](https://devcs96.github.io/2021/07/20/2021-07-20-item4/#more],참조))
+예를 들면 아래의 Spellchecker class는 Dictionary class와 의존관계를 가진다. 
+
+```java
+public class SpellChecker 
+// 정적 유틸리티성 클래스를 통해서 의존관계를 맺는다.
+    private static final Dictionary dictionary = ...;
+    private SpellChecker(){};
+    public static boolean isValid(String word){
+        ///
+    };
+    public static List<String> suggestion(String typo){
+        ///
+    }
+}
+```
+
+또는 singleton으로 구현되어 있는 경우도 자주 볼 수 있다. 
+
+```java
+public class SpellChecker {
+    private final Dictionary dictionary = new Dictionary();
+    // private 생성자를 통해서 외부에서 객체 생성을 막고
+    private SpellChecker(){};
+    // class로딩시점에 딱한번 초기화되는 static method로 instance를 호출할 수 있게 한다. 
+    public static SpellChecker INSTANCE = new SpellChecker();
+    public static boolean isValid(String word){
+        ///
+    };
+    public static List<String> suggestion(String typo){
+        ///
+    }
+}
+```
+
+위 두 방식의 단점은 변경이 용이하지 않다는 점이다. 
+예를 들면  Dictionary Class를 한국어용 사전, 영어용 사전...기타 등등 으로 요구사항에 변경이 생길 수도 있다. 
+
+사용하는 class에 따라 동작이 달라지는 class는 위 singleton,static 유틸리티성 class 방식이 적합하지 않다. 
+
+그렇다면 변경에 용이한 구조는 어떻게 설계해야할까?
+
+
+```java
+public class SpellChecker {
+
+    private final Dictionary dictionary;
+    // 상위Type에 의존하여 주입받는다.
+    public SpellChecker(Dictionary koreanDictionary){
+        this.dictionary = Objects.requireNonNull(koreanDictionary);
+    }
+    public static boolean isValid(String word){
+        ///
+    };
+    public static List<String> suggestion(String typo){
+        ///
+    }
+}
+
+```
+
+Dictionary를 상속 계층구조로 잡고 하위 계층구조로 여러가지 종류의 사전이 있었을때, 외부 사전 class를 주입받을 때, 상위 type에 의존하도록 주입하는 방식이다. 
+
+이처럼 구현하면 instance를 생성하려고 할떄 원하는 하위 type으로 넘겨받아서 객체를 생성하면된다.
+
+```java 
+SpellChecker spellChecker1 = new SpellChecker(koreanDictionary);
+SpellChecker spellChecker2 = new SpellChecker(englishDictionary);
+//예시코드
+spellChecker1.translate("...")// 안녕하세요
+spellChekcer2.translate("...")// Hello
+```
+
+책에서 사용하고 있는 말을 그대로 강조하여 쓰면, 다음과 같다.
+
+#### 의존 객체주입(Dependency Injection) 방식 : "인스턴스를 생성할 떄,생성자에 필요한 자원을 넘겨주는 방식"
+
+- 의존 객체 주입 방식은 생성자, 정적팩터리,빌더패턴에 똑같이 응용이 가능하다. 
+
+- 의존 객체 주입 패턴의 변형으로 , 생성자에 자원 팩터리를 넘겨주는 방식이 있다
+
+-  DI 패턴을 이용한 Framework 는 대표적으로 Spring이 매우 매우 유명하다. 
+
+
+*Factory란 호출할떄마다 특정타입의 인스턴스를 반복해서 만들어주는 객체를 말하며, 디자인패턴을 말한다. 자세한 내용 참조 ([Design Pattern/Factory method Pattern](https://devcs96.github.io/2021/07/20/2021-07-20-item4/#more],참조))
+
+Java 8 에서 나온 Supplier<T'> Interface가 Factory Method를 표현한 예다. 
+
+Factory Method 관련해서는 책 뒷부분에서 추가로 살펴볼 예정이다.
+
+
+
+
+- #### 정리: class가 다른 class와 의존관계를 가지고, 다른 class의 type에 따라 class의 동작에 영향을 준다면, singleton pattern 과 static class 사용은 지양하고, 필요한 class를 생성자에 넘겨주어 주입받는 방식 (DI) 을 사용함으로서 class의 변경 용이성, 테스트 용이성 , 재사용성을 개선하자

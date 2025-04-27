@@ -1,0 +1,45 @@
+---
+id: 95
+title: "Item75. 예외의 상세 메시지에 실패 관련 정보를 담으라."
+description: ""
+date: "2022-03-13 18:28:24"
+tags: ['Java', 'Effective Java 3/E']
+---
+- 예외를 잡지 못해 프로그램이 실패하면 예외의 stack trace 정보를 자동으로 출력한다. 
+
+
+- stack trace 정보는 예외 객체의 toString method를 호출해 얻는 문자열로 보통 예외 클래스 이름 뒤에 상세 메시지가 붙는 형태이다. 따라서 최대한 예외의 toString method에 실패 원인에 관한 정보를 가능한 많이 담아 반환하는게 좋다. 
+
+- 즉 실패 순간의 상황에 관련된 객체의 상태, 매개변수 등을 담아서 출력해주는게 실패 원인을 분석할떄 좋다. 
+
+- 당연한 말이지만 최종 사용자(고객)에게 보여줄 오류 메시지는 친절한 안내 메시지로 가독성이 중요한 반면 , 예외에는 가독성이 다소 떨어지더라도 실패 원인을 분석할때 유용한 정보들을 포함시켜 보여주는게 중요하다.
+
+- 실패를 적절히 포착하려면 필요한 정보를 예외 생성자에서 모두 받아서 상세 메시지까지 미리 생성해두는 방법도 괜찮다.
+
+```java
+
+public IndexOutOfBoundsException(int lowerBound,int upperBound,int index){
+
+    // 실패를 포착하는 상세 메시지를 생성
+
+    super(String.format(
+        "최솟값 : %d , 최댓값: %d , 인덱스 : %d" , 
+        lowerBound , upperBound , index ));
+
+    // 프로그램에서 이용할 수 있도록 실패 정보를 저장해둔다. 
+    this.lowerBound = lowerBound;
+    this.upperBound = upperBound;
+    this.index = index;
+}
+
+```
+
+이렇게 실패 상황의 정보를 예외 클래스에 담아두면 예외 클래스 사용자가 메시지를 만드는 작업을 중복하지 않아도 된다는 장점을 가지고 있다.
+
+또한 예외는 실패와 관련된 정보를 얻을 수 있는 접근자 method를 적절히 제공하는게 좋다. 
+
+```java
+getLowerBound();
+getUpperBound();
+// 실패 상황시 필드정보 접근자 method 
+```

@@ -1,0 +1,140 @@
+---
+id: 103
+title: "spring batch (1)"
+description: ""
+date: "2021-11-01 23:11:58"
+tags: ['spring', 'Batch']
+---
+배치 처리란?
+
+ - 일반적인 GUI를 가진 app은 사용자와 상호작용함
+ - 사용자와 상호작용없이 유한한 양의 데이터를 처리하는 것 (GUI없음)
+
+
+
+배치 처리 적용 예시
+
+ - ETL process (한 데이터 형식에서 다른 데이터 형식으로 전환 ), Data Migration 
+ - 병렬 처리
+
+
+배치 아키 텍쳐
+
+![배치 아키텍쳐](/images/batch01.jpg)
+
+배치 아키텍쳐는 위와 같이 구성 된다.
+
+1. application layer: 배치 처리 구축에 사용되는 모든 사용자 코드 
+2. batch core layer: 배치 도메인을 정의하는 모든 부분 ex) job,jobLauncher,step
+3. infrastructure layer : ItemReader, ItemWrite와 같이 실질적으로 File I/O를 수행하는 component와 배치처리 재시작과 관련된 여러 component 
+
+
+배치 도메인 특화 개념
+
+1. Job : 중단이나 상호작용없이 처음부터 끝까지 처리되는 처리로 Job은 여러개의 step 으로 구성될수 있다.
+* spring boot는 default로 application 이 띄워지는 시점에 Job을 찾아서 실행시켜준다. 
+2. Step : Job을 구성하는 독립된 작업 단위로 병렬처리가 가능하다, tasklet 기반의 step 과 chunk 기반의 step 두 가지로 나뉜다. 
+
+tasklet Step
+- step이 중단될떄까지 execute method 가 계속해서 실행된다  (=> 매번 execute마다 독립적인 transaction이 얻어진다. )
+
+Chunk Step
+- tasklet step 보다 복잡하며 주로 db tuple이나, file entry와 같은 item을 처리하는데 사용된다.
+- ItemReader,ItemProcessor,ItemWriter로 구성된다. (ItemProcessor는 필수가 아님)
+
+
+3. Job Repository 
+- RDBMS를 사용해서 배치처리를 하는데 사용되는 여러 수치값을 관리한다 (배치 작업 처리 시작,종료시간,읽기/쓰기횟수 등 배치 관련 메타)
+- 여러 배치 주요 component에 의해 공유 된다.
+  
+
+4. Job Launcher
+- Job.execute를 통해 Job을 실행하는 역할로 이외에도 파라미터 검증, Job 실행 가능여부 확인 등의 기능을 수행한다.
+
+    ```java
+    public interface JobLauncher {
+        public JobExecution run(Job job, JobParameters jobParameters)
+                throws JobExecutionAlreadyRunningException, JobRestartException,
+                JobInstanceAlreadyCompleteException, JobParametersInvalidException;
+    }
+    ```
+*정리
+JobLauncher가 Job 실행 -> Job을 구성하고 있는 각 step을 실행 -> chunk 처리 상태에 따라 JobRepository가 StepExecution 상태 갱신 -> 최종적으로 JobExecution 상태 갱신 
+
+
+![batch sterotype](/images/batch02.jpg)
+
+5. JobInstance 
+- spring batch job의 논리적인 작업 실행 단위로, job의 이름과 job의 실행을 위해 제공되는 parameter 로 유일하게 존재한다 
+
+ex) 예를 들어 파라미터로 작업이 실행되는 날짜를 전달한다고 하면 해당 날짜의 배치 jobInstance가 생성된다. 
+
+```java
+package org.springframework.batch.core;
+
+import org.springframework.util.Assert;
+
+import java.util.Locale;
+
+public class JobInstance extends Entity implements javax.batch.runtime.JobInstance {
+  private final String jobName;
+
+  public JobInstance(Long id, String jobName) {
+    super(id);
+    Assert.hasLength(jobName, "A jobName is required");
+    this.jobName = jobName;
+  }
+
+  public String getJobName() {
+    return this.jobName;
+  }
+
+  public String toString() {
+    return super.toString() + ", Job=[" + this.jobName + "]";
+  }
+
+  public long getInstanceId() {
+    return super.getId();
+  }
+}
+```
+
+
+6. JobExecution
+
+- spring batch Job의 실제 실행 , 즉 Job을 구동할떄마다 매번 새로운 JobExecution instance 가 생성된다. 
+- Job을 처음 실행하게 되면 JobInstance 와 JobExecution instance가 생성된다, 만약 해당 Job이 실패해서 재실행하면 동일한 JobInstance를 사용하고, JobExecution instance는 새롭게 생성된다.
+따라서 Job과 JobInstance JobExecution은 다음과 같은 관계를 가진다. (Job 1: JobInstance N ,JobInstance 1 : JobExecution N relationship)
+
+
+![job parameter](/images/batch03.jpg)
+
+```java
+
+public class JobExecution extends Entity {
+  private final JobParameters jobParameters;
+  private JobInstance jobInstance;
+  private volatile Collection<StepExecution> stepExecutions;
+  private volatile BatchStatus status;
+  private volatile Date startTime;
+  private volatile Date createTime;
+  private volatile Date endTime;
+  private volatile Date lastUpdated;
+  private volatile ExitStatus exitStatus;
+  private volatile ExecutionContext executionContext;
+  private transient volatile List<Throwable> failureExceptions;
+  private final String jobConfigurationName;
+
+  public void upgradeStatus(BatchStatus status) {
+    this.status = this.status.upgradeTo(status);
+  }
+//  ...  
+}
+
+```
+
+Reference
+
+- 마이클 미네랄 지음 | 서경석, 김성유느 이승룡 옮김 - 스프링 배치 완벽 가이드  (http://www.kyobobook.co.kr/product/detailViewKor.laf?mallGb=KOR&ejkGb=KOR&barcode=9791161755168)
+
+- spring 공식 reference doc (https://spring.io/projects/spring-batch)

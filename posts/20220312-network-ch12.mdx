@@ -1,0 +1,258 @@
+---
+id: 34
+title: "이중화 기술"
+description: ""
+date: "2022-03-12 13:55:27"
+tags: ['Computer Science', 'Network', 'IT 엔지니어를 위한 네트워크 입문']
+---
+## 이중화 기술을 사용하는 목적 
+
+- 이중화를 하지 않았을때 SPoF (Single Point Of Failure , 단일 장애점) 문제가 발생할 수 있다, 인프라를 구성하는 요소가 복수 개 이상으로 인프라를 구성해 특정 인프라에 문제가 발생하더라도 이중화된 다른 인프라를 통해 서비스가 지속되도록 해준다.(Fault Tolerance 보장)  
+
+
+## 이중화의 목적
+
+- SPoF를 제거하여, 시스템의 고가용성 보장 ( Fault Tolerance )
+- 이중화 구성 방식은 Active-Active 또는 Active-Standby 형태로 구성된다. 
+- Active-Active로 구성시 이중화된 인프라에서 서비스 요청을 동시 처리할 수 있으므로, 처리 가능한 전체 용량이 증가하고, 장비간 네트워크 연결이나 회선의 대역폭이 증가한다. 증가된 인프라 용량을 기준으로 서비스시 장애가 발생하였을때 정상적인 서비스가 불가능해진다. 
+
+## LACP (Link Aggregation Control Protocol)
+
+- 단일 스위치의 물리적인 포트 여러개를 하나의 논리적인 포트로 구성하여 대역폭을 확장시킴
+
+LACP 대역폭 확장을 통해 아래와 같은 기능이 제공된다. (IEEE 802.1AX-2008)
+
+1. 링크 사용률 향상
+2. 향상된 장애 회복 
+
+- 모든 물리 포트를 Active 상태로 사용한다 ( Active-Active 방식 )
+- 물리 네트워크 인터페이스 일부에서 장애가 생기더라도, 나머지 물리 인터페이스로 서비스를 유지해준다. 
+
+
+![](/images/network-ch11-01.jpg)
+
+#### 주의점
+
+1. 논리 인터페이스의 대역폭을 서비스에 필요한 전체 트래픽 기준으로 서비스 트래픽을 산정하면 안된다. 
+2. 물리 인터페이스간의 속도가 동일해야 한다. 
+
+## LCAP 동작 방식 
+
+- LACPDU (LACP Data Unit)이라는 프레임을 사용하여, Muticast 통신방식으로 한 장비와 LACPDU 프레임을 주고받는다 (1:1 구성방식)
+- 만약 여러개의 장비 (N:M) 간 LACP를 구성하고자할떄는 별개의 프로토콜 필요(MC-LAG protocol )
+
+## LACP 모드 
+
+1. Active Mode : LACPDU를 먼저 송신하고 상대방이 LACP로 구성된 경우 ,  LACP를 구성
+2. Passive Mode:  LACPDU를 송신하진 않지만, LACPDU를 수신받으면 응답해 LACP를 구성
+
+- LACP를 구성한 모든 장비에서 LACPDU 프레임을 보내는게 아니라, 한쪽은 Active 한쪽은 Passive Mode로 설정해도 LACP가 구성된다. 단 두 장비 모두 Passive Mode 인 경우에는 당연히 LACP 연결이 되지 않는다. 
+- 일반적으로 1~8개의 물리인터페이스를 LACP로 하나의 논리 인터페이스로 구성하지만 벤더에 따라 다름.
+
+## LACP와 PXE 
+
+
+![](/images/network-ch11-02.jpg)
+
+
+
+- 서버와 Active-Active 형태로 네트워크 인터페이스 이중화시에도 LACP 프로토콜이 사용된다. 
+- 서버 네트워크 인터페이스를 하나의 논리 포트로 묶는 과정을 Bonding 또는 Teaming이라고 부르며 OS에서 설정하게 됨. 
+- LACP 설정은 본딩과 티밍에서 액티브-액티브로 사용하기 위한 옵션 설정임으로, 운영체제 설치 전에는 LACP를 사용할 수 없다. 
+- 서버가 OS를 설치하기 전은 LACP를 사용할 수 없음. 따라서 LACP 로 구성하려는 서버를 PXE로 OS 를 설치하고자 할때는 일반 인터페이스로 구성해 OS를 설치하고 LACP 설정을 다시 한 후 스위치 포트 설정을 다시 해야 함. 
+
+- LACP protocol에 옵션을 주어서, OS 설치전에는 한개의 네트워크 인터페이스만 활성화, LACPDU 패킷을 수신하기 시작하면 두개의 네트워크 인터페이스를 활성화하여 LACP 로 구성할 수 있도록 옵션을 줄 수 있다. 
+
+
+
+<div style="width:50%;">
+
+|벤더|기술명|
+|---|---|
+|Cisco|lacp suspend-individual|
+|Arista|lacp fallback|
+|Extreme|lacp fallback|
+|HP|lacp edge-port|
+</div>
+( PXE (Pre-Boot Environment) : 네트워크 인터페이스를 통해 컴퓨터를 부팅할 수 있게 해주는 환경 )
+
+
+
+### 서버의 네트워크 이중화 설정 
+
+- 네트워크 인터페이스 이중화에 사용되는 기술은 운영체제별로 다르게 부른다. 서버 인터페이스를 이중화하면 네트워크 장비와 마찬가지로 하나의 논리 인터페이스가 생성되고, 이때 논리 인터페이스의 이름이 각 운영체제의 네트워크 이중화 기술의 기술명이다. 
+
+   
+1. 윈도우 : team/teaming 
+2. 리눅스 : bond/bonding 
+
+
+- 네트워크 장비의 LACP와 다르게 서버의 인터페이스 이중화는 AA 구성뿐 아니라 AS등 여러가지 동작모드를 선택할 수 있다. 
+
+<div style="width:70%;">
+
+|구분|윈도우|리눅스|
+|---|---|---|
+|기술명|Teaming|Bonding|
+|인터페이스명|team|bond|
+|동작명|Switch Independent,LACP,Static Teaming|round robin , Active-Standby , balance-xor , broadcast , LACP|
+</div>
+
+
+## Linux Bonding 모드
+
+- Linux boding mode 는 0 ~ 4까지 있으며 주로 1(AS) , 4(AA) 모드가 사용된다. 
+
+### CentOs에서 Boding 설정 방법 
+
+1. 네트워크 설정파일이 있는 디렉토리 이동
+
+```bash
+$ cd /etc/sysconfig/network-scripts
+```
+
+2.  Bond 논리 인터페이스 파일을 생성
+
+```bash
+# ifcfg-bond0 
+
+DEVICE=bond0
+BOOTPROTO=none
+onBoot=yes
+BOOTPROTO=static
+IPADDR=10.10.10.11
+NETMASK=255.255.255.0
+GATEWAY=10.10.10.1
+```
+
+3. 논리 인터페이스로 묶일 각각의 물리 인터페이스에도 Bond 설정 파일을 추가한다.
+
+```bash
+#ifcfg-eth0 , ifcfg-eth1
+DEVICE=eth0
+BOOTPROTO=none
+onBOOT=yes
+MASTER=bond0
+SLAVE=yes
+```
+
+4. bonding 설정파일 위치로 이동해 속성을 변경한다.
+
+```bash
+$ cd /etc/modprobe.d/
+```
+
+```bash
+# bonding.conf
+alias bond0 bonding 
+options bond0 mode=4 miiion=100
+## mode : 본드 구성에 대한 모드 번호 4: lacp(AA)
+## miion : bond로 묶인 링크를 몇 밀리초마다 확인할것인지 지정
+```
+
+- miion=0으로 설정시 링크를 확인하지 않아, FailOver 보장되지 않음으로 꼭 설정필요 
+- mode1으로 AA로 구성한다면 어떤 인터페이스가 Active 역할을 수행할지 Primary option으로 지정해두어야 한다.
+
+5. 리눅스 커널에 본드 모듈 적재
+
+```bash
+modprobe bonding 
+```
+
+6. 네트워크 재시작
+
+```bash
+service network restart 
+```
+
+## MC-LAG (Multi-Chassis Link Aggregation Group) 
+
+- LACP 구성할떄는 MAC주소가 1:1 로 구성되야함. 
+  SPoF 구성을 피하고자 서버의 네트워크 인터페이스를 서로 다른 스위치에 연결하나 이떄는 스위치간에 MAC 주소가 달라 하나의 LACP로 구성할 수 없다.
+
+- MC-LAG 기술은 서로 다른 스위치간의 실제 MAC 주소 대신 하나의 가상 MAC주소를 만들어 논리 인터페이스로 lacp를 구성할 수 있다. 
+
+
+
+### MC-LAG 구성요소
+
+1. Peer 장비 
+2. MC-LAG 도메인 : 두 Peer 장비를 하나의 논리 장비로 구성하기 위한 영역 ID로 각 Peer 장비는 영역 ID값을 통해 상대방 장비가 Peer 장비인지 판단
+3. Peer Link : MC-LAG을 구성하는 두 Peer 장비간의 데이터 트래픽을 전송하는 인터링크
+
+### 기본 MC-LAG 설정 
+
+1. Peer 간 동일한 도메인값 설정 
+2. Peer 간 데이터 트래픽 전송을 위한 Peer Link 설정 
+3. Peer 간 MC-LAG 제어 패킷 전송을 위해 통신 가능한 IP설정 
+
+### MC-LAG 동작방식
+
+1. MC-LAG 제어 패킷을 통해 MC-LAG을 구성 (여러 Peer 장비가 하나의 도메인값으로 묶임)
+2. 가상 MAC 주소 생성 
+
+
+## MC-LAG을 이용한 디자인 
+
+- 서로 다른 스위치로 서버를 AA로 구성하여 루프나 STP(Spanning Loop Protocol)에 의한 차단이 없는 네트워크 구조를 만들 수 있다.
+
+1. 스위치를 이중화하여 서버와 LACP를 구성하여 마치 스위치 하나와 통신하는 것처럼 설계 
+
+![](/images/network-ch11-03.jpg)
+
+
+2. 스위치간의 MC-LAG을 이용하여 루프 구조 제거 (STP에 의한 차단 포트없이 모든 포트 활용가능)
+
+
+![](/images/network-ch11-04.jpg)
+
+3. 스위치간의 여러번 MC-LAG을 적용하여 상.하단을 모두 MC-LAG으로 구성하여 마치 1:1로 통신하는 것처럼 설계
+
+![](/images/network-ch11-05.jpg)
+
+## 게이트웨이 이중화 
+
+- Local 네트워크에서는 3계층 장비인 라우터의 도움없이 직접 ARP 를 broadcast해 통신 (L2통신) 하지만 외부 네트워크로 나갈떄는 게이트웨이 라우터없이는 L3 통신이 불가능하다. 
+
+- Gataway Router를 LACP 구성과 유사하게 이중화시켜놓고 하나의 가상 IP, 가상 MAC주소를 가지게 하고 , 하위의 단말들은 가상 주소를 바라보게 하면 FailOver 보장 
+
+
+## FHRP (First Hop Redundancy Protocol)
+
+- 외부 네트워크와 통신하기 위해 사용되는 게이트웨이 라우터 장비를 두 대 이상의 장비로 구성할 수 있게 해주는 protocol 
+- FHRP 그룹은 동일한 가상 IP를 가지고 우선순위 값에 따라 어떤 장비가 Active 역할을 할 것인지 결정됨
+- 하위 단말이 ARP broadcast 요청을 보내면 FHRP 그룹내 Active 역할을 하는 장비가 응답
+- Active 역할을 하는 장비가 장애발생시 StandBy 장비가 가상 IP주소의 MAC주소에 대한 MAC 주소 테이블을 변경하고, Active 역할을 대체 수행  
+
+## VRRP (Virtual Router Redundancy Protocol)
+
+- FHRP에 대한 표준 프로토콜
+
+### VRRP 동작방식
+
+1. 동일한 VRID 값을 가진 VRRP 그룹 설정 
+2. Active 역할을 수행할 마스터를 선출하기 위한 VRRP 설정한 장비간에 Hello 패킷 교환하여 서로의 우선순위 확인 (multicast)
+3. Hello 패킷을 3회 이상 수신하지 못하면 상대방을 비정상으로 간주해 자신이 마스터 장비가 된다.  
+
+- 마스터 장비 장얘시 MAC테이블만 갱신됨. 가상 IP주소와 가상 MAC주소가 변경된것은 아니므로 하위 단말들이 캐싱하고 있는 ARP테이블은 변경되지 않는다.  
+
+## 올 액티브 게이트웨이 이중화 
+
+- 앞선 FHRP는 AS방식으로 동작함. 하위 단말이 IP주소에 대한 ARP 요청이 ACTIVE 장비에서 응답하고, Standby 장비에서는 가상 IP주소에 대한 MAC 주소의 테이블을 Active 장비와 연결된 인터페이스로 학습한다. 
+
+- 게이트웨이 외부로 가기 위한 경로가 Standby 장비더라도 Active 장비를 거쳐서 외부 네트워크로 나간다. 
+
+
+![](/images/network-ch11-06.jpg)
+
+- Peer 장비 모두 게이트웨이 역할을 수행할 수 있음에도 불구하고 트래픽이 불필요하게 우회함으로 비효율적임 
+
+- MC-LAG 기술 사용시, 게이트웨이 이중화 가상 IP의 MAC주소를 Active장비와 StandBy 장비에서 모두 사용할 수 있도록 해 게이트웨이를 AA형태로 구성하는 기능을 제공한다. 
+
+
+## 애니캐스트 게이트웨이
+
+- overlay 기반의 SDN 네트워크를 구현하면 같은 네트워크가 여러 위치에 존재하게 네트워크를 디자인할 수 있는데, 게이트웨이가 한 곳에만 위치하게 되면 모든 트래픽이 하나의 게이트웨이를 거쳐 통신함으로 비효율적이다. 
+- 애니캐스트 게이트웨이 기술 적용 시, 각 위치에 같은 주소를 가지는 게이트웨이가 여러 개 동작할 수 있다.
+- 여러개의 같은 ip주소를 가지는 게이트웨이가 존재하지만 가장 가까운 위치에 있는 게이트웨이에서 서비스를 제공한다. 
+- 게이트웨이가 여러 곳에 위치하므로, 하나의 게이트웨이에서 문제가 발생하여도 외부와 통신 가능

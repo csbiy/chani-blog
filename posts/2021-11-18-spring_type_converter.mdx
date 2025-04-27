@@ -1,0 +1,162 @@
+---
+id: 25
+title: "spring type converter"
+description: ""
+date: "2021-11-18 23:30:30"
+tags: ['spring']
+---
+spring 은 converter 인터페이스를 제공하여, 개발자가 spring에 추가적인 type 변환이 필요하면 이를 구현해서 등록할 수 있도록 지원해준다. 
+
+```java
+
+package org.springframework.core.convert.converter;
+
+/**
+ * A converter converts a source object of type {@code S} to a target of type {@code T}.
+ */
+@FunctionalInterface
+public interface Converter<S, T> {
+
+	/**
+	 * Convert the source object of type {@code S} to target type {@code T}.
+	 * @param source the source object to convert, which must be an instance of {@code S} (never {@code null})
+	 * @return the converted object, which must be an instance of {@code T} (potentially {@code null})
+	 * @throws IllegalArgumentException if the source cannot be converted to the desired target type
+	 */
+	@Nullable
+	T convert(S source);
+```
+
+
+
+아래와 같이 구현하여 사용할 수 있다. 
+
+```java
+import org.springframework.core.convert.converter.Converter;
+
+@Slf4j
+public class IntegerToStringConverter implements Converter<Integer,String> {
+    @Override
+    public String convert(Integer source) {
+        log.info("convert source ={}",source);
+        return String.valueOf(source);
+    }
+}
+```
+뿐만 아니라 문자를 객체로, 객체를 문자로 바꾸는 데 특화된 converter인 formatter 도 존재한다.
+
+```java
+@Slf4j
+public class MyNumberFormatter implements Formatter<Number> {
+
+//문자를 객체로 변경 
+    @Override
+    public Number parse(String text, Locale locale) throws ParseException {
+        log.info("text = {}, locale = {}",text,locale);
+        // "1000" -> 1000
+        NumberFormat format = NumberFormat.getInstance(locale);
+        return format.parse(text);
+    }
+// 객체를 문자로 변경 
+    @Override
+    public String print(Number object, Locale locale) {
+        log.info("text = {}, locale = {}",object,locale);
+        return NumberFormat.getInstance(locale).format(object);
+     }
+}
+
+
+```
+### ConversionService 
+
+ - 위와 같은 개별 converter를 묶어서 편리하게 사용할 수 있는 기능을 제공해준다. 
+
+
+```java
+package org.springframework.core.convert;
+
+/**
+ * A service interface for type conversion. This is the entry point into the convert system.
+ * Call {@link #convert(Object, Class)} to perform a thread-safe type conversion using this system.
+ */
+public interface ConversionService {
+
+		boolean canConvert(@Nullable Class<?> sourceType, Class<?> targetType);
+     	boolean canConvert(@Nullable TypeDescriptor sourceType, TypeDescriptor targetType);
+        @Nullable
+        <T> T convert(@Nullable Object source, Class<T> targetType);
+        @Nullable
+        Object convert(@Nullable Object source, @Nullable TypeDescriptor sourceType, TypeDescriptor targetType);
+
+}
+```
+
+예를 들면 다음과 같이 spring이 제공하는 기본 defaultFormattingConversionService 를 활용해 converter, formatter (문자에 특화된 converter)를 등록하고 사용가능하다.
+
+```java
+public class FormattingConversionServiceTest {
+
+
+    @Test
+    void formattingConversionService(){
+        DefaultFormattingConversionService defaultConversionService =  new DefaultFormattingConversionService();
+        // 컨버터 등록
+        defaultConversionService.addConverter(new StringToIpPortConverter());
+        defaultConversionService.addConverter(new IpPortToStringConverter());
+        defaultConversionService.addFormatter(new MyNumberFormatter());
+        // 컨버터 사용
+        IpPort ipPort = defaultConversionService.convert("127.0.0.1:8000", IpPort.class);
+        assertThat(ipPort).isEqualTo(new IpPort("127.0.0.1",8000));
+        assertThat(defaultConversionService.convert(1000, String.class)).isEqualTo("1,000");
+        assertThat(  defaultConversionService.convert("1,000", Long.class)).isEqualTo(1000l);
+
+    }
+
+}
+
+
+```
+
+
+### Converter의 활용 
+실제로 spring 에서 converter/formatter 사용시에는 다음과 같이 등록한다.
+
+```java
+@Configuration
+public class WebConfig implements WebMvcConfigurer {
+
+    @Override
+    public void addFormatters(FormatterRegistry registry) {
+        registry.addConverter(new StringToIpPortConverter());
+        registry.addConverter(new IpPortToStringConverter());
+        registry.addFormatter(new MyNumberFormatter());
+    }
+}
+```
+
+controller에서 model 객체에 converting 할 객체를 담아서 보내면, thymeleaf template engine에서 등록된 converter를 사용해서 다음과 같이 convert 할수 있다.  
+
+이떄 converter를 사용하려면 &#123; &#123; converting 대상 &#125; &#125; 을입력한다. 또는 th:field로도 꺼내 사용할 수 있다. 
+
+```html
+<!-- converter 사용  전-->
+    <li>${ipPort}: <span th:text="${ipPort}" ></span></li>
+<!-- converter 사용  후  -->
+    <li>${{ipPort}}: <span th:text="${{ipPort}}" ></span></li>
+```
+
+#### 참고사항 
+
+아래와 같이 annotaion을 활용해서 지정해둔 패턴으로 객체를 문자로 , 문자를 객체로 변환해주는 formatter 사용을 지원해준다. 
+
+```java
+    @Data
+    static class Form{
+
+        @NumberFormat(pattern = "###,###")
+        private Integer number;
+
+        @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+        private LocalDateTime localDateTime;
+    }
+```

@@ -1,0 +1,29 @@
+---
+id: 141
+title: "Item41. 정의하려는 것이 타입이라면 marker interface를 사용하라"
+description: ""
+date: "2022-01-17 20:26:44"
+tags: ['Java', 'Effective Java 3/E']
+---
+- marker interface : 아무 method도 없으며, 단지 자신을 구현하는 class가 특정 속성을 가짐을 표시해주는 인터페이스
+
+ex) Serializable interface : 직렬화 가능함을 표시
+
+## marker interface 의 장점
+marker interface는 2가지 측면에서 marker annotation 에 비해 유리하다.
+1. 타입으로 사용 가능하다
+2. 적용대상을 더 정밀하게 지정이 가능하다.
+
+특정 인터페이스를 구현한 class에만 적용하고 싶은 marker interface 가 있다고 하면 해당 인터페이스를 확장하면 된다.
+
+
+
+## marker annotation 의 장점
+
+1. annotation 기반으로 작동하는  framework에서는 해당 framework의 지원을 받을 수 있다.
+
+## 어떤 때에 marker interface 또는 marker annotation을 사용해야 하는가?
+
+class,interface가 아닌 프로그램 요소(method,local variable,module...)에 적용할떄는 marker annotation,
+
+class,interface에 적용할때는 marking된 객체를 매개변수로 받는 method가 있다면 marker interface, 없다면 marker annotation 을 사용한다.

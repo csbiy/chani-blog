@@ -1,0 +1,44 @@
+---
+id: 145
+title: "Docker Image Registry"
+description: ""
+date: "2023-03-16 23:40:35"
+tags: ['Docker']
+---
+## 도커 Registry 
+
+- 도커 Registry는 말 그대로 Image 저장소이다. 도커 허브는 도커 Registry중 가장 유명한 Registry이다. Default로 도커 엔진은 로컬에 없는 이미지를 내려받으려고 할때 , 도커 허브를 먼저 뒤져본다. 
+
+### 도커 이미지 이름 
+```dockerfile
+docker.io/diamol/golang:latest
+```
+
+- docker.io :  이미지가 저장된 Registry의 도메인 이름 (도커 허브)
+- diamol    : 이미지 작성자 , 단체의 이름 
+- golang  :  애플리케이션 이름 
+- latest : 애플리케이션의 버전으로 이미지 태그라고 부르며 기본값은 latest이다. 
+
+
+## 도커 이미지 업로드
+
+- 도커 이미지 업로드 명령어는 다음과 같다.
+```dockerfile
+docker image push $dockerId/앱이름:버전이름
+```
+
+![](/images/docker-image-registry01.png)
+
+- 실제로 업로드를 하게 되면 도커 Registry도 로컬에서 동작하는 도커 엔진과 동일한 방식으로 실제 업로드 되는 것은 이미지 레이어들이다. 
+
+
+## 도커 이미지 태그 네이밍 권장사항 
+
+- 대부분의 SW가 소수점으로 구분되는 숫자를 버전으로 나타낸다. ```[major].[minor].[patch]``` 도커도 이미지 태그를 붙일때 동일하게 붙이는것을 책에서는 권장하고 있다.
+  (도커 교과서 , https://book.interpark.com/product/BookDisplay.do?_method=detail&sc.prdNo=355096868&gclid=CjwKCAjw_MqgBhAGEiwAnYOAegd0hy2l3BGCDc4-77eBNh3uQZlu3pE3ODTKZPQXts4p_aEVmYClWhoCqzMQAvD_BwE)
+
+- patch 버전은 버그 수정이며  , 기존 기능은 지난 버전과 동일
+- minor 버전은 기능 추가이지만 ,기존 기능은 지난 버전과 동일
+- major 버전은 완전히 다른 기능을 가지는 등 큰 변화가 생겼을때 버전을 올린다. 
+
+- 상기와 같이 버전 관리를 하는 이유는 어떤 버전을 사용할지  , 어떤 버전이 최신버전인지 사용자가 유추할수 있게 해줄 수 있다는 장점을 가진다. 

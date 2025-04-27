@@ -1,0 +1,294 @@
+---
+id: 54
+title: "State pattern"
+description: ""
+date: "2021-12-26 22:54:46"
+tags: ['Design Pattern']
+---
+## State Pattern (상태패턴)
+
+<blockquote>
+객체의 다양한 상태를 객체화합니다. 
+
+객체 내부의 상태가 바뀜에 따라서 객체의 행동을 바꿀 수 있습니다
+ 마치 객체의 class가 바뀌는 것과 같은 결과를 얻을 수 있습니다. 
+</blockquote>
+
+
+## State Pattern 의 class diagram 
+
+![](/images/state-machine-01.png)
+
+
+먼저 객체의 여러 상태들에 대한 공통 인터페이스를 정의한다. 여기서는 State interface가 그 역할을 한다. 
+
+Context는 객체의 상태(State 객체)를 바꾸어가면서 다른 행동을 할 수 있는 클래스로, 여러개의 객체 상태를 가질 수 있다. request() method가 호출되면 그 작업은 상태 객체에게 위임(delegation)된다. 
+
+State 인터페이스를 구현한 실제 객체의 상태를 나타내는 Concrete State는 Context로 부터 요청된 작업을 수행한다 (handle() method ) 
+
+
+
+## State Pattern 사용 예시 
+
+- 예제 
+ 
+아래와 같이 사탕 기계에서 동전을 넣고, 사탕을 받는다고 하였을떄, 해당 flow가 가질수 있는 상태머신은 다음과 같을 것이다. 이를 상태 패턴으로 객체 지향적으로 개발이 가능하다. 
+
+![](/images/state-machine-02.png)
+
+
+객체의 상태를 공통적으로 Interface로 도출한다. 
+
+```java
+public interface State {
+    // 동전 투입시 할일
+    void insertQuarter();
+
+    // 동전 반환시 할일
+    void ejectQuarter();
+
+    // 사탕기계 손잡이를 돌렸을떄 할일
+    void turnCrank();
+
+    // 사탕 반환시 할일 
+    void dispense();
+}
+```
+
+객체의 실제 상태마다 구현체를 만든다. 
+
+```java
+// 동전을 가지고 있는 상태
+public class HasCoinState implements State{
+
+    CandyMachine machine;
+
+    public HasCoinState(CandyMachine machine) {
+        this.machine = machine;
+    }
+
+    @Override
+    public void insertQuarter() {
+        System.out.println(" 동전은 한개만 넣어주세요. " );
+    }
+
+    @Override
+    public void ejectQuarter() {
+        System.out.println(" 동전이 반환됩니다. " );
+        machine.setState(machine.getNoCoinState());
+    }
+
+    @Override
+    public void turnCrank() {
+        System.out.println(" 손잡이를 돌리셨습니다. " );
+        machine.setState(machine.getSoldState());
+    }
+
+    @Override
+    public void dispense() {
+        System.out.println(" 사탕이 나갈 수 없습니다. ");
+    }
+}
+
+```
+
+```java
+// 동전을 가지고 있지 않는 상태 
+public class NoCoinState implements State{
+    CandyMachine machine;
+
+    public NoCoinState(CandyMachine machine) {
+        this.machine = machine;
+    }
+
+    @Override
+    public void insertQuarter() {
+        System.out.println(" 동전을 넣으셨습니다. " );
+        machine.setState(machine.getHasCoinState());
+    }
+
+    @Override
+    public void ejectQuarter() {
+        requireCoin();
+    }
+
+    @Override
+    public void turnCrank() {
+        requireCoin();
+    }
+
+    @Override
+    public void dispense() {
+        requireCoin();
+    }
+
+
+    private void requireCoin() {
+        System.out.println("동전을 넣어주세요");
+    }
+}
+
+```
+```java
+// 사탕이 매진된 상태 
+public class SoldOutState implements State{
+
+    CandyMachine machine;
+
+    public SoldOutState(CandyMachine machine) {
+        this.machine = machine;
+    }
+
+    @Override
+    public void insertQuarter() {
+        noCandy();
+    }
+
+    @Override
+    public void ejectQuarter() {
+        noCandy();
+    }
+
+    @Override
+    public void turnCrank() {
+        noCandy();
+    }
+
+    @Override
+    public void dispense() {
+        noCandy();
+    }
+
+    private void noCandy() {
+        System.out.println(" 죄송합니다, 매진되었습니다. ");
+    }
+}
+
+```
+
+```java
+// 사탕 판매 상태 
+public class SoldState implements State{
+    CandyMachine machine;
+
+    public SoldState(CandyMachine machine) {
+        this.machine = machine;
+    }
+
+    @Override
+    public void insertQuarter() {
+        System.out.println(" 잠깐만 기다려주세요, 알맹이가 나가고 있습니다. ");
+    }
+
+    @Override
+    public void ejectQuarter() {
+        System.out.println(" 이미 알맹이를 뽑으셨습니다. " );
+    }
+
+    @Override
+    public void turnCrank() {
+        System.out.println(" 손잡이는 한번만 돌려주세요" );
+    }
+
+    @Override
+    public void dispense() {
+        machine.releaseBall();
+        if(machine.getCount() > 0){
+            machine.setState(machine.getNoCoinState());
+        }else{
+            System.out.println(" 사탕이 매진 되었습니다. " );
+            machine.setState(machine.getSoldOutState());
+        }
+    }
+}
+```
+
+State라고 하는 공통적인 인터페이스를 두고, 구현체가 수행해야될 행동을 명시해둔뒤, 실제 객체의 상태는 이를 각기 다르게 구현하였다. 
+
+```java
+
+@Getter
+public class CandyMachine {
+
+
+    // Composition , 각 객체의 상태를 가진다. 
+    private State soldOutState;
+    private State noCoinState;
+    private State hasCoinState;
+    private State soldState;
+    private State state = soldOutState; 
+    int count = 0;
+
+    public CandyMachine(int numberOfBall ) {
+        this.count = numberOfBall;
+        soldOutState = new SoldState(this);
+        noCoinState = new NoCoinState(this);
+        hasCoinState = new HasCoinState(this);
+        soldState = new SoldState(this);
+
+        if(numberOfBall > 0 ){
+            state = noCoinState;
+        }
+    }
+
+    public void insertQuarter(){
+        state.insertQuarter();
+    }
+
+    public void ejectQuarter(){
+        state.ejectQuarter();
+    }
+
+    public void turnCrank(){
+        state.turnCrank();
+        state.dispense();
+    }
+
+    //
+    void setState(State state){
+        this.state = state;
+    }
+
+    void releaseBall(){
+        System.out.println(" 사탕 나옴 " );
+        if(count != 0 ){
+            count -=1;
+        }
+    }
+}
+```
+
+Context 역할을 하는 , 즉 객체의 상태가 바뀜에 따라 다른 역할을 하는 객체이다. 여기서는 Context 객체가 처음 생성될떄 state 구현체들을 주입받음으로서, context 객체가 한번만 생성된다고 하면 나머지 state 구현체들은 싱글톤으로 유지되도록 하였다. 
+
+어쩄거나, State 인터페이스를 필드로 가지고,State 구현체에게 필요한 작업들을 요청(forwarding)한다. 
+state 구현체들은 필요에 따라 Context의 setState() method를 호출해 Context의 상태를 변경한다. 
+
+## state pattern 의 장점 
+
+1. 각 상태의 행동을 별개의 class로 도출하여 한 class가 하나의 책임을 가지도록 하였다. (SRP)
+2. 하나의 class로 상태머신을 구현하였을때 나올수 있는 if-else 와 같은 분기로직 제거
+3. 각 상태를 변경에 대해서는 닫혀있도록 하면서 , 새로운 상태는 쉽게 추가가 가능하다 (OCP)
+
+
+## strategy pattern과의 유사점과 차이점
+
+사실 state pattern과 strategy pattern은 class diagram이 동일하나 그 의도가 다르다.
+
+state patterrn을 사용할떄에는 state 객체의 행동이 캡슐화된다. 
+상황에 따라 Context 객체에서 여러 상태 객체 중 한 객체에게 모든 행동을 맡긴다. 맡겨진 객체에서 수행하는 행동에 따라 Context 객체의 state 필드가 변경되고, 행동도 바뀐다. 
+
+하지만 strategy pattern을 사용할떄는 일반적으로 client에서 context 객체에게 어떤 전략 객체를 사용할지를 지정해주는 방식이다. 
+
+```java
+if(someCondition()){
+    context.execute(new InternalValidator(...));
+}else{
+    context.execute(new EmrValidator(...));
+}
+```
+
+strategy pattern은 주로 실행시에 전략 객체를 변경할수 있는 유연함을 제공하기 위해 사용된다. 
+
+## 정리
+
+상태 패턴은 객체의 다양한 상태에 따라 Context 객체의 행동을 바꿀수 있는 패턴으로, 객체의 상태를 공통 인터페이스를 두고 구현함으로서 가능하게 한다.

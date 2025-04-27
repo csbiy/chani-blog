@@ -1,0 +1,123 @@
+---
+id: 171
+title: "Template method pattern"
+description: ""
+date: "2021-07-24 16:45:49"
+tags: ['Design Pattern']
+---
+<strong>Template Method Pattern</strong>이란?
+ SuperClass에서 수행할 알고리즘의 각 단계를 미리 정의해두고 , 그 중 하나 이상의 단계를 SubClass에서 구현하는 디자인 패턴 
+
+
+예시를 들어 template method pattern 을 이해하기 위해서 예시를 가지고 왔다.
+
+커피를 아래의 일련의 알고리즘에 따라 만든다고 가정하였다. 
+```java
+public class Coffee {
+    void prepareRecipe(){
+        boilWater();
+        brewCoffeeGrinds();
+        pourInCup();
+        addSugarAndMilk();
+    }
+    private void addSugarAndMilk() {
+        System.out.println(" adding sugar and milk  " );
+    }
+    private void pourInCup() {
+        System.out.println(" pour in cup ~ " );
+    }
+    private void brewCoffeeGrinds() {
+        System.out.println(" filtering coffee " );
+    }
+    private void boilWater() {
+        System.out.println(" boiling water " );
+    }
+}
+```
+이제 위의 알고리즘에 따라 커피를 만들 수 있다. 그런데 만약 홍차를 만들어 달라는 추가요청이 들어왔다. 
+
+```java
+public class Tea {
+    void prepareRecipe(){
+        boilWater();
+        steepTeaBag();
+        pourInCup();
+        addLemon();
+    }
+    private void addLemon() {
+        System.out.println(" adding lemon " );
+    }
+    private void pourInCup() {
+        System.out.println(" pour in cup ~ " );
+    }
+    private void steepTeaBag() {
+        System.out.println(" steeping tea bag" );
+    }
+    private void boilWater() {
+        System.out.println(" boiling water " );
+    }
+}
+```
+알고리즘을 수정하여 차를 만들었다. 그런데 만약 이외에도 스무디,음료수 ... 각종각색의 음료수 주문이 들어온다고 하면 매번 똑같이 class를 만드는 것은 너무 낭비이다. 위에 커피와 차 class만 보더라도 중복되는 코드가 많다. 
+
+다음과 같이 super class에서 일련의 알고리즘이 수행될 순서를 정해두고, 공통된 부분은 default method로 구현한다. sub class마다 로직이 다른 것은 sub class가 상속받아 구현할 수 있도록 한다. 
+
+```java
+public abstract class CaffeineBeverage {
+//   sub class에서 상속받아 overriding 불가능하도록 final로 선언
+//    일련의 절차들을 정의해두고 ,sub class마다 다양한 행위를 하는 부분은 추상화 method로 선언
+    final void prepareRecipe(){
+        boilWater();
+        brew();
+        pourInCup();
+        addCondiments();
+    }
+    private void boilWater() {
+        System.out.println(" boiling water " );
+    }
+    private void pourInCup() {
+        System.out.println(" pour in cup ~ " );
+    }
+//    
+    abstract protected void brew();
+    abstract protected void addCondiments();
+}
+
+```
+
+```java
+
+public class Tea extends CaffeineBeverage{
+    @Override
+    protected void brew() {
+    }
+    @Override
+    protected void addCondiments() {
+        
+    }
+}
+public class Coffee extends CaffeineBeverage{
+    @Override
+    protected void brew() {
+    }
+
+    @Override
+    protected void addCondiments() {
+    }
+}
+
+```
+알고리즘을 super class에서 수행될 순서를 정의해두고, tea , coffee 는 각 수행될 단계를 구체화 한다. 이를 IoC를 이용한 디자인 패턴이라고도 한다 (reference - toby's spring 3.1 )
+제어의 흐름을 tea,coffe가 가져가는게 아닌 beverage superclass가 제어의 흐름을 가져가기 때문이다. 
+
+어쨌거나 위 코드의 장점은 중복코드가 제거되었고, 확장이 용이하다. 
+
+마지막으로, 책에서 정의하는 template method pattern을 인용하면 다음과 같다.
+
+<hr>
+template method pattern에서는 알고리즘의 골격을 정의합니다. 알고리즘의 여러 단계 중 일부는 subClass에서 구현할 수 있습니다. 
+이를 이용하면 알고리즘의 구조는 그대로 유지하면서 subclass에서 특정단계를 overriding할 수 있습니다. 
+<hr>
+
+- Reference 
+1. Head First Design Patterns: A Brain-Friendly Guide ([Head First Design Patterns: A Brain-Friendly Guide](https://www.amazon.com/Head-First-Design-Patterns-Brain-Friendly/dp/0596007124))

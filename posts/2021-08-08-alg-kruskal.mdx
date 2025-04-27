@@ -1,0 +1,87 @@
+---
+id: 50
+title: "Kruskal algorithm - MST"
+description: ""
+date: "2021-08-08 21:23:10"
+tags: ['Computer Science', 'Algorithm']
+---
+kruskal  알고리즘은 최소 신장 트리 (Minimum Spanning Tree,MST)를 구하는 알고리즘으로, 그리디 알고리즘에 속한다 
+
+kruskal 알고리즘에 대해 배우기 전에 기본적으로 그래프에서 신장트리,연결성분등 용어를 알아야 원할하게 이해할 수 있다.
+
+- 연결성분(Connected Component): 그래프에서 정점들이 서로 연결되어 있는 부분
+
+- 신장트리(Spanning Tree) : 주어진 그래프가 하나의 연결 성분으로 구성되어 있을떄, 그래프의 모든 정점들을 <strong>cycle없이 연결</strong>하는 부분그래프  
+
+- 최소 신장 트리 (MST): 하나의 연결성분으로 이루어진 <strong> 무방향 가중치 그래프 </strong>에서 <strong>간선의 가중치의 합이 최소인 신장트리</strong> , 당연히 신장트리 임으로 cycle이 있어서는 안된다. 
+
+kruskal 알고리즘의 수행과정은 다음과 같다.
+
+1. 가중치가 감소하지 않는 순서로 정렬한다. 
+2. 가중치가 가장 작은 간선이 cycle을 만들지 않으면 신장트리 간선으로 선택한다.
+3. 2번 과정을 N(정점의 개수)-1 개수의 간선이 선택될떄까지 반복한다. 
+
+![kruskal-algorithm](/images/kruskal-alg.jpg)
+
+위 수행과정에서 가중치가 작은 순서대로 신장트리 간선을 선택하는데, cycle을 형성하는 4번은 제외되었다. 
+
+kruskal algorithm을 python으로 구현하면 다음과 같다. 
+
+```python 
+from collections import deque;
+weights = [(0,1,9),(0,2,10),(1,3,10),(1,4,5),
+           (1,6,3),(2,3,9),(2,4,7),(2,5,2),
+           (3,5,4),(3,6,8),(4,6,1),(5,6,6)
+        ] ##(간선A,간선B,가중치)
+#오름차순으로 가중치 정렬
+weights.sort(key = lambda t :  t[2]);
+weights = deque(weights);
+mst= []; N = 7;
+# disjoint set (서로소 집합)
+p = [ i for i in range(N)];
+
+# 서로소를 구하기 위한 find,union 연산 
+# find : 노드의 집합의 루트 노드(=대표노드)를 찾는 연산 
+def find(u):
+    if u != p[u]:
+        # 경로 압축 (find연산을 수행하면서 루트까지 올라가는 경로 상의 각 노드의 부모노드를 루트노드로 갱신한다. )
+        p[u] = find(p[u]);
+    return p[u];
+
+# union : 두 노드를 하나의 집합으로 합친다
+def union(u,v):
+    root1 = find(u);
+    root2 = find(v);
+    p[root2] = root1;
+    
+tree_edges=0;
+mst_cost=0;
+
+while tree_edges!=(N-1):
+    #가중치가 가장 작은 간선을 선택하고,
+    u,v,wt = weights.popleft();
+    # 해당 노드의 루트노드를 비교해 다르면 , 서로 다른 집합임을 확인 (cycle이 형성되지 않음을 확인 )
+    if find(u) != find(v):
+        # 두 노드를 하나의 집합으로 합침 
+        union(u,v);
+        # 최소 신장트리의 간선으로 선택 
+        mst.append((u,v));
+        mst_cost+=wt;
+        tree_edges+=1;
+print(mst);
+    
+```
+
+
+#### 시간복잡도 
+
+kruskal 알고리즘의 수행시간은 find-union algorithm의 시간복잡도와 거의 동일하다 (O(MlogN))
+
+
+Reference
+
+- https://www.hackerearth.com/practice/algorithms/graphs/minimum-spanning-tree/tutorial/
+
+- https://ko.wikipedia.org/wiki/%EC%84%9C%EB%A1%9C%EC%86%8C_%EC%A7%91%ED%95%A9_%EC%9E%90%EB%A3%8C_%EA%B5%AC%EC%A1%B0
+
+- 양성봉 저 - 파이썬과 함께하는 자료구조의 이해 (http://www.yes24.com/Product/Goods/57949931)

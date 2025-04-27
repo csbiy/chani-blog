@@ -1,0 +1,152 @@
+---
+id: 86
+title: "spring error page 설정 , 예외 처리"
+description: ""
+date: "2021-11-09 19:00:49"
+tags: []
+---
+servlet의 예외 발생 방식 
+
+1. Exception 
+2. response.sendError(http 상태코드, 오류 메시지 )
+
+<h3> 1. Exception </h3>
+
+* web app에서 예외 발생시 상황 
+- 사용자 요청별로 별도의 쓰레드 할당 
+- 특정 사용자 요청시 예외 발생 -> try~catch 문으로 예외 처리를 해주지 않는 경우 WAS까지 예외가 전달된다.
+
+```bash
+
+controller(예외 발생) -> interceptor -> dispatcher servlet -> filter -> WAS (예외 전달 )
+
+```
+
+
+
+WAS까지 예외가 전달될 경우, 사용자에게 다음과 같은 에러 화면이 전달된다. (에러 화면을 별도로 설정하지 않는 경우에는)
+
+```java
+## application.properties
+server.error.whitelabel.enabled=false
+```
+
+![](/images/was_error.png)
+
+
+
+<h3> 2. response.sendError(httpStatusCode)</h3>
+
+- response.sendError 호출시 바로 예외가 발생하지는 않으나, HttpServletResponse 객체 안에 에러 발생 상태가 저장된다. 
+- servlet container 가 응답전에 sendError 호출여부를 확인하고, 오류페이지 정보를 확인하고 등록된 오류페이지가 없다면 에러코드에 맞는 기본 오류페이지를 보여준다 
+
+
+
+
+<h2>서블릿 에러 화면 설정</h2>
+
+```java
+@Component
+public class WebServerCustomizer implements WebServerFactoryCustomizer<ConfigurableWebServerFactory> {
+    @Override
+    public void customize(ConfigurableWebServerFactory factory) {
+        ErrorPage errorPage404 = new ErrorPage(HttpStatus.NOT_FOUND, "/error-page/404");
+        ErrorPage errorPage500 = new ErrorPage(HttpStatus.INTERNAL_SERVER_ERROR, "/error-page/500");
+        ErrorPage errorPageEx = new ErrorPage(RuntimeException.class, "/error-page/500");
+
+        factory.addErrorPages(errorPage404,errorPage500,errorPageEx);
+    }
+}
+```
+
+org.springframework.boot.web.server.ErrorPage class는 다음과 같은 생성자를 갖는다.
+
+HttpStatus code 또는 Exception.class (* 예외 클래스의 자식 클래스까지) 와 <strong>에러 발생시 redirect(재요청) 할 주소</strong>를 통해 ErrorPage class를 생성하고,
+
+ConfigurableWebServerFactory 의 addErrorpages(...ErrorPages) method를 통해 사용자 지정 ErrorPage를 등록할 수 있다. 
+
+정리하면 ErrorPage에 명시된 error가 발생하면, servlet Container는 해당 ErrorPage class에 등록된 path로 redirect한다. 
+
+```bash
+sendError(HttpStatusCode,msg) or Exception 발생  -> ErrorPage(HttpStatusCode or Exception.class,path)의 path 확인 -> 해당 path 로 redirect
+```
+
+
+```java
+
+public class ErrorPage {
+
+	private final HttpStatus status;
+
+	private final Class<? extends Throwable> exception;
+
+	private final String path;
+
+	public ErrorPage(String path) {
+		this.status = null;
+		this.exception = null;
+		this.path = path;
+	}
+     
+	public ErrorPage(HttpStatus status, String path) {
+		this.status = status;
+		this.exception = null;
+		this.path = path;
+	}
+
+	public ErrorPage(Class<? extends Throwable> exception, String path) {
+		this.status = null;
+		this.exception = exception;
+		this.path = path;
+	}
+    //...
+```
+
+따라서 다음과 같이 redirect 할 주소에 controller를 만들어두고, 해당 controller에서 사용자가 보여줄 에러 화면.html으로 rendering 하도록 할 수 있다.
+
+```java
+@Slf4j
+@Controller
+@RequestMapping("/error-page")
+public class ErrorPageController {
+
+    @GetMapping("/500")
+    public String errorPage500(HttpServletRequest request, HttpServletResponse response){
+        // error 관련 속성도 접근 가능 
+        Object errorState = request.getAttribute(RequestDispatcher.ERROR_EXCEPTION);
+        // Dispatcher Type 조회 가능 
+        log.info("dispatcher type : {}" , request.getDispatcherType());
+        log.info("errorPage 500");
+        return "error-page/500";
+    }
+    @GetMapping("/404")
+    public String errorPage404(HttpServletRequest request,HttpServletResponse response){
+        log.info("errorPage 404");
+        return "error-page/404";
+    }
+}
+```
+
+spring boot는 위와 같은 과정을 모두 기본으로 제공한다. 
+  
+  - ErrorPage 를 "/error"경로로 자동등록 
+  - 즉, WAS까지 예외가 전달되거나, response.sendError()가 호출되면 모든 오류는 spring controller에 default로 등록되어 있는 <strong>BasicErrorController</strong>에 의해 "/error"로 내려준다.  
+
+```java
+
+@Controller
+@RequestMapping("${server.error.path:${error.path:/error}}")
+public class BasicErrorController extends AbstractErrorController {
+}
+```
+
+Basic Controller의 처리 우선 순위는 다음과 같다.
+
+1. View template
+2. Static 
+3. 에러 적용 대상이 없을 떄는 templates/error.html
+
+
+Reference 
+
+1. 스프링 MVC 2편 - 백엔드 웹 개발 활용 기술 , 김영한(https://www.inflearn.com/course/%EC%8A%A4%ED%94%84%EB%A7%81-mvc-2/dashboard)

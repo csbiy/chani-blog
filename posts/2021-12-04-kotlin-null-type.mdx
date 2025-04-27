@@ -1,0 +1,102 @@
+---
+id: 108
+title: "kotlin에서 null type 다루기"
+description: ""
+date: "2021-12-04 17:37:35"
+tags: ['kotlin']
+---
+## 코틀린에서 Null type 허용하는 방법 
+
+```kotlin
+fun test() {
+    val name = "dolly";
+    name =null; 
+    // compile error
+}
+```
+
+변수에 null을 할당 가능하게 하려면 다음과 같이 변수의 타입을 정의할떄, 물음표를 추가하면 된다.
+
+```kotlin
+class Person ( val first: String ,
+               // middle 변수에 null값이 들어갈수도있음.
+               val middle: String? ,
+               val last: String)  {
+    
+    val jkRolling = Person("Joanne",null,"Rowling")
+    val northWest = Person("North",null,"West")
+}
+```
+
+
+코틀린은 nullable한 String? 이 null값이 아님이 보증이 되면 String type으로 smart cast 해준다. 
+
+
+
+![](/images/kotlin-null-type_img_0.png)
+
+IDE 에서 찍어봐도 String? 가 null이 아님이 보장되자, String type으로 smart cast 되었음을 알려준다. 
+
+만약 변수를 val가 아닌, 중간에 값이 변경될 수 있는 var로 선언 되었다면 smart cast가 가능할까?
+
+![](/images/kotlin-null-type_img_1.png)
+
+위와 같이 var를 사용한 경우에는 변수가 정의된 시점이후로 값이 변경되었을수도 있다고 가정을 하고, 
+
+smart cast를 수행해주지 않는다. 따라서 이를 우회할려면 개발자가 명시적으로 단언 연산자 (not null assertion operator,!!)
+
+를 사용해야한다. 
+
+
+```kotlin
+var person = Person(last = "chansoo", first = "kim", middle = "hello");
+if(person.middle != null){
+    val middleNameLength = person.middle!!.length; // null이 아님을 개발자가 보장
+    print(middleNameLength)
+}
+```
+
+위와 같은 상황에서는 안전 호출 연산자를 사용할 수 있다.
+
+안전 호출 연산자는 null 이면 null을 반환해주고 null이 아닌 경우, 연산을 수행해준다.
+
+![](/images/kotlin-null-type_img_2.png)
+
+여기서 문제는 결과 추론한 타입도 Nullable한 Int? 타입이다. 
+
+(안전 호출 연산자 사용 -> null or Int 값임으로 Int?로 결과 추론 )
+
+이떄는 엘비스 연산자를 사용하면 조금 더 유동적으로 코딩이 가능하다.
+
+![](/images/kotlin-null-type_img_3.png)
+
+
+엘비스 연산자는 자신의 왼쪽에 위치한 식의 값을 확인해서 해당 값이 null 이라면 자신의 오른쪽에 위치한 값을 돌려준다. 
+
+```kotlin
+person.middle?.length ?: 0
+// 안전연산자 -> null or int 
+// 엘비스 연산자 -> null이나오면 0을반환 , 아니라면 int 반환
+// 어쩄거나 둘다 int 값임
+```
+
+
+코틀린에서는 안전 타입 변환 (safe cast) 연산자 (as?) 를 제공한다. 
+
+```kotlin
+val p1 = person as? Person;
+// p1 타입 :Person? 
+```
+
+person이라는 인스턴스가 Person으로 타입 변환을 하려고 하는데, Person이 아니라면 
+ClassCastException 예외가 터질 것이다. 
+
+코틀린에서는 이를 유동적으로 처리할수 있게 안전타입 변환자를 통해 타입 변환에 실패하면 null을 반환하게 해준다.
+
+```kotlin
+val hello :String = "fake person";
+val p1 = hello as? Person;
+// p1 타입 :Person?
+
+print(p1); // null을 반환해줌. 
+```

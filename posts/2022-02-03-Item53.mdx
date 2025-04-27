@@ -1,0 +1,79 @@
+---
+id: 153
+title: "Item53. 가변인수는 신중히 사용하라"
+description: ""
+date: "2022-02-03 19:02:45"
+tags: ['Java', 'Effective Java 3/E']
+---
+## 가변인수 
+
+가변인수 method는 명시한 타입의 인수를 0개 이상 받을 수 있다. 
+가변인수 method를 호출하면 가장 먼저 인수의 개수와 길이가 같은 배열을 만들고, 인수들을 이 배열에 저장하여 가변인수 method에 건네준다. 
+
+```java
+static int sum(int... args){
+        int sum = 0;
+        for (int arg : args) {
+            sum += arg;
+        }
+        return sum;
+}
+```
+
+가변인수 개수가 1개 이상이여야만 할떄가 있다. 예를 들면 최솟값을 찾는 method에서 인수0개가 들어오면 exception이 터져야 한다.
+
+
+```java
+static int min(int... args){
+    if(args.length == 0){
+        throw new IllegalArgumentException("인수가 1개 이상 필요합니다.");
+    }
+    int min = args[0];
+    for(int i = 1; i< args.length ; i++) {
+        if (args[i] < min) {
+            min = args[i];
+        }
+    }
+    return min;
+}
+```
+
+위 방식의 문제점은 가변인수의 인수를 넣지 않아도 호출되어 runtime에 실패한다는 점이다. 또한 가변인수에 대한 유효성 검사도 명시적으로 해야 한다. 
+
+이를 더 나은 방법으로 runtime이 아닌 compile time에 에러가 나오도록 수정하면 다음과 같다. 
+
+```java
+static int min(int firstArg , int... remainingArgs){
+        int min = firstArg;
+        for (int arg : remainingArgs) {
+            if(arg<min){
+                min = arg;
+            }
+        }
+        return min;
+    }
+```
+
+
+매개변수를 2개 받아서, 첫번째 매개변수는 필수여야하는 인수를 넣고, 두번째는 가변인수로 받아서 인수가 1개 미만일떄는 compile error가 터진다 
+
+
+
+
+## 가변인수 성능 최적화 
+
+성능상 민감한 상황때문에 가변인수를 사용할수 없는 상황이 있다, 가변 인수 method는 호출될 때마다 배열을 새로 하나 할당하고, 초기화하기 떄문이다. 
+
+이럴떄는 다중정의를 사용하여 해결한다. 예를 들면 method의 매개변수가 3개이하로 호출하는게 대부분이고, 4개이상부터는 5% 미만정도 비율로 호출된다고 하면
+
+자주 호출되는 매개변수 개수에 대해서는 method를 overloading 하고, 그 이상의 매개변수 개수에 대해서는 가변인수로 만들면 된다.
+
+```java
+public void foo(){}
+public void foo(int a1){}
+public void foo(int a1, int a2){}
+public void foo(int a1, int a2 , int a3){}
+public void foo(int a1, int a2 , int a3 , int...rest){}
+```
+
+참고로 EnumSet의 정적 팩터리 method도 이 기법을 사용해서 열거 타입 집합 생성 비용을 최소화한다고 한다.

@@ -1,0 +1,90 @@
+---
+id: 40
+title: "Effective Kotlin - Item02. 변수의 스코프를 최소화하라"
+description: ""
+date: "2022-08-29 19:53:51"
+tags: ['kotlin']
+---
+## 변수의 스코프 최소화 
+
+1. property보다는 지역변수를 사용하는게 좋다.
+2. 최대한 변수의 사용 스코프를 줄이는게 좋다. 예를 들어 변수가 반복문안에서만 사용된다면, 변수를 반복문 블록 내부에 작성하는 게 좋다. 
+
+```java
+// 1
+var user : User
+for( i in users.indices){
+    user = users[i]
+    println("user at $i is $user")
+}
+// 2 
+for(i in users.indices){
+    val user = users[i]
+    println("user at $i is $user")
+}
+// 3  
+for((i,user) in users.withIndex()){
+    println("user at $i is $user")
+}
+```
+
+- 1번예는 user를 반복문 블록 외부에서도 사용 가능하다. 반면 2,3번 예에서는 user의 스코프 블록을 for 반복문 내부로 제한한다. 
+- 2번,3번예는 변수를 반복문 내부로 감추고, 3번예의 경우에는 구조 분해 선언을 통해 변수를 초기화하고 있다. 이렇게 변수의 스코프를 좁게 만듦으로서 갖는 장점은 프로그램 변경 요소를 줄여, 이해하기 쉽고 디버깅이 쉽게 만든다. 
+
+- 반대로 변수의 스코프 범위가 너무 넓으면 다른 개발자에 의해 변수가 잘못 사용될 가능성이 있다. 따라서 변수는 정의할때 초기화되는게 가장 좋다. 
+
+```java
+//1
+val user:User 
+if(hasValue){
+    user = getValue()
+} else{
+    user = User();
+}
+//2 
+val user:User = if(hasValue){
+    getValue()
+}else {
+    User()
+}
+```
+
+위 코드에서처럼 2번과 같이 선언과 동시에 초기화하는것이 좋다. 만약 여러 프로펕치를 한꺼번에 설정해야 한다면 구조분해 선언을 활용하는게 좋다. 
+
+
+```java
+fun updateWeather(degrees: Int) {
+    val(description, color) = when{
+        degrees <5 -> "cold" to Color.BLUE
+        degrees >23 -> "mild" to Color.YELLOW
+        else -> "hot" to Color.RED
+    }
+}
+```
+
+
+## 변수 스코프와 Capturing 
+
+- Kotlin에서는 자바와 다르게 람다에서 람다 밖에 있는 final 이 아닌 변수를 접근 및 변경이 가능하다. 이러한 변수를 captured variable 이라고 하는데, 이 경우에는 capture한 변수의가 위치한 함수가 끝난 뒤에도 람다 본문 코드는 여전히 capture한 변수를 사용할 수 있다. 
+
+- 내부 동작은 final이 아닌 변수를 capture한 경우에는 kotlin은 이를 특별한 Wrapper class로 감싸고, Wrapper class에 대한 참조값을 람다에 저장하는 형태로 구현되어 있다. 
+
+- 만약 아래와 같이 람다 안에서 밖에 prime 변수를 참조하는 경우, lazy filter 연산 때문에 계속 최종적인 prime값으로 capture한다. 
+```java
+
+val primes :Sequence<Int> =  sequence {
+    var numbers = generateSequence(2){it+1}
+    var prime:Int
+    while (true){
+        prime = numbers.first()
+        yield(prime)
+        numbers = numbers.drop(1)..filter { it  % prime != 0 }
+    }
+}
+```
+
+## 정리 
+
+- 이해하기 쉽고, 오류 발생시키기 적은 코드를 위해 변수 스코프는 가능한 좁게 하지
+- 프로퍼티 여러개라면 , 구조분해 문법을 활용하자
+- 람다의 경우에는 variable capturing을 염두하자

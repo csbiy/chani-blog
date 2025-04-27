@@ -1,0 +1,263 @@
+---
+id: 56
+title: "Kubernetes 개념 한판 정리"
+description: ""
+date: "2023-10-29 18:48:05"
+tags: ['Infra', 'Kubernetes']
+---
+## Kubernetes의 정의 
+
+- Container화 된 application을 배포/관리해주는 오픈소스 Container Orchestrator Framework 
+
+## Kubernetes에서 제공하는 기능
+
+1. Service Discovery
+
+DNS 이름 또는 자체  IP주소를 사용해서 Client가 사용할 Container를 노출할 수 있음. Traffic을 Load Balancing하고, AutoScaling이 가능하다. 
+
+2. Storage Orchestration 
+
+원하는 저장소 시스템을 탑재할 수 있다.
+
+3. 자동화된 binPacking 
+
+container화된 작업을 실행하는데 사용할 수 있는 kubernetes cluster 노드를 제공하며, 각 container가 필요로 하는 CPU , RAM을 설정하면 kubernetes가 container를 resource를 가장 잘 사용할 수 있는 node에 배포한다. 
+
+4. self-healing 
+
+실패한 container 재시작, 교체기능을 가지고 있다. 
+
+## Kubernetes Object 이해하기
+
+`object`란 k8s cluster에 대해 의도한 상태를 명세해놓은 하나의 "의도를 담은 레코드"이다. 
+( https://kubernetes.io/ko/docs/concepts/overview/working-with-objects/kubernetes-objects/ )
+
+object에는 대표적으로 `pod`, `service`, `volume`, `namespace`등 이 있다.
+
+object를 관리하는 `controller`는 사용자가 바라는 상태와 현재 상태가 일치하도록 object를 생성/삭제한다. 
+
+controller에는 대표적으로 `ReplicaSet`, `Deployment`, `DemonSet`, `Job`등이 있다. 
+
+### 스쿼드별로 하나의 kubernetes cluster를 공유하기
+
+- `namespace`는 하나의 k8s cluster를 여러 개의 논리적인 단위로 쪼개서 사용한다.
+- namespace를 통해 하나의 k8s cluster를 공유하되, 논리적으로 구분할 수 있다.
+
+<figure>
+        <img src="/images/K8S_01.png">
+        <figcaption>k8s namespace</figcaption>
+</figure>
+
+
+- 기본적으로 k8s 를 실행하면 몇 개의 namespace가 자동으로 생성됩니다. 이 중 `default` namespace는 기본 namespace로 별도로 k8s에 namespace를 지정하지 않으면 항상 이 `default` namespace에 명령이 적용된다.
+
+### Kubernetes Object 기술하기 
+
+kubernetes에서는 object를 생성할때, object의 spec을 지정해주어야 한다.
+대부분 yaml파일로 kubectl CLI에 제공한다. 
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  selector:
+    matchLabels:
+      app: nginx
+  replicas: 2 # tells deployment to run 2 pods matching the template
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
+```
+대표적으로 사용되는 필드값들은 다음의 의미를 나타낸다. 
+
+- apiVersion : object를 생성하기 위한 Kubernetes버전
+- kind : 생성할 object의 종류 
+- metadata : object를 유일하게 구분지어 줄 데이터
+- spec : object에 의도하는 상태값들 
+
+
+
+## Kubernetes - Pod Object
+
+- kubernetes에서 배포 가능한 가장 작은 컴퓨팅 단위이다.
+- 하나 이상의 Container의 그룹이며, 동일한 스토리지 * 네트워크 * 해당 컨테이너 구동방식에 대한 명세를 공유한다. 
+- 한 pod내에서 container들간의 port가 중복될 수는 없다. 
+- pod별로 ip가 할당되는데 이는 동적으로 변경되는 내부 IP이다. 
+- pod를 포함한 kubernetes object에는 key-value 형태의 label을 달 수 있다.
+(```metadata.labels.type```)
+type - production , type - develop과 같이 사용 목적에 따라 원하는 pod를 선택할 수 있다.
+- pod가 어떤 물리 node에 띄워질지는 직접 선택 또는 node scheduler에 의해 자동 선택될 수 있다. 
+- 직접 선택하는 경우는 ```spec.nodeSelector.hostname: 노드명```꼴로 배포할 노드명을 선택할 수 있다. 
+- 자동 선택되는 경우에는 pod에서 요구되는 resource(예: ```spec.containers.reqeusts.memory: 2Gi ```)를 수용할 수 있는 적합한 물리 node에서 배포된다. 
+
+
+### Pod * Service 생성 예시
+
+1. pod생성
+```yaml
+## Pod yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-2
+  labels:
+    lo: dev ## label (lo[key] - dev[value])꼴로 지정할 수 있다.     
+spec:
+  containers:
+  - name: container
+    image: kubetm/init
+```
+2. service 생성
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc-1
+spec:
+  selector:
+    lo: dev
+  ports:
+  - port: 8080
+```
+다음과 같이 spec.selector 를 이용하면 특정 label을 가진 pod를 선택할 수 있다. 
+
+<figure>
+        <img src="/images/KUBER_POD_01.png">
+        <figcaption>Pod 생성 후 Service Object에서 Selector를 통한 Pod 선택</figcaption>
+</figure>
+
+- 다음과 같이 특정 물리 node에 pod를 띄우도록 설정할 수 있다. 
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-test
+spec:
+  nodeSelector:
+    kubernetes.io/hostname: k8s-node1 ## 특정 물리노드 지정 
+  containers:
+  - name: container
+    image: kubetm/init
+```
+
+- nodeSelector에 특정 노드를 명시하지 않은 경우에는 node Scheduler에 의해 pod에 명시된 resource 필드값을 충족시킬 수 있는 node에 pod가 배포된다. 
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-test
+spec:
+  containers:
+  - name: container
+    image: kubetm/init
+    resources:
+      requests:
+        memory: 2Gi
+      limits:
+        memory: 3Gi
+```
+
+<figure>
+        <img src="https://k21academy.com/wp-content/uploads/2020/11/2918027a-kublr1.png">
+        <figcaption>[1] Node Scheduler</figcaption>
+</figure>
+
+<!-- ## Kubernetes - Service Object
+
+- Cluster Ip 타입, NodePort 타입, Load Balancer 타입으로 총 3가지 Service Object 타입이 존재한다. 
+
+- Service Object는 Cluster에서만 접근 가능한 Cluster IP를 가지고 있음. 하나 이상의 Pod에 연결하면 Service 를 통해 연결된 Pod에 접근할 수 있다.
+
+- Pod와 다르게 사용자가 직접 제거하지 않는한 재시작되거나 삭제되지 않음. 즉 Service를 통해 Pod를 접근하는 구조이다. 
+
+- ClusterIP타입으로 service object를 생성하면 clsuter 내부에서만 사용가능한 IP가 생성되며, (외부에서 접근하지는 못함) 운영자가 pod 상태 디버깅 * 내부 대쉬보드를 확인하는 용도로 사용된다. 
+
+- NodePort타입으로 service object를 생성하면 모든 물리적인 Node에 외부에서 접속 가능한 특정 port번호를 생성하며, 해당 port로 접속하면 service object로 접속한다.
+
+- LoadBalencer 타입으로 service object를 생성하면 NodePort 타입에 추가적으로 ndoe간 traffic을 분산시켜주는 기능이 추가된다. LoadBalancer 타입에 External IP를 할당해주어 외부 시스템에 노출되는 용도로 사용한다.  
+
+## Kubernetes - Volume Object
+
+1. emptyDir
+
+컨테이너간에 데이터를 공유하기 위해서 Volume을 사용함
+최초 volume생성시에는 volume이 비어있음.
+
+여러 container간에 mount 된 volume을 마치 자기 자신 local에 있는 것처럼 사용함.
+
+pod안에 생성되는것이기 떄문에 pod에 문제가 생겨 재생성된다면 날라간다. 즉 휘발적인 데이터만 넣어야한다. 
+
+2. hostPath 
+
+각 Node의 Path를 Volume으로 사용한다. 즉 pod가 죽어도 Node의 데이터는 사라지지 않는다. 
+
+Pod가 만약 node scheduler에 의해 다른 Node에 생성된다면 데이터를 연결 할 수 없다. 
+
+사전에 해당 Node에 경로가 있어야만 오류가 나지 않으며, 주로 Node에 있는 데이터를 Pod가 사용하는 용도로 사용한다.  
+
+3. PVC/PV (Persistent Volume Claim , Persistent Volume)
+
+Persistent Volume(PV)는 영구적인 데이터 저장소(AWS,NFS...)이고, persistent Volume Claim(PVC)은 pod를 PV에 연결하기 위한 Object이다. PV는 저장소 VENDOR별로 다르며, 사용자가 생성한 PVC에 적합한 PV를 kubernetes가 선택해준다. 
+
+## Kubernetes - ConfigMap , Secret Object
+
+- 테스트 환경 & 상용 환경에 따라 결정되는 값은 외부에 따라 결정될 수 있게함 
+
+- 즉 환경변수를 관리하기 위해서 kubernetes는 ConfigMap,Secret 객체를 생성
+- ConfigMap : 관리해야할 상수값 정의
+- Secret : 키와같이 보안적인 관리가 필요한 값을 관리하는 객체
+
+Pod 생성시 위 두 object를 연결할 수 있다. (ConfigMap, Secret)
+즉 상용환경이든 개발환경이든 동일한 도커 이미지를 사용하고, 외부 환경변수는 ConfigMap, Secret Object로 주입 
+
+Literal(상수)형태로 외부환경변수를 주입하는 경우에는,
+ConfigMap,Secret Object 모두 K-V꼴로 데이터를 넣음. 
+다만 Value의 경우는 base64 인코딩해서 넣음. pod로 넣을떄는 자동으로 decoding. 
+Secret의 경우는 tmpfs 인메모리 파일시스템에 넣어 데이터가 파일에 영구적으로 보관되지 않고 파드 삭제시 소실됨
+이렇게 상수를 만들어 pod생성시 명시하는 경우에 해당 pod의 env 명령어를 치면 환경변수로 잡혀있음 
+
+File형태로 외부환경변수를 주입하는 경우에는,
+K: 파일명,VALUE : 파일컨텐츠임
+SECRET의 경우는 파일내용이 BASE64인코딩이 된다. 
+
+Mounting하는 경우에는 환경변수로 주입하는 방식과 달리 환경변수가 변경되면 바로바로 pod에 반영된다. 
+
+
+## Kubernetes - NameSpace, ResourceQuota, LimitRange
+
+ResourceQuota는 NameSpace별로 달아서,해당 NameSpace에서 최대 사용가능한 resource(memory/cpu)를 정의한다. 즉 namespace의 자원한계를 설정하기 위한 object이다. compute resource(cpu,memory,storage)와 object count(pod,service,configMap,PVC)를 제한할 수 있음. pod에 resource spec (request,limit)을 명시하지 않으면 해당 resourceQuota가 설정된 namespace에는 pod가 할당되지 않는다.
+* 주의 : 기존에 pod가 있는 상태에서 resourceQuota object를 생성하면 그냥 만들어짐. 따라서 resourceQuota를 만들기전에 해당 namespace에 pod를 만들지 않아야함
+
+
+LimitRange는 NameSpace에 들어오는 pod가 차지하는 resource의 크기를 제한할 수 있다. 특정 pod가 모든 resource를 잡아먹는것을 막기 위함이다.  (clsuter에 제한을 걸수도있다.) pod에 별다른 명시를 하지 않는 경우 limitRange에 설정된 spec으로 namespace에 할당된다.
+한 namespace에 여러개의 LimitRange를 설정하는 경우 충돌이 발생할수 있다.
+
+Namespace는 한 namespace안에 같은 이름의 object 를 가질수 없다.
+타 namespace와 자원이 분리된다. 예를 들어 service는 다른 namespace의 pod와 연결될수는 없음. 기본적으로 namespace는 pod간  network연결을 막아주진 않는다. 
+networkPolicy Object를 통해 network 통신을 막아준다. 
+NodePort 타입의 service object도 namespace로 나눌수없음. 즉 경우에 따라 추가적인 object를 설정해서 namespace을 분리헤야 한다. 
+
+물론 persistent volume이나 node와 같이 여러 namespace에서 공유될수있는 object들도 존재한다. 
+
+namespace를 지우게되면 해당 namespace에 속한 모든 자원도 지워진다. 
+pod나 service를 만들떄 속할 namespace를 지정할 수 있음
+
+-->
+
+
+## Reference 
+- [1] https://k21academy.com/wp-content/uploads/2020/11/2918027a-kublr1.png
+- https://bcho.tistory.com/1252
+- https://kubernetes.io/ko/docs/concepts/overview/
+- https://kubetm.github.io/k8s/03-beginner-basic-resource/pod/

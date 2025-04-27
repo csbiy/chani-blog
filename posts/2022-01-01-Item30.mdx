@@ -1,0 +1,84 @@
+---
+id: 58
+title: "Item30. raw type 보다는 Generic method로 만들어라"
+description: ""
+date: "2022-01-01 19:56:05"
+tags: ['Java', 'Effective Java 3/E']
+---
+## Generic Method 
+
+아래와 같이 raw type을 받는 method는 타입 안전하지 않다. 
+```java
+public static Set union(Set s1, Set s2){
+    Set result = new HashSet<>(s1);
+    result.addAll(s2);
+    return result;
+}
+```
+아래와 같이 다른 타입의 Generic이 와도 어떠한 compile error도 발생하지 않고 runtime exception이 터진다. 
+```java
+    Set<String> strings = Set.of("a", "b", "c");
+    Set<Integer> integers = Set.of(1, 2, 3);
+    Set<String> unionResult = union(strings, integers);
+```
+method parameter와 반환타입을 다음과 같이 Generic method로 변경함으로 타입 안전하게 만들 수 있다.  
+```java
+public static <E> Set<E> union(Set<E> s1,Set<E> s2){
+    Set<E> result = new HashSet<>(s1);
+    result.addAll(s2);
+    return result;
+}
+```
+
+
+## Generic Singleton Factory 
+
+- 요청 타입 매개변수에 맞게 매번 그 객체의 타입을 바꾸주는 정적 팩토리 method
+
+Generic은 Runtime에 type정보가 소거된다. (Type erasure) 따라서 하나의 객체를 어떤 타입으로든 매개변수화 할 수 있다. 
+
+```java
+private static UnaryOperator<Object> IDENTITY_FN = (t)->t;
+// Generic Sinlgeton Factory method 
+public static <T> UnaryOperator<T> identityFunction(){
+    return (UnaryOperator<T>) IDENTITY_FN;
+}
+```
+
+ Generic Sinlgeton Factory method 인 identityFunction 는 항등함수로 string이 들어오면 string으로 number가 들어오면 number type으로 반환타입을 바꿔준다. 
+
+```java
+String[] strings = {"a","b","c"};
+UnaryOperator<String> sameString = identityFunction();
+Arrays.stream(strings).forEach((element)-> System.out.println(sameString.apply(element)));
+
+Number[] numbers= {1,2.0,3L};
+UnaryOperator<Number> sameNumber = identityFunction();
+Arrays.stream(numbers).forEach((element)-> System.out.println(sameNumber.apply(element)));
+```
+
+## Recursive type bound
+
+자기 자신이 들어간 표현식을 사용하여 타입 매개변수의 허용범위를 한정할 수 있는데 이를 재귀적 타입 한정( Recursive type bound) 이라고 한다. 주로 Comparable interface와 함께 쓰인다. 
+
+```java
+// collection에서 max값을 반환 
+public static <E extends Comparable<E>> E max(Collection<E> c){
+    if(c.isEmpty()){
+        throw new IllegalArgumentException("empty collection");
+    }
+    E result = null;
+    for (E e : c) {
+        if(result == null || e.compareTo(result) > 0){
+            result = Objects.requireNonNull(e);
+        }
+    }
+    return result; 
+}
+```
+
+반환 타입 \<E extends Comparable\<E> 을 보면 자기 자신의 타입과 비교가 가능함을 표현하고 있다. 
+
+## 정리 
+
+반환값을 매번 명시적으로 형변환해야하는 경우 Generic method를 사용하면 안전하고 사용하기 간편하다

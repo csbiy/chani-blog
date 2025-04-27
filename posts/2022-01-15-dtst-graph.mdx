@@ -1,0 +1,196 @@
+---
+id: 79
+title: "Graph"
+description: ""
+date: "2022-01-15 12:46:27"
+tags: ['Computer Science', 'Data Structure']
+---
+## Graph 정의 
+
+정점(Vertex)과 간선(Edge)의 집합 
+
+## 그래프 용어 정리 
+
+- 방향 그래프 (Directed Graph) : 간선에 방향이 있는 그래프
+- 무방향 그래프(Undirected Graph) : 간선에 방향이 없는 그래프 
+- 차수(Degree) : 임의의 정점에 인접한 정점의 수 
+- 경로 : 시작 정점 u로부터 도착 정점 v까지의 정점들 
+  - 단순 경로 : 경로 내 모든 정점들이 다른 경우
+  - Cycle : 시작 정점과 도착 정점이 동일한 경우 
+- 연결 성분 (Connected Component) : 그래프에서 정점들이 서로 연결되어 있는 부분 
+- 가중치 그래프 (Weighted Graph) : 간선에 가중치가 부여된 그래프
+- 신장트리 (Spanning Tree) : 그래프가 하나의 연결성분으로 구성되어 있을 때, 그래프의 모든 정점들을 cycle없이 연결하는 부분 그래프 
+  
+
+  ## 그래프 구현 방법 
+
+  그래프를 구현하기 위한 방법으로 2가지가 존재한다.
+
+1. 인접행렬 (Adajacent Matrix) : 2차원 배열로 표현하는 방법으로 n개의 정점이 존재한다고 하였을 떄 , n x n 배열로 표현하여 그래프의 정점 i 와 정점 j 간에 연결선이 존재하면 1을 표시하고, 연결선이 존재하지 않으면 0을 표시하여 구성한다. dense graph를 표현할떄 유리하다. 
+
+- 장점 : 정점간의 연결선 여부를 O(1) 으로 파악 가능
+- 단점 : O(N^2)의 공간 복잡도를 가짐 
+
+2. 인접 리스트 (Adjacency List) : 정점과 해당 정점에 인접한 정점들을 연결리스트로 표현하는 방식으로, n개의 정점이 존재한다고 하였을떄, n x n 연결리스트로 구성된다. sparse graph를 표현할떄 유리하다. 
+
+- 장점: O(N+E)의 공간 복잡도를 가짐 
+- 단점 : 정점간의 연결선 여부를 O(N) 으로 파악가능
+
+```java
+public class Graph<T> {
+
+    // 연결리스트
+    private Map<Vertex<T>, List<Vertex<T>>> adjVertices = new HashMap<>();
+
+    void addVertex(T label){
+        adjVertices.putIfAbsent(new Vertex(label),new ArrayList<>());
+    }
+
+    void removeVertex(T label){
+        Vertex vertex = new Vertex(label);
+        adjVertices.values().stream().forEach((e)->e.remove(vertex));
+        adjVertices.remove(vertex);
+    }
+
+    void addEdge(T label1,T label2){
+        Vertex<T> v1 = new Vertex(label1);
+        Vertex<T> v2 = new Vertex(label2);
+        adjVertices.get(v1).add(v2);
+        adjVertices.get(v2).add(v1);
+    }
+
+    void removeEdge(T label1, T label2){
+        Vertex v1 = new Vertex(label1);
+        Vertex v2 = new Vertex(label2);
+        List<Vertex<T>> vertices1 = adjVertices.get(v1);
+        List<Vertex<T>> vertices2 = adjVertices.get(v2);
+        if(vertices1 != null){
+            vertices1.remove(v2);
+        }
+        if(vertices2 != null){
+            vertices2.remove(v1);
+        }
+    }
+    List<Vertex<T>> getAdjvertices(T label ){
+         return adjVertices.get(new Vertex(label));
+    }
+    public class Vertex<T>{
+        T label;
+        Vertex(T label){
+            this.label = label;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            Vertex vertex = (Vertex) o;
+            return Objects.equals(label, vertex.label);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(label);
+        }
+    }
+}
+```
+
+
+
+
+## 그래프 탐색 
+
+그래프 탐색은 2가지 방식으로 모든 정점을 방문할 수 있다. 
+
+1. DFS(Depth First Search,깊이우선탐색) 
+2. BFS(Breadth First Search,너비우선탐색)
+
+## 그래프 탐색 - DFS 
+
+임의의 정점에서 시작하여 , 이웃하는 하나의 정점을 방문하고, 방금 방문한 정점의 이웃 정점들 방문하는 식으로 탐색한다. 
+연결할 수 있는 정점이 있을때까지 위와 같은 방식으로 탐색하고, 없다면 바로 이전 정점으로 되돌아가 탐색을 다시 수행한다. 
+DFS 의 시간복잡도는 O(N+M)인데, N은 정점의 수, M은 간선의 수이다.
+
++) 미로 출구 찾기랑 비슷하다고 생각하면 편하다 , 미로가 막혔을때 이전 분기점으로 되돌아가 탐색을 진행한다. 
+아래는 재귀적으로 구현한 방법과 while loop를 사용한 iteration 방법을 구현하였다. 재귀적으로 호출하는 것도 결국에는 system stack을 사용한다. 
+
+```java
+public class GraphSearch {
+
+    @SuppressWarnings("unchecked")
+    static <T> Set<T> iterativeDfs(Graph<T> graph , T root ){
+        Set<T> visited = new LinkedHashSet<>();
+        Stack<T> stack = new Stack<>();
+        stack.push(root);
+        while (!stack.isEmpty()){
+            T vertex = stack.pop();
+            if(! visited.contains(vertex)){
+                visited.add(vertex);
+                for (Graph<T>.Vertex<T> adjvertex : graph.getAdjvertices(vertex)) {
+                    Graph<T>.Vertex<T> castedVertex = adjvertex;
+                    stack.push(castedVertex.label);
+                }
+            }
+        }
+        return visited;
+    }
+
+    static <T> List<T> recursiveDfs(Graph<T> graph, T root){
+        List<T> isVisited = new ArrayList<>();
+        recursiveDfs(graph,root,isVisited);
+        return isVisited;
+    }
+
+    static <T> void recursiveDfs(Graph<T> graph , T root , List<T> visited ){
+        List<Graph<T>.Vertex<T>> adjvertices = graph.getAdjvertices(root);
+        for (Graph<T>.Vertex<T> adjvertex : adjvertices) {
+            if(!visited.contains(adjvertex.label)){
+                visited.add(adjvertex.label);
+                recursiveDfs(graph,adjvertex.label,visited);
+            }
+        }
+    }
+
+}
+
+```
+- 깊이우선 신장트리(Depth First Spanning Tree) : 입력 그래프가 하나의 연결 성분으로 되어있을떄, DFS를 수행하며 만들어진 트리 
+
+## 그래프 탐색 - BFS
+
+BFS는 임의의 정점 s에서 시작하여 s의 이웃하는 모든 정점들을 방문하고, 방문한 정점들의 이웃 정점들을 방문하는 식이다. 
+Tree에서의 Level Order Traveral(레벨순회)랑 동일하다. BFS에서는 Queue 자료구조를 사용한다. (정확히는 dequeue)
+BFS의 시간복잡도는 O(N+M)이다.  ( N은 정점의 수, M은 간선의 수이다. )
+
+```java
+    static <T> Set<T> bfs(Graph<T> graph,T root){
+        LinkedHashSet<T> visited = new LinkedHashSet<>();
+        // deque 사용 
+        Deque<T> deque = new ArrayDeque<>();
+        deque.push(root);
+        visited.add(root);
+        while(!deque.isEmpty()){
+            T vertex = deque.pollFirst();
+            List<Graph<T>.Vertex<T>> adjvertices = graph.getAdjvertices(vertex);
+            for (Graph<T>.Vertex<T> adjvertex : adjvertices) {
+                if(!visited.contains(adjvertex.label)){
+                    visited.add(adjvertex.label);
+                    deque.push(adjvertex.label);
+                }
+            }
+        }
+        return visited;
+    }
+```
+
+- 너비우선 신장트리 (Breadth First Spanning Tree) : 입력 그래프가 하나의 연결 성분으로 되어 있을떄, BFS를 수행하며 만들어진 트리 
+
+## 그래프 알고리즘 
+
+- 그래프 알고리즘에는 대표적으로 최소 신장 트리를 찾기 위한 알고리즘인 Kruskal, Prim , Solin 알고리즘이 있다. 
+
+- 최소 신장 트리 (Minimum Spanning Tree ,MST): 무방향 가중치 그래프에서 간선의 가중치의 합이 최소인 신장 트리 
+
+
+그래프 알고리즘에 관한 내용은 알고리즘 카테고리에 정리해서 포스팅하려고 한다.

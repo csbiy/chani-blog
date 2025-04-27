@@ -1,0 +1,154 @@
+---
+id: 175
+title: "PL/SQL - 동적 SQL"
+description: ""
+date: "2022-06-08 00:13:59"
+tags: ['database', 'oracle']
+---
+## 동적 SQL이란?
+
+- 실행 시점 , 즉 런타임에 SQL문장이 달라지는 경우로 대표적으로 검색시, WHERE 절이 동적으로 추가되는 예시가 있다. 
+- 그 외에도 PL/SQL 블록 내에서 DDL 문을 실행하는 경우, 또는 PL/SQL 블록 내에서 ALTER SYSTEM/SESSION 명령어를 실행하여 세션별 파라미터 (ex) NLS_LANG : 언어 정보) 를 설정하는 경우에도 동적 SQL을 사용할 수 있다. 
+
+- PL/SQL에서 동적 SQL을 처리하는 방법은 2가지가 있다. 두 방법 모두 SQL문장 자체를 문자열 형태로 조합하여 실행한다. 
+
+1. Native Dynamic SQL (원시동적 SQL , NDS)
+2. DBMS_SQL 시스템 패키지 
+
+
+## NDS 
+
+- EXECUTE IMMEDIATE 문 : 가장 기본적인 동적 SQL 실행 형태이다. 
+
+- 구문은 다음과 같이 사용한다. INTO 다음에 결과값을 매핑할 OUT변수 , 동적으로 Binding 될 매개변수를 USING 절에 명시한다. 
+
+```SQL
+EXECUTE IMMEDIATE 'SQL문자열'
+INTO  OUT변수 ...
+USING 매개변수 ...
+```
+
+## EXECUTE IMMEDIATE 실행 예제 
+
+```SQL
+DECLARE 
+    /*출력값을 매핑할 변수*/
+    vn_emp_id   employees.employee_id%TYPE;
+    vs_emp_name employees.emp_name%TYPE;
+    vs_job_id   employees.job_id%TYPE;
+    
+    vs_sql VARCHAR2(1000);
+    
+    /*Bind 변수 설정*/
+    vs_job employees.job_id%TYPE         :='SA_REP';
+    vn_sal employees.salary%TYPE         := 7000;
+    vn_manager employees.manager_id%TYPE := 148;
+BEGIN 
+    vs_sql := '
+                SELECT employee_id , emp_name , job_id 
+                 FROM employees 
+                WHERE job_id = :a
+                  AND salary < :b
+                  AND manager_id = :c
+               ';
+                         
+    EXECUTE IMMEDIATE vs_sql 
+    /*출력값을 매핑할 매개변수*/
+    INTO vn_emp_id , vs_emp_name , vs_job_id
+    /*조건전에 Binding 될 Bind 변수*/
+    USING vs_job , vn_sal , vn_manager;
+
+    DBMS_OUTPUT.PUT_LINE('emp_id : ' || vn_emp_id);
+    DBMS_OUTPUT.PUT_LINE('emp_name: ' || vs_emp_name);
+    DBMS_OUTPUT.PUT_LINE('job_id : ' || vs_job_id);
+END;
+```
+
+## Bind 변수
+
+- Bind 변수를 사용하여 조건문을 런타임에 만들 수 있다. 
+- 상수를 사용하는 경우에는 오라클이 매번 실행 계획을 세운다. 만약 Bind 변수를 사용하는 경우에는 sql 구문이 변경되지 않으므로, 이전에 세웠던 실행 계획을 활용해 처리한다. 즉 성능적으로 더 빨라진다. 따라서 항상 Bind 변수를 사용하는게 좋다. 
+
+- 일반 SQL문에서는 순서와 타입으로만 매핑된다. 즉 이름은 가독성에만 영향을 끼치고 실제 실행은 USING절에 오는 순서와, 타입 기반으로 실행된다. ( 프로시저로 매핑할떄는 변수 이름까지 맞춰주어야 한다. )
+
+```SQL
+WHERE test_condition1 = :바인드변수명1 
+  AND test_condition2 = :바인드변수명2
+..
+USING 바인드변수1, 바인드변수2;
+```
+- 프로시저안에서 DDL문 실행은 불가능하지만, 동적 SQL을 사용하면 실행이 가능하다. (ALTER SESSION 명령문과 같이 세션 파라미터를 변경하고자 할때도 마찬가지이다. )
+
+
+
+
+
+## OPEN FOR문을 통한 다중 로우 처리 
+
+- SELECT ~ INTO 를 통해 단일 로우 반환시에 프로시저내 변수에 매핑할 수 있었다. 만약 한 개 이상의 로우를 결과 집합으로 반환하는 SELECT문은 OPEN FOR문을 통해 커서 변수에 결과 값을 받아올 수 있다. 
+
+```
+OPEN 커서변수 FOR 동적_SQL문장 
+USING Bind변수1,Bind변수2;
+```
+
+아래와 같이 예시를 보면 동적 SQL을 커서변수에 매핑할 수 있다. 
+```SQL
+DECLARE 
+    -- 커서 타입 선언
+    TYPE query_test IS REF CURSOR;
+    -- 커서 변수 선언
+    cursor_var query_test;
+    -- 반환값을 받을 레코드 선언
+    query_test_row TEST%ROWTYPE;
+    vs_sql VARCHAR2(1000);
+BEGIN
+    vs_sql := 'SELECT * FROM test';
+    -- 반환값을 커서에 매핑
+    OPEN cursor_var FOR vs_sql;
+    -- cursor 를 순회하며, 레코드에 매핑 
+    LOOP  
+        FETCH cursor_var INTO query_test_row;
+        EXIT WHEN cursor_var%NOTFOUND;
+        DBMS_OUTPUT.PUT_LINE(query_test_row.name);
+    END LOOP;
+    CLOSE cursor_var;
+END;
+```
+
+만약 bind 변수를 사용하고자 할때는 ```OPEN 커서변수 FOR 동적SQL USING BIND 변수``` 형태로 사용 가능하다. 
+```SQL
+vs_sql := 'SELECT * FROM test WHERE ID > :a AND NAME LIKE :b';
+-- 반환값을 커서에 매핑
+OPEN cursor_var FOR vs_sql USING bind_var1,bind_var2x;
+```
+
+## BULK COLLECT INTO 절을 사용한 다중 로우 처리 
+
+- 일일히 한 로우씩 읽는 방식에 비해 한꺼번에 집합적으로 처리가 가능하여, 성능면에서 더 우수하다. 
+
+```SQL
+DECLARE 
+    TYPE rec_test IS RECORD (
+        id TEST.ID%TYPE,
+        name TEST.NAME%TYPE,
+        birthDate TEST.BIRTHDATE%TYPE
+    );
+    -- 중첩테이블 타입 선언
+    TYPE NT_test IS TABLE OF rec_test;
+    -- 중첩테이블 변수 선언
+    vr_test NT_test;
+BEGIN 
+    -- BULK COLLECT INTO 를 사용한 정적 SQL 
+    SELECT *
+    BULK COLLECT INTO vr_test
+    FROM test;
+    FOR i IN 1..vr_test.count
+    LOOP
+        DBMS_OUTPUT.PUT_LINE(vr_test(i).name);
+    END LOOP;
+END;
+```
+
+BULK COLLECT INTO 절은 마찬가지로 동적 SQL문에서도 사용이 가능한데, 
+```EXECUTE IMMEDATE 동적쿼리문 BULK COLLECT INTO 중첩테이블변수 USING bind변수``` 형태로 사용이 가능하다.

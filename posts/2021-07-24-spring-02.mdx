@@ -1,0 +1,80 @@
+---
+id: 123
+title: "IoC(inversion of control)의 개념"
+description: ""
+date: "2021-07-24 15:17:30"
+tags: ['spring', '토비의 spring']
+---
+## 간단정리
+<strong>IoC(Inversion of Control)란?</strong>
+프로그램의 제어흐름을 뒤바꾸는 것이다.개발자가 직접 객체간의 관계설정이나 객체의 생명주기를 조절하는 것이 아니라, container와 같은 다른 대상이 이를 제어하는 것을 말한다. Framework가 IoC가 적용된 기술이다. 정확히 말하면 spring framework는 IoC를 효율적으로 적용한 것이지, spring 없이도 IoC를 구현할 수 있다. 
+
+
+* framework vs library의 차이점 
+    - Framework는 IoC가 적용된 기술이다. 프로그램의 제어흐름을 Framework가 가져간다.
+   - Library는 개발자가 직접 제어흐름을 조절한다. 
+
+이 userDaoTest class가 어떤 객체를 선택할지 결정해주어 생성해주기 때문에, 가장 단순한 IoC Framework라고 할 수 있다.다만 test용 class는 객체 생성을 담당하는 것과는 거리가 멀기 때문에, Factory Class로 변경하였다.
+
+Factory는 객체의 생성을 담당하는 class로 Desgin Pattern에서 포스팅하였다.
+*주의사항:Factory는 엄밀히 말하면 디자인 패턴이 아니다. 
+
+```java
+
+public class DaoFactory {
+    // 어떤 DB연결정보를 구현한 객체를 사용할지 결정하여, 해당 객체를 DI받은 객체를 돌려준다. 
+    public UserDao userDao(){
+        ConnectionMaker connectionMaker = new DconnectionMaker();
+        UserDao userDao = new UserDao(connectionMaker);
+        return userDao;
+    }
+}
+
+public class UserDaoTest {
+
+    public static void main(String[] args) {
+        //Factory class를 통해 DI받은 userDao 객체를 만들어서 사용한다.  
+        UserDao userDao = new DaoFactory().userDao();
+    }
+}
+
+```
+
+![](/images/Dao-final.jpg)
+
+
+위 구조에서 Dao의 명세가 달라진 여러 class로 확장을 한다고 가정하면 다음과 같을 것이다. 제어의 흐름을 DaoFactory가 가져가고, UsetDao class가 어떤 객체를 주입받을지 결정한다. 이런 측면에서 작은 IoC Framework라고 할 수 있다. 
+
+```java
+
+public class DaoFactory_V1 {
+
+    public UserDao userDao(){
+        UserDao userDao = new UserDao(new DconnectionMaker());
+        return userDao;
+    }
+    
+    public AccountDao accountDao(){
+        return new AccountDao(new DconnectionMaker());
+    }
+}
+```
+중복된 코드는 다음과 같이 method extraction을 통해서 변경의 원인이 일어나는 곳을 한곳으로 만들 수 있겠다. 
+```java
+public class DaoFactory_V2 {
+    // method extraction
+    public ConnectionMaker connectionMaker(){
+        return  new DconnectionMaker();
+    }
+
+    public UserDao userDao(){
+        return new UserDao(connectionMaker());
+    }
+
+    public AccountDao accountDao(){
+        return new AccountDao(connectionMaker());
+    }
+}
+```
+
+다음 포스팅에서는 드디어 스프링이 제공하는 IoC에 대해서 살펴보려고 한다.

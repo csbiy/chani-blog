@@ -1,0 +1,163 @@
+---
+id: 143
+title: "Observer pattern"
+description: ""
+date: "2021-07-25 14:54:49"
+tags: ['Design Pattern']
+---
+<strong>Observer Pattern</strong>은 한 객체(Subject)의 상태가 바뀌면 그 객체에 의존하는 다른 객체(Observer)에게 알려져, 자동으로 내용이 갱신되는 일대다 (One-To-Many ,One Subject to Many Observer ) 의존성을 정의한다.
+
+
+java 에서 built-in observer pattern을 일부 지원하지만 ,  observer pattern 을 이해하기 위해서 예시를 들고 왔다. 
+
+기상 모니터링 App을 만든다고 가정하였을때, 기상 스테이션이 온도,습도,압력센서를 통해 데이터를 받고, 
+WeatherData 객체가 이 데이터를 여러 Display장비에 온도,습도,압력이 변하면 업데이트를 계속해서 해주는 상황이라고 가정하자.
+
+이 경우에 WeatherData 객체가 Subject 객체가 될 것이고, Observer 객체들은 여러 Display 객체라고 볼 수 있을 것이다. 
+
+![observer_pattern](/images/observer-pattern.jpg)
+
+<br>
+
+observer pattern의 핵심 Class Diagram을 살펴보면
+- 상태가 계속 변하는 subject객체에 interface를 두어, observer를 등록,해제, oberser에게 상태변화를 알리는 공통적인 method를 둔다.
+- subject 객체의 상태를 알림받는 observer 객체에서 interface를 두어, observer의 변화시, 변화에 따른 logic을 처리하는 method를 둔다.
+- subject,observer는 인터페이스 추상화 계층을 통해서 coupling되어 있다. 즉 , 하위 구현 class가 어떻게 구현 되었는지는 관심도 없고 알 필요도 없다. (=loose coupling)
+
+
+책에서  Observer Pattern 을 이해하기 쉽게 든 예는 신문사와 구독자간의 관계이다. 특정 주제를 계속해서 업데이트하는 신문사는 구독자에게 정보를 알려준다. 특정 신문사는 여러 구독자를 가진다 (One-to-Many relationship)
+
+이 상황에서는 신문사가 Subject 객체, 구독자가 Observer 객체 라고 볼 수 있을 것이다.
+
+어쩄거나 위의 기상 시스템  app을 예시로 observer pattern 을 
+살펴보면 다음과 같다. 
+
+```java
+public interface Subject {
+
+    // Subject Object 의 상태변화를 추적하는 Observer object 등록
+    public void registerObserver(Observer o);
+
+    // Subject Object 의 상태변화를 추적하는 Observer object 제거
+    public void removeObserver(Observer o);
+
+    // Subject Object의 상태변화 발생시 Observer object에게 알림
+    public void notifyObservers();
+}
+
+```
+subject interface에서는 이를 구현한 subject 객체의 상태 변화를 알리고, observer를 등록,해제하는 method 명세를 가지고 있다. 
+```java
+public interface Observer {
+    public void update(float temp,float humidity,float pressure);
+}
+```
+observer interface에서는 subject 상태 변화를 듣고 있다가, 상태가 변화시에, 어떤 행동을 취하는 method 명세를 가지고 있다. 
+
+이제 각 인터페이스를 구현한 구체 class를 살펴보자
+```java
+public class WeatherData implements Subject{
+    private ArrayList<Observer> observers;
+    private float temperature;
+    private float humidity;
+    private float pressure;
+    public WeatherData() {
+        this.observers = new ArrayList();
+    }
+    @Override
+    public void registerObserver(Observer o) {
+        this.observers.add(o);
+    }
+    @Override
+    public void removeObserver(Observer o) {
+        int index = this.observers.indexOf(o);
+        if( index >= 0){
+            observers.remove(index);
+        }
+    }
+    @Override
+    public void notifyObservers() {
+        observers.stream().forEach((obs)->{
+            obs.update(temperature,humidity,pressure);
+        });
+    }
+
+    public void measurementChanged(){
+        notifyObservers();
+    }
+
+    public void setMeasurements(float temperature,float humidity,float pressure){
+        this.temperature=temperature;
+        this.humidity =humidity;
+        this.pressure = pressure;
+        measurementChanged();
+    }
+}
+```
+앞서 예시를 들었던 것처럼 여기서는 기상정보에 변화가 있었을때 이를 observer 객체에게 알려주는 시스템이다. 따라서 기상정보가 subject가 되고, 이를 display해주는 객체가 observer가 된다.
+
+setMeasurements method를 통해 기상변화가 있으면, notifyObserver method를 통해서 등록된 observer의 update method를 호출한다. 
+
+```java
+// observer class
+public class CurrentConditionsDisplay implements Observer,DisplayElement{
+    private float temperature;
+    private float humidity;
+    private float pressure;
+    private Subject weatherData;
+
+    // 특정 subject class를 등록하고, subject class에서도 등록을 설정한다.
+    public CurrentConditionsDisplay(Subject weatherData) {
+        this.weatherData = weatherData;
+        weatherData.registerObserver(this);
+    }
+
+    @Override
+    public void display() {
+        System.out.println(" Current Condtioins : " + temperature + "/"+ humidity + "/"+ pressure);
+    }
+    
+    @Override
+    public void update(float temperature, float humidity, float pressure) {
+        this.temperature = temperature;
+        this.humidity = humidity;
+        this.pressure =pressure;
+        display();
+
+    }
+}
+```
+
+테스트 코드를 보면  subject , observer object에 서로 의존관계를 설정해두고(many-to-one) subject에 변화시에 자동적으로 observer object에 update logic이 실행된다.   
+
+```java
+public class TestWeatherStation {
+
+    public static void main(String[] args) {
+        WeatherData weatherData = new WeatherData();
+        CurrentConditionsDisplay currentConditionsDisplay = new CurrentConditionsDisplay(weatherData);
+        weatherData.setMeasurements(80,65,30.4f);
+        weatherData.setMeasurements(40,25,20.4f);
+        weatherData.setMeasurements(60,75,29.4f);
+    }
+    // --------output--------
+    // Current Condtioins : 80.0/65.0/30.4
+    // Current Condtioins : 40.0/25.0/20.4
+    // Current Condtioins : 60.0/75.0/29.4
+}
+
+```
+
+### Java 내장 Observer Pattern은 ? 
+
+현재 java 에서 제공하고 있는 java.util.Observable 이 observer pattern을 구현하고 있지만, 현재 deprecated되어있다.
+
+큰 원인은
+
+1.  not serializable (객체를 직렬화할수 없음)
+2.  Not thread-safe (concurrent programming시, 안전하지않음)
+
+대체하는 내장 library는 다음과 같으니, 추후에 observer pattern 구현시, 참고하자(https://docs.oracle.com/javase/9/docs/api/java/beans/PropertyChangeEvent.html )
+
+- Reference 
+1. Head First Design Patterns: A Brain-Friendly Guide ([Head First Design Patterns: A Brain-Friendly Guide](https://www.amazon.com/Head-First-Design-Patterns-Brain-Friendly/dp/0596007124))

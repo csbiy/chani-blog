@@ -1,0 +1,134 @@
+---
+id: 139
+title: "Maven"
+description: ""
+date: "2022-05-15 17:24:29"
+tags: []
+---
+- Maven은 프로젝트 빌드 , 라이프 사이클 , 라이브러리 의존성 관리 등 프로젝트 전반을 위한 관리 도구이다. 최근에는 gradle도 프로젝트 관리 도구로 자주 사용되는데, gradle은  DSL 언어로 설정하고, maven은 gradle과 다르게 xml 언어로 프로젝트 구조를 관리한다. 그외의 차이점은 https://www.geeksforgeeks.org/difference-between-gradle-and-maven/ 에서 자세히 확인 할 수 있다. 
+
+## Maven 프로젝트의 기본구조 
+
+
+```
+- src
+  - main
+    - java
+    - resources
+    - webapp
+  - test
+    - java
+    - resources
+
+- target
+```
+
+- src/main/java : Java 소스 파일 위치
+- src/main/resources : property 또는 xml 등 resource 파일이 위치하며 ,  classpath 에 포함된다. 
+- src/main/webapp : 웹 application 관련 파일들이 위치한다. (WEB-INF , template 파일 )
+- src/test/java : 테스트 Java 소스 파일 위치 
+- src/test/resources : 테스트 과정에서 사용되는 resource 파일이 위치하며 , 테스트에 사용되는 classpath에 포함된다. 
+
+- target/classes : 컴파일 된 결과 (.class file)
+
+
+
+## Maven 기본 명령어
+
+- mvn package : 배포 가능한 jar file을 빌드해서 target 폴더 안에 생성한다.
+
+## pom.xml 파일 
+
+- maven 프로젝트를 생성하면 자동으로 pom.xml 파일이 프로젝트 루트 폴더에 생성되는데, 이 파일에서 주로 다루고 있는 설정 정보는 다음과 같다. 
+
+
+  - 프로젝트 정보 : 프로젝트 이름 , 라이센스 등 
+  - 빌드 설정 : life cycle별 실행할 plugin등 빌드와 관련된 설정을 기술 
+  - 빌드 환경 
+  - POM 연관 정보 : 의존 외부 library  
+  
+- groupId는 주로 회사의 정보를 입력하며 , 패키지 형태로 계층을 표현한다. ex) com.회사명
+- artifactId : 프로젝트 결과물의 식별자 
+- package : 생성할 패키지명을 입력하는 데 , default로는 groupId.artifcatId 와 동일한 패키지명을 생성하게 된다. 
+- packaging : 패키징 타입 (.war 또는 .jar) 설정 
+- dependencies : 해당 프로젝트가 의존하고 있는 외부 라이브러리 정보를 기입한다.   
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>net.madvirus</groupId>  <!--프로젝트의 그룹id-->
+  <artifactId>sample</artifactId>
+  <version>1.0-SNAPSHOT</version>
+  <packaging>jar</packaging> <!--패키징 타입 설정 -->
+  <name>sample</name> <!--프로젝트명-->
+  <url>http://www.example.com</url><!--프로젝트 사이트 url -->
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <maven.compiler.source>1.7</maven.compiler.source>
+    <maven.compiler.target>1.7</maven.compiler.target>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>4.11</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <pluginManagement><!-- lock down plugins versions to avoid using Maven defaults (may be moved to parent pom) -->
+      <plugins>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <configuration>
+            <source>1.8</source>
+            <target>1.8</target>
+          </configuration>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+  </build>
+</project>
+
+```
+
+## Dependency scope 
+
+- pom.xml 파일에서 dependency 코드를 보면 \<scope> 를 포함하는 경우가 있는데, \<scope>는 의존하는 모듈이 언제 사용되는지 설명한다. 
+
+  - compile : default값으로 컴파일할 떄 필요하다. 테스트 및 런타임에도 포함된다. 
+  - runtime : compile할떄 필요하진 않지만, runtime에만 필요한 경우로, 배포 시 포함된다. ex) JDBC 드라이버 
+  - provided  : compile할떄는 필요하지만,  실제 runtime떄에는 WAS container에서 기본적으로 제공해서 배포시에는 제외된다. ex) Servlet , lombok
+  - test : 테스트 코드를 컴파일 할 때 필요로 한다. 배포 시에는 당연히 제외된다. 
+
+
+## 원격 repository와 로컬 repository
+
+- maven은 compile이나 packageing 등 작업을 수행할떄 필요한 plugin이나 depedency 에 기입된 라이브러리를 메이븐 중앙 repository (원격 repository)에서 다운받는다. 
+
+(중앙 repository : https://repo1.maven.org/maven2/)
+
+- 원격 repository에서 다운받은 모듈은 local repository에 저장되는데 , [USER_HOME]/.m2/repository 폴더에 생성된다. 여기에는 해당 jar file  그리고 해당 jar file이 필요한 또 다른 의존관계에 있는 library를 기입하고 있는 pom.xml 파일을 포함하고 있다. 
+
+
+## Maven lifeCycle 
+
+- Maven은 크게 clean  , build , site 3가지 lifeCycle을 제공한다. 
+(https://maven.apache.org/guides/introduction/introduction-to-the-lifecycle.html)
+
+![](/images/mvn-01.jpg)
+
+- lifeCycle의 특정단계를 수행하려면 mvn test , mvn clean과 같이 수행할 수 있다. 이떄 특정 단계를 수행하면 그 앞 단계의 모든 단계를 실행한다. 예를 들면 mvn test를 수행하면 validate 과정부터 prepare-package 과정까지 순서대로 실행한다. 
+
+- plugin으로 직접 단계를 수행할수 있다. 이떄는 앞 단계가 전부 수행되는게 아니라 특정 plugin에서 특정 기능을 수행하는 형태로 돌아간다. 
+
+```
+mvn surefire:test  // mvn plugin지정:수행할기능
+```

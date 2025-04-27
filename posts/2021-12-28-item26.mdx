@@ -1,0 +1,150 @@
+---
+id: 170
+title: "Item26. Generic Raw Type은 사용을 자제하라"
+description: ""
+date: "2021-12-28 22:06:02"
+tags: ['Java', 'Effective Java 3/E']
+---
+## Generic Type
+
+클래스와 인터페이스 선언에 타입 매개변수(type parameter)가 쓰이면 이를 generic class 또는 generic interface라 한다. 이 두 개를 통칭해서 Generic type이라고 부른다. 
+
+```java
+public class GenericExample<T>{} // T : 타입 매개변수 
+```
+
+각각의 generic type은 매개변수화 타입 (parameterized type)을 정의한다. 매개변수화타입은 <> 괄호 안에 실제 타입을 명시함으로서 정의가 가능하다. 
+
+```java
+GenericExample<String> stringGenericExample = new GenericExample<>();
+```
+
+raw tye은 generic type을 하나 정의하면 함께 정의되는데, <strong> generic type에서 타입 매개변수를 전혀 사용하지 않았을떄를 말한다. </strong> ,  raw type이 generic type을 하나 정의할떄마다 같이 생성되는 이유는 기존 java code와 호환성 문제떄문이다. 
+```java
+GenericExample rawTypeGeneric = new GenericExample();
+```
+
+
+## Raw Type 단점 
+
+- compile error로 금방 해결될 수 있는 문제를 runtime error로 발생시킬 수도 있다. 
+- 타입 안정성을 제공하지 않는다
+
+아래와 같이 Collection 을 타입 매개변수를 정의하지 않은 raw type 으로 사용하는 예제를 보면 collection에 어떤 타입이 들어가도 에러를 발생시키지 않는다.
+```java
+private final Collection stamps = new ArrayList();
+
+public void doSomething(){
+    stamps.add(new Stamp());
+    stamps.add(new Coin());
+    stamps.stream().forEach((item)->((Stamp)item).cancel());
+}
+```
+타입 매개변수를 정의한 경우에는 compile time에 error를 잡아내고, 형변환까지 수행된다. 
+```java
+private final Collection<Stamp> stamps = new ArrayList();
+
+public void doSomething(){
+    stamps.add(new Stamp());
+    // stamps.add(new Coin()); compile Error 
+    stamps.stream().forEach((item)->item.cancel()); // 형변환코드 불필요 
+}
+```
+
+## raw type 과 \<Object>  차이점 
+
+
+List\<Object>는 모든 타입을 허용하겠다는 의사를 compiler에게 명확히 전달한 것으로 매개변수로 List 를 받는 method에 List\<String> 을 넘길수는 있지만 , 매개변수로 List\<Object>를 받는 method에 List\<String>을 넘길 수는 없다. 
+
+이유는 Generic의 하위 타입 규칙때문이다. List raw type은 List<String>,List<Object>를 하위타입으로 가지지만,List\<Object>는 List\<String>을 하위타입으로 가지지 않기 떄문이다.
+
+```java
+// raw type을 매개변수로 받는 method
+private static void unsafeAdd(List list , Object  o ){
+    list.add(o);
+}
+public static void main(String[] args) {
+
+    List<String> strings= new ArrayList<>();
+    unsafeAdd(strings,Integer.valueOf(42));
+    String s = strings.get(0); // ClassCastException
+}
+```
+위 예제와 같이 List\<String>은 List의 하위타입이기 때문에 아무런 compile error가 나지 않는다. 
+문제는 값을꺼낼때 generic이 string type임으로 String으로 자동 형변환됨으로 문제가 생긴다 
+```java
+// Object type을 매개변수로 받는 method
+private static void unsafeAdd(List<Object> list , Object  o ){
+    list.add(o);
+}
+public static void main(String[] args) {
+
+    List<String> strings= new ArrayList<>();
+    unsafeAdd(strings,Integer.valueOf(42)); //compile error
+}
+```
+List\<Object>를 매개변수로 선언하면 다른 매개변수 타입은 들어갈수없으므로, compile error가 발생한다 (빠르게 디버깅이 가능하다 )
+
+##  unbounded wildcard type 
+unbounded wildcard type은 어떤 타입 매개변수도 허용하고자할떄 사용한다. unbounded wildcard type collection에는 null을 제외한 어떠한 원소도 삼입이 불가능하다. 
+
+java 공식 문서에 보면  unbounded wildcard type 을 사용하는 상황은 다음과 같다.
+
+아래와 같이 list 원소를 loop를 돌려 출력하고자할떄, List\<Object> 는 다른 generic type을 받을 수 없다. 
+```java
+public static void printList(List<Object> list) {
+    for (Object elem : list)
+        System.out.println(elem + " ");
+    System.out.println();
+}
+```
+
+반면 wildcard type으로 변환하면 다른 generic type도 매개변수로 받을 수 있다.
+
+```java
+public static void printList(List<?> list) {
+    for (Object elem: list)
+        System.out.print(elem + " ");
+    System.out.println();
+}
+public static void main(String[] args){
+    List<Integer> li = Arrays.asList(1, 2, 3);
+    List<String>  ls = Arrays.asList("one", "two", "three");
+    printList(li);
+    printList(ls);
+}
+```
+
+또한 다음과 같이 차이점에 대해서도 기술하고 있다. 
+
+It's important to note that List\<Object> and List\<?> are not the same. You can insert an Object, or any subtype of Object, into a List\<Object>. But you can only insert null into a List\<?>.
+
+(ref - https://docs.oracle.com/javase/tutorial/java/generics/unboundedWildcards.html)
+
+
+raw type은 아무 원소나 collection에 삼입할수있으므로, 타입 불변식을 훼손하기 쉽다. 
+
+## 예외상황 - class literal, instanceof
+
+1. class literal 에는 raw type을 사용해야한다.
+```java
+    List<String>.class;// compile error
+    List.class 
+```
+  배열과 기본타입을 제외하고 class literal에 매개변수화 타입을 사용하지 못하게 하였다. 
+
+2. instanceof
+
+generic은 runtime 시점에 매개변수화 타입이 모두 지워진다. (Type erasure) 따라서 instanceof 와 같이 runtime에 타입을 비교하는 경우에는 매개변수화 타입을 당연히 사용할 수 없다. 따라서 raw type을 쓰는게 맞다. 
+
+(Type erasure ensures that no new classes are created for parameterized types; consequently, generics incur no runtime overhea, https://docs.oracle.com/javase/tutorial/java/generics/erasure.html)
+
+```java
+    if(o instanceof Set){
+        Set<?> s = (Set<?>) s;
+    }
+```
+
+## 정리
+
+raw type을 사용하는 경우에는 타입 안전성을 제공해주지 않아 runtime error가 발생하기 쉬우므로, 예외상황이 아닌 경우에는 raw type보다는 generic type을 사용해야한다.  \<Object> 는 어떤 타입의 객체도 받을 수 있는 매개변수화 타입이고, \<?> 는 어떤 타입도 받을 수는 있으나, Collection\<?> 인 경우에 null을 제외한 어떠한 원소도 삼입이 불가능하다.

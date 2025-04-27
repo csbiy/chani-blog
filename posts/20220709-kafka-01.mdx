@@ -1,0 +1,74 @@
+---
+id: 82
+title: "Apache Kafka"
+description: ""
+date: "2022-07-09 11:51:00"
+tags: []
+---
+## Kafka 의 역할 
+
+- 각각의 application끼리 연결하여 데이터 처리하는 방식이 아니라 중앙에서 처리할 수 있도록 데이터 스트림을 관리해주는 프레임워크 
+
+![](/images/kafka-01.png)
+
+- application끼리 직접적으로 데이터를 처리하는 방식이 아니라, 카프카가 중앙에 배치됨으로써, 소스 application과 타켓 application 간의 의존도를 약화시킨다. 어떤 타켓 application으로 데이터를 보내든 kafka를 통해 송신한다. 
+
+- 데이터를 보내는 application을 Producer , 데이터를 받는 application을 Consumer 라고 한다. 
+
+- Kafka는 대개 3대 이상의 서버 (Kafka가 운영중인 서버를 broker라고도 부른다.)에서 분산 운영해서 데이터를 중복 저장함으로 고가용성을 제공한다. 
+
+## Kafka의 장점
+
+- Producer가 Broker로 데이터를 송신할때, Consumer가 Broker로부터 데이터를 수신할때, 묶어서 전송한다. 즉 네트워크 통신 횟수를 최소화 한다. 
+
+- 동일 데이터를 Kafka Broker에 여러개를 분산 저장하고, 병렬 처리도 가능하다. 
+
+- 들어오는 데이터에 따라 Scale-In 또는 Scale-Out이 가능하다. 
+
+- 영속성 : 데이터를 메모리에 저장하지 않고, Broker내 File System에 저장한다. 따라서 FailOver되더라도 데이터가 소실되지 않는다.
+
+- 고가용성 : 3개 이상의 서버로 운영되는 Kafka cluster를 통해서 일부 서버에 장얘가 생기더라도 무중단 서비스 제공이 가능하다. 
+
+
+## Kafka Broker 
+
+- Kafka Client와 데이터를 주고받는 주체로서, 데이터를 분산 저장하여 데이터 소실을 방지하는 application 
+
+- 대개 3개 이상의 Broker 서버를 하나의 cluster 로 운영한다. 
+
+- Broker는 Producer가 요청한 Topic의 Partition에 데이터를 저장하고, Consumer가 요청한 Topic의 Partition에 저장된 데이터를 전달한다. 
+
+- 실제로 Producer로부터 전달받은 데이터는 Broker의 File System에 저장된다. 즉 메모리나 데이터베이스를 사용하지 않으며, 대신 성능향상을 위해 Page Cache 라는 기법을 사용하였는데, Page Cache는 File System에서 한번 읽은 파일 내용을 메모리에 적재하고 있다가, 추후 동일한 요청시에 Disk가 아닌 메모리에서 응답하는 방식이다. 
+
+## Kafka Broker 데이터 복제 
+
+- Kafka의 데이터 복제는 Topic의 Partition 단위로 일어난다. 
+
+![](/images/kafka-02.png)
+
+- 복제 개수(replication factor)는 기본값은 1 (복제 없음) , 최댓값은 Kafka Broker 개수만큼 설정 가능하다. 
+  
+- Producer ,Consumer와 직접 통신하는 Partition을 Leader, 나머지 복제 Data를 가지고 있는 Partition을 Follower라고 한다. 
+
+- 복제가 일어나는 방식은 Follower Partition이 Leader Partition 의 offset과 차이가 나는 경우에 Leader Partition으로부터 Data를 가져와 저장한다. 만약 Leader Partition이 장애 발생시에는 Follower Partition중 하나가 Leader Partition의 역할을 대신한다. 
+
+## Kafka Broker - Controller
+
+- Kafka Cluster중 하나가 Controller 역할을 수행하는데, Controller의 역할은 다른 Broker의 상태를 확인하고, Broker를 제거하는 경우에 해당 Broker에 존재하는 Leader Partition을 재분배하는 역할을 수행한다. 
+
+- Controller가 장애발생시에는 다른 Broker가 Controller역할을 위임받는다. 
+
+## Kafka Broker 데이터 삭제
+
+- Kafka는 Consumer가 Topic의 데이터를 가져가도 데이터가 삭제되지 않으며, 오직 Broker에서만 데이터를 삭제 가능하다. 
+
+- Topic의 데이터를 Partition에 Queue 자료구조처럼 FIFO 형태로 저장된다. 다만, 삭제되지 않는다. 
+
+- Topic의 데이터를 Record라고 부르며 , Record는 TimeStamp , Key-Value , 오프셋, 헤더로 구성되는데 Producer로 부터 생성된 데이터가 Broker로 전송되면 Offset과 TimeStamp가 지정되어 저장되며, 한번 적재된 Record는 수정이 불가능하다. 
+
+- 삭제 단위는 파일 단위로 이루어지며 , 이 단위를 ```Log Segment``` 라고 부른다.
+
+
+## Kafka Broker - Coordinator
+
+- Consumer 상태를 체크하고, Partition을 Consumer와 매칭시켜서 분배하는 역할을 한다.

@@ -1,0 +1,51 @@
+---
+id: 162
+title: "Item27. 비검사 경고를 제거하라"
+description: ""
+date: "2021-12-28 23:42:39"
+tags: ['Java', 'Effective Java 3/E']
+---
+## @SuppressWarnings
+
+compiler 경고를 제거할수는 없지만 타입 안전하다고 확신할 수 있다면 @SuppressWarning("unchecked") annotation을 달아 경고를 숨길 수 있다, 단 rumtime에 ClassCastException이 발생하지 않도록 타입 안전함을 검증해야 한다. 
+
+
+
+## @SuprressWarnings 사용 주의점 
+
+- @SuppressWarinigs의 적용범위는 지역변수~class 까지 어떤 범위에도 선언할 수 있으나, 가능한 좁은 범위에 적용해야 한다 
+
+ex) 한줄이 넘는 method나 생성자에 달린 경우, 지역변수 선언으로 옮김
+
+
+```java
+//ArrayList의 toArray method
+public <T> T[] toArray(T[] a){
+    if(a.length < size){
+        return (T[]) Arrays.copyOf(elements,size,a.getClass());
+    }
+    System.arraycopy(elements,0,a,0,size);
+    if(a.length > size){
+        a[size] = null;
+    }
+    return a;
+}
+```
+ArrayList를 compile하면 경고가 발생한다, 이떄 method 전체에 @SuppressWarnings를 선언해 혹시 발생할 수도 있는 다른 error를 숨기는 방향보다, 지역변수로 뽑아서 @SuppressWarnings를 적용하는것을 권고하고 있다.
+
+```java
+public <T> T[] toArray(T[] a){
+    if(a.length < size){
+        @SuppressWarnings("unchecked")
+        T[] result = (T[]) Arrays.copyOf(elements, size, a.getClass());
+        return result;
+    }
+    System.arraycopy(elements,0,a,0,size);
+    if(a.length > size){
+        a[size] = null;
+    }
+    return a;
+}
+```
+
+추가적으로 @SuppressWarning 로 명시적으로 컴파일 경고를 숨길때에는 항상 주석으로 안전한 이유를 적어두어야 한다.

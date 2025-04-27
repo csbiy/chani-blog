@@ -1,0 +1,118 @@
+---
+id: 75
+title: "리액티브 프로그래밍이란?"
+description: ""
+date: "2024-02-19 22:58:12"
+tags: ['spring', 'webflux']
+---
+### 리액티브 설계 원칙 (리액티브 선언문)
+
+1. Message Driven 
+- 비동기 메시지 기반의 통신을 통해 구성요소들간의 느슨한 결합, 격리성을 보장합니다.
+
+2. Elastic (탄력성)
+- 시스템의 작업량이 변화하더라도 일정한 응답, 즉 시스템의 트래픽이 많든 적든 시스템에서 요구하는 응답성을 일정하게 유지하는 것입니다. 
+
+3. Resilient (회복성)
+- 시스템에 장애가 발생하더라도 응답성을 유지하는 것을 의미한다. 시스템의 구성요소들이 독립적으로 분리되기 떄문에 장얘가 발생하더라도 전체 시스템은 여전히 응답 가능하고, 장애가 난 부분만 복구하면 된다는 의미입니다.
+
+4. Responsive (응답성)
+- 비동기 메시지 기반 통신을 바탕으로 한 회복성과 탄력성을 기반으로 즉각적으로 응답 가능한 시스템을 의미합니다. 
+
+
+![Reactive 설계원칙](/images/reactive-01.png)
+
+
+## 리액티브 프로그래밍(Reactive Programming)이란?
+
+- 비동기 메시지 기반으로 통신하는 높은 응답성을 가지는 Reactive System을 구축하는 데 필요한 프로그래밍 모델입니다. 
+- 데이터 소스의 변경이 있을떄 마다 데이터를 전파하는 이벤트 기반 아키텍쳐를 사용합니다. 
+- 선언형 프로그래밍 방식을 사용해 실행할 동작을 구체적으로 명시하지 않고, 목표만 선언합니다. 
+
+
+
+## 리액티브 프로그래밍 코드 구성 
+
+1. Publisher 
+-  입력으로 들어오는 데이터를 제공하는 역할을 수행 
+2. Subscriber 
+- Publisher가 제공한 데이터를 전달받아서 사용하는 주체 (구독자)
+3. Data Source (Data Stream)
+- Publisher의 입력으로 전달되는 데이터 
+4. Operator
+- Publisher와 Subscriber 사이의 데이터를 가공하는 처리 역할을 담당하는 컴포넌트
+
+
+
+
+## 리액티브 스트림즈(Reactive Streams)
+- 리액티브 라이브러리를 어떻게 구현할지 정의해놓은 표준 명세를 Reative Streams 라고 부릅니다. 
+- `RxJava`, `Reactor` , Java9의 FlowAPI와 같은 여러 구현체가 존재합니다. 
+- Spring에서는 `Reactor`가 Reactor 3.x가 Spring Framework 5부터 포함되어 있습니다. 
+
+### 리액티브 스트림즈 구성요소 
+
+- 리액티브 스트림즈는 `Publisher`, `Subscriber`, `Subscription`, `Processor` 라는 4개의 컴포넌트로 구성되어 있습니다.
+- 리액티브 스트림즈 구현체는 위 4개의 구현체를 표준 명세에 맞게 구현해야 합니다. 
+
+1. Publisher
+- 데이터를 생성하고 발행하는 역할 
+
+```java
+public interface Publisher<T> {
+    public void subscribe(Subscriber<? super T> s); // 파라미터로 전달받은 Subscriber 등록하는 역할 수행 
+}
+```
+
+2. Subscriber
+- 구독한 Publisher로부터 데이터를 전달받아 처리하는 역할 
+```java
+public interface Subscriber<T> {
+    public void onSubscribe(Subscription s);  // 구독처리시점에 수행할 역할 지정 
+    public void onNext(T t); // Publisher가 통지한 데이터를 처리하는 역할 
+    public void onError(Throwable t); //  Publisher가 데이터 통지를 위한 처리과정에서 에러 발생시 에러를 처리하는 역할 수행
+    public void onComplete(); // 데이터 통지를 완료했을떄 호출되는 메소드 (후처리)
+}
+```
+3. Subscription 
+- Publisher에 요청할 데이터 개수를 지정하고, 데이터의 구독을 취소하는 역할 
+
+```java
+public interface Subscription{
+    public void request(long n); // Publisher에게 "n"개만큼의 데이터 요청
+    public void cancel(); //  구독을 해지
+}
+```
+
+4. Processor
+- Publisher와 Subscriber의 역할을 모두 수행할 수 있는 컴포넌트 
+```java
+public interface Processor<T,R> extends Subscriber<T> , Publisher<R>{
+}
+```
+
+### 어떤 상황에서 Spring WebFlux 도입을 고려해야하는가? 
+
+1. 대량의 요청 트래픽이 발생하는 시스템 : Blocking I/O 방식으로 처리하는데 한계가 있는 대량의 요청 트래픽이 발생하는 시스템 
+2. 스트리밍 또는 실시간 시스템 
+3. 많은 수의 I/O가 발생하는 마이크로 서비스 기반 시스템 
+
+## Project Reactor 
+- Spring Framework 5버전부터 Reactive Stack에 포함되어 Spring WebFlux 기반의 리액티브 application 을 개발할떄 핵심 역할을 담당하고 있습니다. 
+- 앞서 정리했던것 처럼 Reactive Streams의 구현체입니다. 
+- Reactor의 공식 사이트(https://projectreactor.io/) 를 가보면 Reactive Streams의 구현체임과, Non-Blocking I/O 방식으로 개발하고, Java의 함수형 프로그래밍 API(스트림/람다)를 사용하고 있음을 알수 있습니다.
+
+
+![Project Reactor](/images/reactive-02.png)
+
+### Mono[0|1], Flux[N]
+
+- Reactor의 Publisher 타입은 두가지가 존재합니다. 바로 `Mono` 와 `Flux` 입니다. 
+- `Flux`는 0~N개의 데이터를 emit할 수 있습니다. 
+- `Mono`는 0~1개의 데이터를 emit할 수 있는 단발성 데이터에 특화된 Publisher입니다. 
+- 아래의 예시코드와 같이 Publisher는 Data Source 로부터 Data를 발행하는 역할을 수행합니다. 이후에는 Operator 를 거쳐 Subscriber가 데이터를 받아 처리하는 역할을 수행합니다. 
+```java
+Flux<String> sequence = Flux.just("Hello", "Reactor"); // Flux == Publisher , "Hello","Reactor" == Data Source
+sequence.map(String::toLowerCase) // map == Operator
+        .subscribe(System.out::println); // System.out::println == Subscriber
+```

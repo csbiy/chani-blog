@@ -1,0 +1,368 @@
+---
+id: 132
+title: "Entity 기본 키 매핑 전략 - SEQUENCE/TABLE/IDENTITY"
+description: ""
+date: "2022-01-05 00:47:45"
+tags: ['Java', 'Jpa']
+---
+## Entity - DB table mapping 
+
+Jpa를 사용해서 테이블과 매핑할 class를 @Entity를 필수로 붙여야하며, @Entity가 붙은 class를 entity라고 부른다. 
+
+@Entity 적용 시 다음과 같은 전제조건을 만족해야한다.
+
+1. 기본생성자 
+2. final class , enum , interface , inner class가 아니여야 한다.
+3. 저장할 필드에 final 키워드가 붙으면 안된다. 
+   
+Jpa는 다양한 mapping annotation을 지원하는데 , 크게 4가지로 분류될 수 있다.
+
+1. 객체와 테이블 매핑 : @Entity , @Table
+
+2. 기본 키 매핑 : @Id
+
+3. Field와 Column 매핑 : @Column
+
+4. 연관관계 매핑 ex) @ManyTone , @JoinColumn
+
+## 기본키 매핑 전략 
+
+DB id값을 client측에서 넘겨줄 수 있겠지만, 인조키의 경우 DB vendor에서 생성할 수도 있다. 
+DB vendor 마다 기본키를 생성하는 방식이 다르다, 예를 들면 oracle에서는 sequence 객체를 만들고, mysql에서는 auto_increment기능을 사용한다. 
+
+
+
+```java
+
+/**
+ * Provides for the specification of generation strategies for the
+ * values of primary keys. 
+ *
+ * <p> The <code>GeneratedValue</code> annotation
+ * may be applied to a primary key property or field of an entity or
+ * mapped superclass in conjunction with the {@link Id} annotation.
+ * The use of the <code>GeneratedValue</code> annotation is only
+ * required to be supported for simple primary keys.  Use of the
+ * <code>GeneratedValue</code> annotation is not supported for derived
+ * primary keys.
+ *
+ * <pre>
+ *
+ *     Example 1:
+ *
+ *     &#064;Id
+ *     &#064;GeneratedValue(strategy=SEQUENCE, generator="CUST_SEQ")
+ *     &#064;Column(name="CUST_ID")
+ *     public Long getId() { return id; }
+ *
+ *     Example 2:
+ *
+ *     &#064;Id
+ *     &#064;GeneratedValue(strategy=TABLE, generator="CUST_GEN")
+ *     &#064;Column(name="CUST_ID")
+ *     Long id;
+ * </pre>
+ *
+ * @see Id
+ * @see TableGenerator
+ * @see SequenceGenerator
+ *
+ * @since 1.0
+ */
+@Target({METHOD, FIELD})
+@Retention(RUNTIME)
+
+public @interface GeneratedValue {
+
+    /**
+     * (Optional) The primary key generation strategy
+     * that the persistence provider must use to
+     * generate the annotated entity primary key.
+     */
+    GenerationType strategy() default AUTO;
+
+    /**
+     * (Optional) The name of the primary key generator
+     * to use as specified in the {@link SequenceGenerator} 
+     * or {@link TableGenerator} annotation.
+     * <p> Defaults to the id generator supplied by persistence provider.
+     */
+    String generator() default "";
+}
+
+```
+생성 전략은 @Id가 붙은 key 필드에 @GeneratedValue(strategy = "사용할 전략") 을 명시해준다,
+
+```java
+public enum GenerationType { 
+
+    /**
+     * Indicates that the persistence provider must assign 
+     * primary keys for the entity using an underlying 
+     * database table to ensure uniqueness.
+     */
+    TABLE, 
+
+    /**
+     * Indicates that the persistence provider must assign 
+     * primary keys for the entity using a database sequence.
+     */
+    SEQUENCE, 
+
+    /**
+     * Indicates that the persistence provider must assign 
+     * primary keys for the entity using a database identity column.
+     */
+    IDENTITY, 
+
+    /**
+     * Indicates that the persistence provider should pick an 
+     * appropriate strategy for the particular database. The 
+     * <code>AUTO</code> generation strategy may expect a database 
+     * resource to exist, or it may attempt to create one. A vendor 
+     * may provide documentation on how to create such resources 
+     * in the event that it does not support schema generation 
+     * or cannot create the schema resource at runtime.
+     */
+    AUTO
+}
+
+```
+
+생성 전략은 총 4개가 있는데 하나씩 정리하였다. 
+
+
+## 기본키 매핑 전략  - IDENTITY
+
+IDENTITY 전략은 기본 키 생성을 데이터베이스에 위임하는 전략으로, 주로 MySQL, PostgreSql , Sql server 에서 사용 한다. 예를 들어 MySQL vendor를 사용한다고 하면 DDL 의 key값에 auto_increment 가 추가된다. 
+
+```sql
+    create table member (
+    
+       id bigint not null auto_increment,
+        age integer,
+        name varchar(255),
+        primary key (id)
+    ) engine=InnoDB
+```
+기본적으로 entity가 영속 상태가 되려면 식별자가 필요한데 IDENTITY 전략은 식별자의 생성 주체가 DB이기 때문에 DB에 entity를 저장하고 나서, 식별자를 조회할 수 있다. 때문에 식별자가 바로 필요하기 떄문에 em.persist(entity)로 저장을 하면 write buffering 이 일어나지 않고, 바로 query가 나가고 조회된 식별자로 영속성 컨텍스트에 entity를 보관한다. 
+
+```java
+    @Test
+    public void createMember(){
+        EntityManager em = emf.createEntityManager();
+        EntityTransaction transaction = em.getTransaction();
+        transaction.begin();
+
+        Member memberB = Member.builder()
+                .age(20)
+                .build();
+
+
+        Member memberA = Member.builder()
+                .age(21)
+                .build();
+
+        em.persist(memberA);
+        System.out.println(" ===== before write buffering ===== ");
+        em.persist(memberB);
+
+        System.out.println(" ===== transaction commit ===== ");
+        transaction.commit();
+
+    }
+```
+
+![](/images/jpa-entity-mapping-01.png)
+
+- JDBC3 에서 추가된 Statement.getGeneratedKeys() API를 사용하면 데이터 저장과 동시에 생성된 기본키를 가지고 올 수 있는데 hibernate는 이 method를 사용하기 떄문에 entity를 저장한 직후에 식별자를 다시 조회하더라도 SELECT Query가 나가지 않는다 (DB와 한번만 요청을 주고 받는다.)
+
+## 기본키 매핑 전략  - SEQUENCE
+
+SEQUENCE 전략은 Oracle 처럼 DB내에서 유일한 값을 순서대로 생성하는 sequence 객체를 가진 경우, 이 sequence를 이용해서 기본키를 생성하는 전략이다. 
+
+
+sequence 전략은 DB에 sequence 객체를 생성하고 매핑해주어야하는데 이를 Entity class내부에서 @SequnceGeneator 로 생성 및 매핑해줄 수 있다. 
+
+```java
+@Entity
+@SequenceGenerator(
+        name = "member_seq_generator",
+        sequenceName = "member_seq",
+        initialValue = 1 , allocationSize = 1
+)
+public class Member {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE , generator = "member_seq_generator")
+    private Long id;
+
+    @Column(name = "NAME"  )
+    private String username;
+
+    private Integer age;
+
+```
+
+실제 나가는 query를 보면 다음과 같이 sequence object도 같이 생성된다. 
+```sql
+ create sequence member_seq start with 1 increment by  1
+ create table member (
+       id number(19,0) not null,
+        age number(10,0),
+        name varchar2(255 char),
+        primary key (id)
+    )
+```
+@SequenceGeneator의 주요속성은 다음과 같다.
+- name : 식별자 생성기 이름 
+- sequenceName : 시퀀스 이름 
+- initialValue : 시퀀스 초기 시작값 
+- allocationSize : 시퀀스 한번에 증가하는 수 default 50 
+
+내부 동작 방식은 IDENTITY 방식과 어떻게 다를까? 
+실제 수행되는 query를 보면 다음과 같다. 
+
+![](/images/jpa-entity-mapping-02.png)
+
+
+앞선 IDENTITY 전략에서는 write buffering 없이, entity를 저장함과 동시에 쿼리가 나가서 DB 식별자값을 가지고 영속성 컨텍스트에 저장하는 원리였다면 
+
+SEQUENCE전략은 먼저 DB sequence 객체에서 식별자 값을 가져와 entity에 할당한뒤 영속성 컨텍스트에 저장한다.그 이후 transaction commit 시점에 flsuh 되어 insert query가 한꺼번에 나간다 (write buffering 있음)
+
+정리하면 IDENTITY 전략은 entity 저장 후 식별자를 가져오는 방식임으로 write buffering 불가, SEQUENCE 전략은 entity 저장 전에 sequence 객체로부터 식별자를 가져와서 write buffering 수행한다 
+
+
+
+
+
+## 기본키 매핑 전략  - TABLE  
+
+TABLE 전략은 key 생성 전용 테이블을 하나 만들어서 DB Sequence를 흉내내는 전략이다. key 생성 전용 테이블은 Entity class에 @TableGenerator를 이용해 생성할 수 있다.  
+
+```java
+@Entity
+@TableGenerator(
+        name = "member_seq_generator",
+        table = "member_seq",
+        pkColumnName = "seq",
+        allocationSize = 1
+)
+public class Member {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.TABLE , generator = "member_seq_generator")
+    private String id;
+```
+ddl-auto : create 로 설정하면 application 실행시 다음과 같은 query문이 나가는 것을 볼 수 있다. 
+```sql
+    create table member_seq (
+       seq varchar(255) not null,
+        next_val bigint,
+        primary key (seq)
+    ) engine=InnoDB
+
+    insert into member_seq(seq, next_val) values ('member',0)
+```
+
+@TableGenerator option에 대한 설명은 공식 레퍼런스에더 자세히 적혀있지만 https://docs.oracle.com/javaee/5/api/javax/persistence/TableGenerator.html 정리하면 다음과같다 .
+
+- name (필수값) : 식별자 생성기 이름 
+- table : table 명 
+- pkColumnName : seq 컬럼명 
+- valueColumnName : seq 값 컬럼명 
+- initialValue : 초기값 
+- allocationSize : 시퀀스 한번 호출시 증가하는 수로 성능최적화에 사용된다 default는 50
+
+원리는 SEQUENCE전략과 동일하다.
+먼저 DB table의 key값을 조회(SELECT) 하고, 다음 값으로 증가시키기 위해 Update query가 나가므로 I/O통신을 2번한다.
+이후에 영속성 컨텍스트에 조회된 식별자값과 entity를 보관하고 있다가 transaction commit 시점에 한번에 flush 한다(write buffering) 
+
+![](/images/jpa-entity-mapping-03.png)
+
+## SEQUENCE,TABLE 전략 최적화 
+
+SEQUENCE 전략은 sequence 객체로부터 먼저 식별자값을 조회한다.
+따라서 I/O 요청이 2번 일어난다. 이를 최적화하기 위해서 @SequenceGenerator( ... ,allocationSize = x , ...) 의 allocationSize값을 조정하여 메모리에 sequence 값을 할당해놓고 사용할 수 있다.
+
+sequence 값을 캐싱해놓고, DB에는 캐싱한 값까지는 I/O요청을 안보낸다. 
+
+TABLE 전략도 마찬가지다. 대신 table전략에서는 말그대로 DB table을 생성해서 키값을 관리하는데, 이때 나가는 update query를 allocationSize값을 조정해서 최적화 할 수 있다. 
+
+## 기본키 매핑 전략  - AUTO  
+
+AUTO 전략은 설정한 데이터베이스 방언에 따라 위 3가지 전략(IDENTITY/SEQUENCE/TABLE) 중에 한가지를 자동으로 선택한다. 
+
+개발 초기 단계시 활용될 수 있다. 
+
+```java
+@Entity
+public class Member {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    private Long id;
+
+    @Column(name = "NAME"  )
+    private String username;
+
+    private Integer age;
+```
+
+## DB 스키마 자동 생성 전략
+
+마지막으로 spring.jpa.hibernate.ddl-auto 속성에 따라 application이 실행될떄 DB 스키마 자동 생성 전략을 지정할 수 있다. 
+
+```java
+// application.yaml
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+```
+
+참고로 spring.jpa.hibernate.ddl-auto의 값은 hibernate 구현체의 hibernate.hbm2ddl.auto 속성 값으로 전달된다. 
+(ref - https://stackoverflow.com/questions/42135114/how-does-spring-jpa-hibernate-ddl-auto-property-exactly-work-in-spring)
+
+spring.jpa.hibernate.ddl-auto에서 사용할 수 있는 전략은 4가지다. 
+
+1. create : DROP + CREATE
+2. create-drop : DROP + CREATE , application 종료시 DROP
+3. update : 매핑 변경 사항만 수정 ex) alter table ~
+4. validate : 실제 DB 스키마와 application entity간 매핑을 확인하고 일치하지 않으면 경고를 남기고 application은 실행하지 않는다.
+5. none  
+
+- Entity class에 제약조건 명시 
+
+다음과 같이 DDL 생성시 제약조건이나 타입 크기등을 조절할 수 있다.
+
+
+
+```java
+@Entity
+// unique 제약조건 추가 
+@Table(name = "MEMBER",uniqueConstraints = {@UniqueConstraint(
+        name = "NAME_AGE_UNIQUE",
+        columnNames = {"NAME","AGE"}
+)})
+public class Member {
+
+    @Id
+    @Column(name = "ID")
+    private String id;
+    // ddl :  name varchar(10) not null,
+    @Column(name = "NAME" , nullable = false , length = 10 )
+    private String username;
+    private Integer age;
+```
+
+## 정리 
+
+sequence , table 전략은 원리는 동일하지만 sequence object를 사용하느냐, table 을 사용하느냐의 차이이다. 
+sequence , table 전략은 식별자를 가지고 와서 영속성 컨텍스트에 저장을 한다. 
+- I/O 요청이 allocationSize =1 이라고 하면 2번 나간다.
+- write buffering이 가능하다.
+
+identity 전략은 식별자를 entity 저장시점에 알 수 있기 때문에 entity 저장시점에 바로 query가 나가서 entity를 먼저 저장하고 식별자 값을 가져와서 영속성 컨텍스트에 저장한다.
+- I/O 요청이 1번 나간다 (hibernate의 경우에는) 
+- write buffering 이 불가능하다.

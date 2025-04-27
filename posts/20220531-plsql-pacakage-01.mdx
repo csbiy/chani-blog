@@ -1,0 +1,330 @@
+---
+id: 105
+title: "PL/SQL - Package"
+description: ""
+date: "2022-05-31 00:41:54"
+tags: ['database', 'oracle']
+---
+## 패키지 
+
+- 논리적 연관성이 있는 PL/SQL 타입 , 변수 , 상수 , 서브 프로그램 , 커서 , 예외 등의 항목을 묶어놓은 객체 
+- 컴파일 과정을 거쳐 DB 에 저장된다. 
+- 다른 프로그램에서 참조 가능하다. (WAR , JAR -> DB 패키지 호출 , DB 패키지내에서 다른 DB 패키지의 프로시저 호출 )
+- 패키지의 하위 서브 프로그램 (Ex) 프로시저 ) 를 호출하면 해당 패키지 전체가 메모리에 올라간다.  
+
+## 패키지 구조 
+
+- 패키지는 선언부 (스펙) 과 본문 (바디) 두 부분으로 구성된다. 패키지는 선언부만 작성하고 컴파일하여 DB에 저장할 수 있다. 즉 본문은 나중에 작성하여도 된다. 
+
+## 패키지 선언부 구문 
+
+```SQL
+CREATE OR REPLACE PACKAGE 패키지명 IS 
+    TYPE_ 구문;
+    상수명 CONSTANT 상수_타입;
+    예외명 EXCEPTION
+    변수명 변수_타입;
+    커서 구문;
+
+    FUNCTION 함수명(매개변수 IN 매개변수_타입 )
+    RETURN 반환타입;
+
+    FUNCTION 프로시저명(매개변수 [IN,OUT,INOUT]  매개변수_타입);
+END 패키지명;
+```
+
+- 패키지 선언부는 데이터와 서브 프로그램 (프로시저,함수) 영역으로 나눌 수 있다. 
+
+## 패키지 본문 구문 
+
+- 패키지 바디는 선언부에 정의한 서브 프로그램 명세에 대한 구현체이다. 
+
+```SQL
+CREATE OR REPLACE PACKAGE BODY 패키지명 IS 
+   TYPE_ 구문;
+   상수명 CONSTANT 상수_타입;
+   커서 구문;
+
+   FUNCTION 함수명 (매개변수 IN 매개변수_타입) 
+   RETURN 반환타입 IS 반환타입명 
+   BEGIN 
+   /*  함수 로직  */
+   END 함수명;
+
+   PROCEDURE 프로시저명 (매개변수 [IN,OUT,INOUT])
+   IS
+   BEGIN 
+   /* 프로시저 로직 */
+   END 프로시저명;
+END 패키지명;  
+```
+
+
+## 패키지 사용 예시 
+
+```
+hr_pkg 패키지 
+    - fn_get_emp_name : 사번을 전달받아 이름을 반환하는 함수 
+    - new_emp_proc    : 신규 사원을 등록하는 프로시저 
+```
+
+```SQL
+/******** 패키지 스펙 선언부 *********/
+CREATE OR REPLACE PACKAGE hr_pkg IS 
+
+FUNCTION fn_get_emp_name (pn_employee_id IN NUMBER)
+RETURN VARCHAR2;
+
+PROCEDURE new_emp_proc(ps_emp_name IN VARCHAR2 , pd_hire_date IN VARCHAR2);
+END hr_pkg;
+
+/******** 패키지 바디 선언부 *********/
+CREATE OR REPLACE PACKAGE BODY hr_pkg IS 
+
+FUNCTION fn_get_emp_name (pn_employee_id IN NUMBER) RETURN VARCHAR2
+IS 
+    vs_emp_name employees.emp_name%TYPE;
+BEGIN 
+    SELECT emp_name INTO vs_emp_name 
+    FROM employees
+    WHERE employee_id = pn_employee_id;
+    RETURN NVL(vs_emp_name , '해당사원 없음');
+END fn_get_emp_name;
+
+PROCEDURE new_emp_proc (ps_emp_name IN VARCHAR2 , 
+                        pd_hire_date IN VARCHAR2 )
+IS
+    vn_emp_id employees.employee_id%TYPE;
+    vd_hire_date DATE := TO_DATE(pd_hire_date , 'YYYY-MM-DD');
+BEGIN 
+    SELECT NVL(max(employee_id),0) + 1
+      INTO vn_emp_id
+      FROM employees;
+    
+    INSERT INTO employees (employee_id , emp_name , hire_date ,
+                           create_date , update_date )
+    VALUES (vn_emp_id , ps_emp_name , NVL(vd_hire_date ,SYSDATE) , SYSDATE , SYSDATE );
+    
+    COMMIT;
+    
+    EXCEPTION WHEN OTHERS THEN 
+        DBMS_OUTPUT.PUT_LINE(SQLERRM);
+        ROLLBACK;
+END new_emp_proc;
+
+END hr_pkg;
+```
+
+작성한 프로시저는 '패키지명.서브프로그램명' 으로 호출이 가능하다. 
+
+```sql
+SELECT hr_pkg.fn_get_emp_name(171) FROM DUAL;
+EXEC hr_pkg.new_emp_proc('chansoo Kim','2022-05-31');
+```
+
+## 패키지 데이터 
+
+- 패키지에는 상수 , 변수 , 커서, 레코드 ,컬렉션, 예외를 자바의 멤버필드처럼 가질 수 있다. 이를 패키지내에 데이터를 담아둔다고 한다. 
+
+- 패키지 데이터의 생존 주기는 세션 단위이다. 즉 세션이 살아있는 동안 그 값이 메모리 상에 유지된다. 
+
+- 패키지 데이터는 '선언부(스펙)' 와 '본문(바디)' 에 모두 선언이 가능한데, 선언부에 선언할 경우 패키지외부에서 접근이 가능한 반면 바디에 선언한 경우 패키지 내부에서만 접근이 가능하다.
+
+- 패키지 선언부에 위치한 데이터를 Public Item , 바디부에 위치한 데이터를 Private Item이라고 부른다. 
+
+(private - 패키지 body에 선언 / public - 패키지 spec에 선언)
+
+```SQL 
+CREATE OR REPLACE PACKAGE ch12_var IS
+    /*상수 선언*/
+    c_test CONSTANT VARCHAR2(10) := 'TEST';
+    /*변수 선언*/
+    v_test VARCHAR2(10);
+END ch12_var;
+
+CREATE OR REPLACE PACKAGE BODY ch12_var IS 
+    /*외부에서 접근 불가능한 변수를 선언하고자할떄는 바디에 데이터를 선언한다. */
+    c_test_body CONSTANT VARCHAR2(10):= 'CONSTANT_BODY';
+    v_test_body VARCHAR2(10);
+END ch12_var;
+```
+
+- 마찬가지로 선언한 상수나 변수도 서브프로그램 처럼 '패키지명.변수명' , '패키지명.상수명' 형태로 참조한다.
+
+```SQL 
+DECLARE
+BEGIN 
+    DBMS_OUTPUT.PUT_LINE('상수 ch12_var.c_test = ' || ch12_var.c_test);
+    ch12_var.v_test := 'hello';
+    DBMS_OUTPUT.PUT_LINE('변수 ch12_var.c_test = ' || ch12_var.v_test);
+END;
+```
+- 위와 같이 패키지 선언부에 선언한 변수는 외부에서 접근 및 수정이 가능하다. 단 값은 세션이 유지되는 동안만 메모리에서 존재한다. 
+
+
+## 패키지 데이터 예시 
+
+- 위에 정리한 것처럼 Private Item은 바디부에 선언되어 외부에서 접근이 불가능하여 은닉화되어 있다. 이를 java에서 getter , setter method를 정의하는 것처럼 패키지에도 getter, setter 와 유사한 함수,프로시저를 정의할 수 있다. 
+
+```sql
+CREATE OR REPLACE PACKAGE BODY ch12_var IS 
+
+    c_test_body CONSTANT VARCHAR2(10):= 'CONSTANT_BODY';
+    v_test_body VARCHAR2(10);
+    
+    /*Getter Function*/
+    FUNCTION fn_get_value RETURN VARCHAR2 
+    IS 
+    BEGIN 
+        RETURN NVL(v_test_body , 'NULL이다.');
+    END fn_get_value;
+    
+    /*Setter Procedure*/
+    PROCEDURE sp_set_value (ps_value VARCHAR2)
+    IS
+    BEGIN 
+        v_test_body := ps_value;
+    END sp_set_value;
+    
+END ch12_var;
+```
+
+## 커서 
+
+- 변수나 상수와 마찬가지로 패키지내에 선언된 커서도 세션이 살아있는 동안 유지된다. 패키지 선언부(헤더)에 커서 구현부까지 선언한 경우와 헤더에는 커서 타입만 명시하고 , 바디에는 커서 구현부까지 명시하는 방법 2가지가 존재한다.   두 방법 모두 외부에서 접근 가능하며 , '패키지명.커서명' 형태로 참조할 수 있다.
+
+```SQL
+/*패키지 헤더에 커서 구현부까지 선언 */
+CREATE OR REPLACE PACKAGE ch12_cur_pkg IS
+    CURSOR pc_empdep_cur (dep_id IN DEPARTMENTS.DEPARTMENT_ID%TYPE)
+    IS 
+    SELECT a.employee_id , a.emp_name , b.department_name 
+    FROM   employees a , departments b
+    WHERE  a.department_id = dep_id 
+      AND  a.department_id = b.department_id;
+END ch12_cur_pkg;
+
+BEGIN 
+    FOR rec IN ch12_cur_pkg.pc_empdep_cur(30)
+    LOOP
+        DBMS_OUTPUT.PUT_LINE(rec.emp_name || '-' || rec.department_name);
+    END LOOP;
+END;
+```
+
+- 이때 헤더에 커서타입만을 명시할때는 커서가 반환하는 데이터 타입을 RETURN 절에 명시해야 하는데, 이떄는 사용자 정의 record 타입 또는 %ROWTYPE 구문을 사용할 수 있다. 
+  
+```SQL
+/*패키지 헤더에는 타입만 선언하고 , 바디에 구현부까지 선언 */
+CREATE OR REPLACE PACKAGE ch12_cur_pkg IS 
+    CURSOR PC_EMPDEP_CUR (dep_id IN DEPARTMENTS.DEPARTMENT_ID%TYPE)
+        RETURN departments%ROWTYPE;
+END ch12_cur_pkg;
+
+CREATE OR REPLACE PACKAGE BODY ch12_cur_pkg IS 
+    CURSOR PC_EMPDEP_CUR (dep_id IN DEPARTMENTS.DEPARTMENT_ID%TYPE)
+        RETURN departments%ROWTYPE
+    IS 
+    SELECT * 
+    FROM   departments dep
+    WHERE  dep.department_id = dep_id;
+END ch12_cur_pkg;
+```
+
+- 사용자 레코드 타입을 반환타입으로 지정하는 경우도 큰차이는 없다 다만 말 그대로 record 타입을 지정하고, 그에 맞는 데이터 타입을 반환해주면 된다.
+
+```sql
+CREATE OR REPLACE PACKAGE EXAMPLE IS 
+/*사용자 정의 레코드 타입 선언*/
+TYPE EMP_DEP_RT IS RECORD (
+    emp_id   employees.employee_id%TYPE , 
+    emp_name employees.emp_name%TYPE,
+    job_title jobs.job_title%TYPE
+);
+CURSOR pc_empdep2_cur (p_job_id IN jobs.job_id%TYPE)
+/*사용자 정의 레코드 타입을 반환 */
+RETURN EMP_DEP_RT;
+END EXAMPLE;
+```
+
+
+## 패키지에서 사용 시 주의점 
+
+- 패키지에서 선언한 커서는 변수처럼 DB 세션이 살아있는 동안 공유된다. 따라서 커서 닫는 것을 누락하게 되면 같은 세션에서 해당 커서를 재사용할 때 문제가 발생한다. 
+
+## 패키지에서 Collection 타입 사용 
+
+- 레코드와 Collection 모두 데이터 타입에 속하므로 패키지에서 사용이 가능하다. 
+
+- 아래의 예시는 컬렉션 타입 , 정확히는 컬렉션 타입 중에 중첩 테이블을 선언하고, 반복문을 돌면서 컬렉션에 값을 추가하는 프로시저를 패키지에서 선언하고 있다. 
+
+```SQL 
+CREATE OR REPLACE PACKAGE ch12_col_pkg IS 
+    /* 컬렉션 타입 선언 */
+    TYPE NT_DEP_NAME IS TABLE OF VARCHAR2(30);
+    dep_name NT_DEP_NAME := NT_DEP_NAME();
+    /* 컬렉션에 값을 추가하는 프로시저 */
+    PROCEDURE make_dep_proc (p_par_id IN NUMBER);
+END ch12_col_pkg;
+
+CREATE OR REPLACE PACKAGE BODY ch12_col_pkg IS
+    PROCEDURE make_dep_proc(p_par_id IN NUMBER)
+    IS 
+    BEGIN 
+        FOR rec IN ( SELECT department_name 
+                       FROM departments
+                      WHERE parent_id = p_par_id )
+        LOOP
+            /*dep_name 컬렉션 맨 끝에 NULL인 요소 하나 추가*/
+            dep_name.EXTEND();
+            /*dep_name의 요소의 총수에 해당되는 값을 NULL에서 department_name으로 업데이트*/
+            dep_name(dep_name.COUNT()) := rec.department_name;
+        END LOOP;
+        
+    END make_dep_proc;
+END ch12_col_pkg;
+
+```
+
+## 패키지 데이터가 저장된 공간 - UGA (User Global Area)
+
+- 패키지에 변수,상수,커서,예외등을 선언하면 DB세션이 살아있는 동안 그 값이 공유되는데, (DB세션 내에서) 이때 패키지 데이터가 저장되어 있는 공간을 UGA (User Global Area) 라고 한다. 
+
+- UGA란 오라클 내부에서 사용하는 내부 메모리 공간으로 주로 세션 관련 정보를 가지고 있다. 
+
+- 1세션당 1 UGA 메모리 공간이 할당된다. 
+  
+- 만약 DB 사용자수가 많아져서 세션 수가 증가하면 UGA 메모리 공간을 많이 차지한다. 따라서 불필요하게 패키지 데이터를 세션별로 공유하고 싶지 않을때 , PRAGMA SERIALLY_REUSABLE 옵션을 주어 호출이 시작되고 끝날떄까지만 패키지 데이터의 생명주기를 관리할 수 있다. 
+
+## 세션이 아닌 호출 단위별로 패키지 데이터 사용 - PRAGMA SERIALLY_REUSABLE 옵션
+
+- PRAGMA SERIALLY_REUSABLE 사용 방법은 헤더와 바디에 각각 선언해주면 된다.
+
+```SQL
+CREATE OR REPLACE PACKAGE TEST IS 
+    PRAGMA SERIALLY_REUSABLE;
+    /*패키지 헤더*/
+END TEST;
+
+CREATE OR REPLACE PACKAGE BODY TEST IS
+    PRAGMA SERIALLY_REUSABLE;
+    /*패키지 바디*/
+END TEST;
+```
+
+
+## 패키지의 함수, 프로시저 Overloading 기능 
+
+- 오라클에서도 객체 지향 프로그래밍의 오버로딩과 동일한 개념을 패키지에서 선언한 함수와 프로시저에 한해 지원해주고 있다. 
+
+- 동일한 이름이지만 매개변수 타입이나 개수가 다르면 여러개의 함수 또는 프로시저를 패키지내에서 선언할 수 있다. 
+
+```SQL
+CREATE OR REPLACE PACKAGE overload_pkg IS
+    /*매개변수로 사번을 받는 경우*/
+    PROCEDURE get_dep_nm_proc( p_emp_id IN NUMBER);
+    
+    /*매개변수로 사원명을 받는 경우*/
+    PROCEDURE get_dep_nm_proc( p_emp_name IN VARCHAR2);
+END overload_pkg;
+```

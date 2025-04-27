@@ -1,0 +1,239 @@
+---
+id: 80
+title: "PL/SQL의 사용자 정의 함수와 프로시저"
+description: ""
+date: "2022-05-10 00:22:32"
+tags: ['database', 'oracle']
+---
+## 사용자 정의 함수 생성
+
+```
+CREATE OR REPLACE FUNCTION 함수 이름 (매개변수1,매개변수2, ...)
+RETURN 데이터타입;
+IS[AS]
+    변수 선언
+BEGIN 
+    실행부
+    RETURN 반환값;
+[EXCEPTION 
+    예외 처리부]
+END [함수 이름];
+```
+
+### 사용자 정의 함수 예시
+
+```SQL
+CREATE OR REPLACE FUNCTION my_mod (num1 NUMBER , num2 NUMBER )
+    RETURN NUMBER
+IS
+    vn_remainder NUMBER:= 0; --나머지
+    vn_quotient NUMBER:= 0; --몫;
+BEGIN 
+    vn_quotient  := FLOOR(num1/num2);
+    vn_remainder := num1 - (num2*vn_quotient);
+    RETURN vn_remainder;
+END;
+    
+```
+
+정의한 사용자 정의 함수를 사용할떄는 SELECT 절 또는 PL/SQL 블록 내에서 사용 가능하다. 다음은 SELECT 절에서 사용하는 예시이다.
+
+```sql
+SELECT my_mod(10,3) reminder 
+    FROM DUAL;
+```
+
+## 프로시저 (Procedure)
+
+- 함수의 경우 특정 연산을 수행한 뒤 값을 반환하지만 프로시저는 로직만 처리하고 값을 반환하지 않는다. 
+- 대표적인 사용예시는 테이블에서 데이터를 추출해 처리하고, 결과를 다른 테이블에 저장하거나 갱신하는 등 DML 작업을 수행한다. 
+
+
+```
+CREATE OR REPLACE PROCEDURE 프로시저 이름 
+    (매개변수명1 [IN | OUT | IN OUT] 데이터 타입[:= 디폴트값])
+IS[AS]
+    변수 선언
+BEGIN 
+    실행부
+[EXCEPTION 
+    예외 처리부]
+END [함수 이름];
+```
+
+- 전체 구조는 함수와 유사하나 반환값이 존재하지 않고, 매개변수에 여러 키워드를 넣을 수 있다. 
+
+- 매개변수 뒤에 IN 키워드가 디폴트이며, OUT 키워드를 넣을 경우 프로시저 내에서 로직 처리 후 해당 매개변수에 값을 할당해 프로시저를 호출하는 쪽에서 이 값을 참조할 수 있다. 
+- IN 키워드의 경우 디폴트 값을 사용할 수 있다. 
+
+
+### 프로시저 사용 예시
+
+```sql
+CREATE OR REPLACE PROCEDURE my_new_job_proc
+
+(   p_job_id IN JOBS.JOB_ID%TYPE,
+    p_job_title IN JOBS.JOB_TITLE%TYPE,
+    p_min_sal IN JOBS.MIN_SALARY%TYPE,
+    p_max_sal IN JOBS.MAX_SALARY%TYPE 
+)
+IS
+BEGIN 
+    INSERT INTO 
+        JOBS(job_id , job_title , min_salary , max_salary , create_Date , update_date ) 
+    VALUES 
+        (p_job_id,p_job_title,p_min_sal, p_max_sal , SYSDATE ,SYSDATE);
+    COMMIT;
+END;
+```
+
+- 프로시저 실행은 반환값이 없으므로 select 절에는 사용이 불가능하며 다음과 같이 호출할 수 있다.
+
+```sql
+EXEC my_new_job_proc('job_id_1','test_job',1000,50000); -- EXEC 키워드 대신 EXECUTE 프로시저명(매개변수리스트) 도 사용 가능하다. 
+```
+
+- 프로시저 실행은 매개변수와 입력 값을 매핑해 실행할 수 있다. 예를 들면 다음과 같다. 매개변수 개수가 많아지면 다음과 같이 매핑해서 사용하는게 가독성이 더 높을 수 있다. 
+
+```SQL
+EXECUTE my_new_job_proc( p_job_id => 'job_id_2', p_job_title=>'test_job', p_min_sal => 1000,p_max_sal => 50000);
+```
+
+- 매개변수에 default값을 주어, 해당 매개변수를 전달하지 않아도 되게 만들 수도 있다. 
+
+```sql
+CREATE OR REPLACE PROCEDURE my_new_job_proc
+(   p_job_id IN JOBS.JOB_ID%TYPE,
+    p_job_title IN JOBS.JOB_TITLE%TYPE,
+    p_min_sal IN JOBS.MIN_SALARY%TYPE :=10, -- default값 설정 
+    p_max_sal IN JOBS.MAX_SALARY%TYPE :=100  -- default값 설정
+)
+IS
+BEGIN 
+    -- 실행로직
+END;
+
+EXECUTE my_new_job_proc( p_job_id => 'job_id_3', p_job_title=>'test_job');
+```
+
+- 한가지 주의할점은 매개변수에 default값 할당은 IN 매개변수에만 적용이 가능하다는 점이다.
+
+## Procedure에 반환값 binding - OUT 매개변수 
+
+- 프로시저 실행은 반환값은 없으나, 매개변수에 OUT 옵션 (OUT 매개변수) 를 주어 반환값을 주는 것 처럼 동작하게 만들 수 있다. 
+
+- OUT 매개변수란 프로시저 실행 시점에 OUT 매개변수를 변수 형태로 전달하고, 프로시저 실행부에서 해당 매개변수에 특정값을 할당한다. 프로시저 종료 이후에는 OUT 매개변수를 참조해 값을 가져오는 방식이다. 
+
+
+```sql
+CREATE OR REPLACE PROCEDURE my_new_job_proc
+(   p_job_id IN JOBS.JOB_ID%TYPE,
+    p_job_title IN JOBS.JOB_TITLE%TYPE,
+    p_min_sal IN JOBS.MIN_SALARY%TYPE :=10,
+    p_max_sal IN JOBS.MAX_SALARY%TYPE :=100,
+    p_upd_date OUT JOBS.UPDATE_DATE%TYPE 
+)
+IS
+    vn_cnt NUMBER := 0;
+    vn_cur_date JOBS.UPDATE_DATE%TYPE := SYSDATE;
+BEGIN 
+    -- 아이디 개수 체크
+    SELECT COUNT(*)
+        INTO vn_cnt
+        FROM JOBS
+        WHERE job_id = p_job_id;
+    -- 아이디가 없다면 insert
+    IF vn_cnt = 0 THEN
+        INSERT INTO JOBS(job_id,job_title,min_salary,max_salary,
+                        create_date,update_date)
+        VALUES (p_job_id,p_job_title,p_min_sal,p_max_sal,vn_cur_date,vn_cur_date);
+    -- 이미 존재하는 아이디가 있다면 update
+    ELSE
+        UPDATE JOBS
+            SET job_title = p_job_title, 
+                min_salary = p_min_sal , 
+                max_salary = p_max_sal , 
+                update_date = vn_cur_date 
+            WHERE job_id = p_job_id;
+    END IF;
+    -- OUT매개변수에 값 binding 
+    p_upd_date := vn_cur_date;
+END;
+```
+
+위의 로직을 보면 OUT매개변수에 값을 binding 시켰다. 이제 제대로 작동하는지 간단한 익명 블록을 만들어서 확인 할 수 있다. 
+
+
+```SQL
+DECLARE 
+    vd_cur_date JOBS.UPDATE_DATE%TYPE;
+BEGIN 
+    my_new_job_proc('test_job_1','test job title',10,100,vd_cur_date);
+    DBMS_OUTPUT.PUT_LINE(vd_cur_date); -- OUT 매개변수에 binding된 값 출력 
+END;
+```
+
+여기서 주의할점은 프로시저 내부에서 프로시저를 호출할떄는 EXEC , EXECUTE 키워드 없이 바로 괄호로 호출한다는 점이다. 
+
+## OUT vs IN OUT 매개변수 
+
+- OUT 매개변수는 값을 넣어서 전달해도 값이 할당이 안된다. 무슨말이냐면 OUT 매개변수는 프로시저가 완료되는 시점전까지는 값이 없다고 생각하면 된다. 
+
+- 즉 OUT 매개변수는 값을 아무리 전달해도 전달이 안되기 떄문에 값을 프로시저 내부에 전달하는 용도로는 의미가 없다. 
+
+- 반면 IN OUT 매개변수는 값을 넣어서 전달할 수 있으며, 동시에 프로시저가 완료되는 시점에 프로시저 내부에서 업데이트된 값이 들어간다. 
+```sql
+CREATE OR REPLACE PROCEDURE my_parameter_test_proc (
+    p_var1 VARCHAR2 , 
+    p_var2 OUT VARCHAR2,
+    p_var3 IN OUT VARCHAR2 ) 
+IS 
+BEGIN 
+    DBMS_OUTPUT.PUT_LINE('p_var1 value = ' || p_var1);
+    DBMS_OUTPUT.PUT_LINE('p_var2 value = ' || p_var2); -- 항상 빈 값 
+    DBMS_OUTPUT.PUT_LINE('p_var3 value = ' || p_var3); -- IN OUT 매개변수임으로 매개변수의 값을 받아와서 출력할 수 있다. 
+    p_var2 := 'B2';
+    p_var3 := 'C2';
+END;
+```
+
+```sql
+DECLARE
+    v_var1 VARCHAR2(10) := 'A';
+    v_var2 VARCHAR2(10) := 'B';
+    v_var3 VARCHAR2(10) := 'C';
+BEGIN
+    my_parameter_test_proc(v_var1,v_var2,v_var3);
+    DBMS_OUTPUT.PUT_LINE('v_var2 value= ' || v_var2);
+    DBMS_OUTPUT.PUT_LINE('v_var3 value= ' || v_var3);
+END;
+
+-- 출력 결과 
+-- p_var1 value = A
+-- p_var2 value = 
+-- p_var3 value = C
+-- v_var2 value= B2
+-- v_var3 value= C2
+```
+
+- OUT , IN OUT 매개변수에는 IN 매개변수와 다르게 default값을 설정할 수 없다. 
+
+## 프로시저에서 RETURN 의 의미 
+
+- 앞서 정리하였지만, 함수에서 사용한 RETURN 문을 프로시저에서도 사용할 수 있는데 프로시저는 반환값이 없다. 프로시저에서 RETURN 문은 EXIT과 같이 프로시저를 종료하기 위한 키워드이다. 
+
+- 주 활용예시중에 하나는 프로시저 실행부 앞단계에서 매개변수 검사하고 뒤의 로직 실행없이 프로시저를 빠르게 종료시켜버리고 싶을떄 활용된다.
+
+```sql
+CREATE OR REPLACE PROCEDURE proc
+(...)
+IS 
+-- 변수선언
+BEGIN
+    IF p_min_sal < 1000 THEN 
+        DBMS_OUTPUT.PUT_LINE('최소 급여값은 `1000이상이어야 합니다');
+        RETURN;
+    END IF;
+-- 실행로직
+END;
+```

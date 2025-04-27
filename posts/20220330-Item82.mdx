@@ -1,0 +1,52 @@
+---
+id: 14
+title: "Item82. Thread 안전성 수준을 문서화하라"
+description: ""
+date: "2022-03-30 19:20:45"
+tags: ['Java', 'Effective Java 3/E']
+---
+- 한 method가 여러 thread가 동시에 호출할때, 그 method가 어떻게 동작하는지는 해당 class와 이를 사용하는 client사이의 중요한 계약과 같다. API 문서에 아무런 설명조차 없으면 심각한 오류로 이어질 수 있다.
+
+- thread 안전성에도 수준이 나뉜다. 멀티 thread 환경에서도 API를 안전하게 사용하려면 클래스가 지원하는 thread 안전성 수준을 정확하게 명시해주어야 한다.  
+
+아래의 목록은 thread 안전성이 높은 순으로 나열한 것이다. 
+
+1. 불변 ( Immutable ) : 동기화조차 필요없음. 객체의 상태가 변하지 않음이 보장됨. ex) String,Long,BigInteger Class 
+
+2. 무조건적 스레드 안전 (Unconditionally Thread-Safe) :가변 객체임으로 객체의 상태는 수정될 수 있으나, 클래스 내부에서 완벽히 동기화하여 별도의 외부 동기화 없이 동시에 사용해도 안전하다.  ex)Atmoic Long , ConcurrentHashMap 
+
+3. 조건부 스레드 안전 (Conditionally Thread-Safe ) : 일부 method만 외부 동기화 작업 필요 
+
+4. 스레드 안전하지 않음 (Not Thread-Safe ) : 외부 동기화 작업 필요 ex) 기본 Collection , ArrayList, HashMap
+
+5. 스레드 적대적 (Thread-hostile) : 모든 method 호출을 외부 동기화로 감싸더라도 Multi-Thread 환경에서 안전하지 않다. 일반적으로 객체간 공유하고 있는 클래스 수준의 정적 데이터를 아무 동기화 없이 수정한다. 
+Thread-hostile 으로 밝혀진 class나 method의 경우는 일반적으로 문제를 고쳐 재배포하거나 deprecated API로 지정된다. 
+
+- 조건부 스레드 안전한 클래스의 경우 특히 주의해서 문서화해야 한다고 한다. 일부 method만 동기화 작업이 필요하는데, 어떤 method를 호출할때 외부 동기화 필요한지, 어떤 lock을 얻어야 하는지를 써주어야 한다. 
+
+예를 들면 Collcetions.synchronizedMap method에는 다음과 같이 synchronized block안에 들어와야할 변수에 대해 API 문서에 써져있다고 한다. 
+
+
+![](/images/Item82-01.png)
+
+
+
+
+클래스가 외부에서 사용할 수 있는 락을 제공하면 클라이언트에서 일련의 method호출을 원자적으로 수행할 수 있다. 
+하지만 이렇게 구현하게 되면 ConcurrentHashMap 과 같이 내부에서 락을 사용해 처리하는 동시성 Collection과는 함께 사용하지 못하며, client가 공개된 lock을 오래 쥐고 놓지 않는 서비스 거부 공격 (denial-of-service attack)을 수행할 수도 있다. 
+
+서비스 거부 공격을 막으려면 synchronized method 대신 비공개 lock객체를 사용해야 한다.
+
+```java
+// 외부에서 접근불가능한 lock 객체 
+private final Object lock = new Object();
+
+public void foo(){
+	synchronized (lock){
+	}
+}
+```
+
+위와 같이 lock객체를 client가 볼 수 없도록 하면 client가 해당 객체의 동기화에 관여할 수 없다. 
+
+비공개 lock 객체는 무조건적으로 쓰레드 안전한 클래스에서만 사용할 수 있다.

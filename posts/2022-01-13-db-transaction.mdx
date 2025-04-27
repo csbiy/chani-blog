@@ -1,0 +1,93 @@
+---
+id: 94
+title: "Transaction"
+description: ""
+date: "2022-01-13 23:45:39"
+tags: ['Computer Science', 'Database']
+---
+## Transaction 
+
+Transaction은 작업의 논리적인 단위로서 , 예를 들면 은행에서 출금 후 입금을 한다고 가정하였을떄 실제로 DB query문은 여러 번 나가겠지만 하나의 논리적인 작업 단위로 볼 수 있다. 
+Transaction이 필요한 이유는 데이터베이스 연산 중간에 일관되지 않은 상태가 존재하기 떄문이다. 2개의 연산중에 하나만 수행되고 하나는 아직 수행되지 않은 상태가 존재할 수도 있다. 
+따라서 데이터베이스는 작업의 완전성을 보장해주기 위해서 , 일련의 연산들을 사용자 입장에서 마치 단일 연산인것처럼 보이게 해준다. 
+
+추가로 transaction은 다음과 같은 특징을 갖는다. 
+
+- Transaction은 recovery 단위이다. 실제로 DB에 쓰여지는 과정에서 system failure시 write ahead log (WAL) 라고 하는데 log라는 자료구조에 먼저 transaction을 쓰고나서 commit처리를 해준다. 즉 commit 이후에 system failure시에는 이 log를 보고 복구가 가능하다. 
+  
+- 아래에 Transaction 특성 중에 Isolation (독립성) 이 있다. 서로 다른 transaction은 독립적으로 수행될 수 있어야 하는데 , 이를 위해서는 concurrency control (동시성 제어) mechanism 이 필요하다. 
+
+## Transaction의 특성 (ACID)
+
+Transaciton 은 작업의 완전성을 보장하기 위해서 다음과 같은 4개의 특성을 갖는다.
+
+1. Atomicity (원자성): 원자성을 가지므로, 전부 실행되거나 (commit) 혹은 전부 실행되지 않는다 (rollback)
+2. Consistency(일관성) : Transaction은 데이터베이스의 일관성을 유지해야 한다. 즉 일관된 상태에서 일관된 상태로 변환해야 한다.
+3. Isolation(독립성):  Transaction은 서로 독립적으로 수행될 수 있어야 한다.
+4. Durability(지속성) : Transaction이 commit되면 DB에 영구적으로 저장되야 한다.
+
+## Transaction 상태 
+
+![](/images/transaction_states.jpg)
+
+transaction은 다음과 같은 상태를 가진다.
+
+- Active state : transaction이 아직 실행중인 상태 
+- Partially committed state : transaction의 마지막 연산까지 전부 수행되었지만 commit 하기전의 상태
+- Failed : transaction중 오류가 발생해 중단된 상태
+- committed : transaction이 성공적으로 종료되어서 DB에 영구적으로 반영된 상태
+- aborted : transaction이 비정상적으로 종료되어서 rollback 연산을 통해서 작업을 취소하여 transaction 수행 이전의 일관된 DB 상태로 돌아간 상태 
+
+## transaction의 병행수행 제어 기법 (concurrency control mechanism )
+
+다른말로 동시성 제어인데, 여러가지 transaction 이 공유자원 (DB 데이터)를 동시에 접근할떄 여러가지 문제가 발생할 수 있다
+
+대표적으로 다음과 같은 문제가 생길 수 있다
+
+- lost update problem(갱신 분실 문제) : transaction A 가 수행한 update가  transaction B가 수행한 update를 덮어씌움.
+- uncommitted dependency problem (비완료 의존성 문제) : transaction A 가 완료되지 않은 상태에서 갱신한 데이터를 transaction B 가 갱신했는데, transaction A가 rollback됨. 
+
+
+
+
+## Locking
+
+locking은 어떤 database object(tuple) 을 transaction 이 접근할떄, 다른 transaction들이 그 object를 변화시키지 못하도록 방지하는 것으로 2 종류의 lock이 존재한다. 
+
+- X lock (exclusive lock, 독점 로크) 
+- S lock (shared lock , 공유 로크)
+
+transaction A가 tuple 에 대해 X lock을 가지고 있다면 다른 transaction은 해당 tuple에 대한 어떤 형태의 lock 요구도 거절된다. 즉 접근이 불가하다.
+
+반면 S lock을 가지고 있다면 일부분의 상황에 대해서는 허용해준다.
+
+- X lock 요구는 거절한다
+- S lock 요구는 허용된다. 즉 두 transaction이 하나의 tuple에 대해 S lock을 가질 수 있다.
+
+이러한 X,S lock에 대한 규칙은 아래의 호환성 행렬로 자세히 파악할 수 있다.
+
+![](/images/compatibility-graph.jpg)
+
+## Lock 작동 방식 , locking protocol 
+
+transaction이 어떤 tuple에 대해서 연산을 수행하려면 그전에 lock 과 관련된 처리들이 일어난다. 
+
+1. transaction이 tuple을 검색하려면 먼저 그 tuple에 대한 S lock을 획득해야 한다.
+2. transaction이 tuple을 갱신하려면 먼저 그 tuple에 대한 X lock을 획득해야 한다. 
+3. transaction이 가지고 있는 lock 때문에 다른 transaction이 lock를 획득하지 못하면 해당 transaction은 lock를 획득할떄까지 대기 해야한다. 
+4. X,S lock모두 일반적인 경우 transaction이 끝날떄까지 유지된다. 
+
+## 2단계 로킹 protocol 
+
+![](/images/2phaselocking.png)
+
+2단계 로킹이란 lock을 요청하는 phase, lock을 반납하는 phase로 2단계로 나뉘는데 transaction이 연산을 수행하기전에 필요한 lock을 모두 획득한다. (확장단계) 그리고 연산을 수행한뒤 보유하고 있던 lock을 반납한다 (수축단계)
+
+
+## Locking 자체의 문제, DeadLock
+
+Lock 자체가 transaction간에 교착상태 (DeadLock)을 야기할 수 있다.  예를 들면 transaction A가 X라는 자원에 X lock을 가지고 Y라는 자원에 접근하고자 하는데
+
+transaction B는 Y라는 자원에 X lock을 가지고 X자원에 접근하는 상황을 가정해보면 두 transaction은 서로가 가진 lock을 획득하기 위해서 무한히 대기할 것이다. (Deadlock 상태)
+
+Deadlock을 꺠트릴려면 결국에 하나의 transaction 은 victim 으로 선택해 해당 transaction은 rollback 시킴으로서 lock를 풀어주어야 한다.

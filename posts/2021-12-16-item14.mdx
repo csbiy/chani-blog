@@ -1,0 +1,265 @@
+---
+id: 20
+title: "Item14. Comparable을 구현할지 고려하라."
+description: ""
+date: "2021-12-16 00:45:31"
+tags: ['Java', 'Effective Java 3/E']
+---
+compareTo는 단순 동치성 비교에 더해 순서까지 비교할 수 있으며, generic하다.
+
+```java
+public interface Comparable<T> {
+    public int compareTo(T o);
+}
+```
+
+comparable을 구현했다는 것은 그 클래스의 인스턴스들에 순서가 있음을 뜻한다. 그래서 Comparable을 구현한 객체들의 배열은 다음과 같이 정렬이 가능하다. 
+
+```java
+
+Arrays.sort(arrayOfInstance);
+
+```
+
+순서가 명확한 값 class를 작성한다면 Comparable 인터페이스 구현을 고려하자. 
+
+compareTo method의 일반 규약은 다음과 같다.
+
+<strong>
+<pre style="font-size="12px" "> 
+compareTo method는 주어진 객체와 this 객체의 순서를 비교한다. 
+this 객체가 주어진 객체보다 작으면 음의 정수 , 같으면 0 , 크면 양의 정수를 반환하고
+이 객체와 비교할수 없는 타입의 객체가 주어지면 ClassCastException을 던진다. 
+1. Comparable을 구현한 class는 모든 x,y에 대해서 sgn(x.compareTo(y)) == -sgn(y.compareTo(x)) 
+2. Comparable을 구현한 class는 추이성을 보장해야 한다. ( x.compareTo(y) > 0 && y.compareTo(z) > 0)이면 x.compareTo(z) > 0이다. 
+3. Comparable을 구현한 class는 모든 z에 대해 x.compareTo(y) == 0 이면, sgn(x.compareTo(z)) == sgn(y.compraeTo(z)) 다.
+4. 부가적으로 다음의 규약은 필수는 아니나 지키면 좋다.(x.compareTo(y) == 0) == x.equals(y) 여야 한다. 
+   만약 위 식이 성립하지 않는다면 이 클래스의 순서는 equals method와 일관되지 않음을 명시해야 한다. 
+</pre>
+</strong>
+
+
+compareTo규약을 지키지 못하면 비교를 활용하는 TreeSet, TreeMap, Collections,Array등의 클래스에서 제공해주는 API가 정상적으로 작동하지 않을 수도 있다. 
+
+
+
+equals와 마찬가지로 기존 클래스를 확장한 구체 클래스에서 새로운 값 타입을 추가했다면, compareTo규약을 지킬 방법이 없으므로, item10에서 설명했던 것처럼 상속 대신에 독립된 class를 만들고, 이 클래스에 원래 클래스의 인스턴스를 가르키는 필드를 두고, 해당 인스턴스를 가르키는 view method 를 만들어주면 된다.
+ 
+<!-- <img src="/images/2021-12-16/student.png" width="700px" height="700px" style="border:none !important">  -->
+
+예를 들어, 아래와 같은 학생 class가 있고, 키를 기준으로 정렬한다고하면 comparable은 다음과 같이 overriding할 수 있을 것이다. 
+
+```java
+
+@Getter
+@EqualsAndHashCode
+@ToString
+public class Student implements Comparable<Student> {
+
+    private String name;
+
+    private Float height;
+
+    private Student(String name, Float height) {
+        this.name = name;
+        this.height = height;
+    }
+
+    public static Student studentWithHeight(String name, Float height){
+        return new Student(name,height);
+    }
+
+    @Override
+    public int compareTo(Student o) {
+        return Float.compare(this.height,o.height);
+    }
+
+}
+
+
+```
+
+score 값을 추가하고자 할떄 student class를 상속하는 경우에는 equals와 compareTo 를 적절히 사용할 수 없기 때문에 (item 10 참조) 다음과 같이 멤버 변수로 값을 추가하고, 학생 타입은 view method로 꺼내서 비교한다. 
+
+
+```java
+@Getter
+@ToString
+public class StudentScore implements Comparable<StudentScore>  {
+    private Student student;
+
+    private Integer score;
+
+    public Student asStudent(){
+        return this.student;
+    }
+
+    private StudentScore(Student student, Integer score) {
+        this.student = student;
+        this.score = score;
+    }
+
+    public static StudentScore studentWithScore(Student student, Integer score){
+        return new StudentScore(student,score);
+    }
+
+    @Override
+    public int compareTo(StudentScore o) {
+        int result = Integer.compare(this.score, o.score); // 우선 순위 1 : 점수
+        if(result == 0){
+            result = this.asStudent().compareTo(o.asStudent()); // 우선 순위 2 : 학생 키
+        }
+        return result;
+    }
+}
+
+```
+
+```java
+class StudentTest {
+
+
+    Student studentA = Student.studentWithHeight("철수",171.2f);
+    Student studentB = Student.studentWithHeight("영희",184.3f);
+    Student studentC = Student.studentWithHeight("아기",120.1f);
+
+    @Test
+    void compareToTest(){
+        Student[] studentList = new Student[]{studentA,studentB,studentC};
+        Arrays.sort(studentList);
+        assertThat(studentList).containsExactly(studentC,studentA,studentB);
+    }
+
+    @Test
+    void compareScoreTest(){
+        StudentScore studentScoreA = StudentScore.studentWithScore(studentA, 100);
+        StudentScore studentScoreB = StudentScore.studentWithScore(studentB, 100);
+        StudentScore studentScoreC = StudentScore.studentWithScore(studentC, 500);
+        StudentScore[] studentScores = {studentScoreA, studentScoreB, studentScoreC};
+        Arrays.sort(studentScores);
+        assertThat(studentScores).containsExactly(studentScoreA,studentScoreB,studentScoreC);
+    }
+
+}
+```
+
+compareTo의 마지막 규약은 필수는 아니나, compareTo method로 수행한 동치성 결과가 equals 결과와 같아야 한다는 것이다. 
+이를 잘 지키면 compareTo로 줄지은 순서와 equals의 결과가 일관되게 한다. 
+
+compareTo의 순서와 equals의 결과가 일관되지 않아도 class는 여전히 동작은 하지만 Collection이 제공하는 API에서 오류를 발생할 수 있다.
+
+예를 들면 , BigDecimal class는 hashSet에서는 equals, TreeSet에서는 compareTo로 비교한다. 
+
+```java
+    @Test
+    void bigDecimal(){
+        BigDecimal decimalA = new BigDecimal("1.0");
+        BigDecimal decimalB = new BigDecimal("1.00");
+
+  
+        Set<BigDecimal> hashDecimal = new HashSet<>();
+        hashDecimal.add(decimalA);
+        hashDecimal.add(decimalB);
+      // size : 2
+        Set<BigDecimal> treeDecimal = new TreeSet<>();
+        treeDecimal.add(decimalA);
+        treeDecimal.add(decimalB);
+      // size: 1
+        assertThat(hashDecimal.size()).isNotEqualTo(treeDecimal.size());
+    }
+```
+
+compareTo method 작성 요령은 equals와 비슷하다. 몇가지 차이점이 있는데, 
+
+1. Comparable 은 타입을 인수로 받는 generic Interface임으로, compareTo method의 인수 타입은 컴파일 타임에 정해진다. 
+   (굳이 런타임에 형변환하는 건 당연히 안하는게 좋다. )
+
+2. null을 인수로 넣어 호출하면 NullPointerException이 발생해야 한다. 어짜피 필드 값을 비교하려고 할떄, 객체가 null임으로 NPE가 발생할 것이다. 
+
+3. compareTo는 equals와 다르게 동치인지를 비교하는게 아니라 순서를 비교한다. 객체 참조 필드를 비교하려면 compareTo method를 재귀적으로 호출하면 된다. 
+
+
+- Comparable 을 구현하지 않은 필드나 표준이 아닌 순서로 비교해야 한다면 Comparator 를 대신 사용한다. 
+
+```java
+public final class CaseInsensitiveString  implements Comparable<CaseInsensitiveString>{
+
+    String s;
+    @Override
+    public int compareTo(CaseInsensitiveString o) {
+        // java 제공 comparator
+        return String.CASE_INSENSITIVE_ORDER.compare(s,o.s);
+    }
+}
+```
+
+위의 연습 예제였던 학생 class에 comparator를 적용하면 다음과 같다 , 람다를 활용하면 클래스 파일을 별도로 생성하지 않고, 조금 더 깔끔하게 코드를 구현할 수 있다. 
+
+```java
+
+    @Test
+    @DisplayName("인터페이스 방식 ")
+    void compartorTest() {
+        
+        // List.of는 unmodifiableList 를 만들기 때문에 sort 연산이 지원되지 않음 
+        List<Student> studentList = new ArrayList<>(List.of(this.studentA, studentB, studentC));
+        Collections.sort(studentList,new MyComparator());
+        assertThat(studentList).containsExactly(studentC,studentA,studentB);
+    }
+    @Test
+    @DisplayName("람다 방식 ")
+    void compartorTest_Lambda() {
+
+        List<Student> studentList = new ArrayList<>(List.of(this.studentA, studentB, studentC));
+        Collections.sort(studentList,(x,y)->Float.compare(x.getHeight(),y.getHeight()));
+        assertThat(studentList).containsExactly(studentC,studentA,studentB);
+    }
+
+```
+
+- boxing된 primitive type들에 새로 정의된 정적 method인 compare를 이용해서 값을 비교하라 
+
+java 7이전 부터는 boxing된 primitive type들에 새로 정의된 정적 method인 compare가 없었기 떄문에 부등호(>,<>) 로 값을 비교하였는데, java7부터는 이를 지원해주기 때문에, 실수가 발생할 수 있는 부등호보다는 정적 메소드를 사용하는게 좋다.
+
+위 예제들도 모두 정적 메소드를 사용해서 구현하였다. 
+
+- class에 핵심 필드(비교하고자 하는 필드) 가 여러 개인 경우, 가장 핵심적인 필드부터 비교하자 
+
+가장 필터링이 많이 되는 필드부터 비교하면 성능상 이점이 있다. 
+
+```java
+
+  @Override
+    public int compareTo(PhoneNumber o) {
+        int result = Short.compare(areaCode,o.areaCode);
+        //동치라면 또 다시 비교
+        if(result == 0) {
+             result = Short.compare(prefix,o.prefix);
+             if(result == 0){
+                 result = Short.compare(lineNum,o.lineNum);
+             }
+        }
+        return result;
+    }
+
+```
+
+- java 8부터는 Comparator 인터페이스가 일련의 비교자 생성 method를 통해 method chaining 방식으로 비교자를 생성할 수 있게 되었다. 
+
+약간의 성능저하가 있지만, 활용시 코드를 간결하게 작성할 수 있다. 
+
+```java
+    private static final Comparator<PhoneNumber> COMPARATOR =
+            comparingInt((PhoneNumber pn)-> pn.areaCode)
+                    .thenComparingInt(pn->pn.prefix)
+                    .thenComparingInt(pn->pn.lineNum);
+
+    @Override
+    public int compareTo(PhoneNumber o) {
+        return COMPARATOR.compare(this,o);
+    }
+```
+
+#### 정리 
+
+순서를 고려하는 값 class 의 경우에는 comparable 인터페이스를 구현하여 Collection API를 돌렸을때 정상 작동하도록 해야 하고, compareTo method에서 필드값 비교할때는 부등호로 실수할 여지를 주지말고, boxing된 primitive type class가 제공하는 정적 compare method나 Compartor 인터페이스를 사용하자.

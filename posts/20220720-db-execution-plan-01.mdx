@@ -1,0 +1,39 @@
+---
+id: 71
+title: "Execution Plan 이란?"
+description: ""
+date: "2022-07-20 22:41:35"
+tags: ['Computer Science', 'Database']
+---
+## Execution Plan 
+
+- 사용자가 실행한 sql을 어떤 방식으로 처리할 것인지에 대한 실행 계획으로 Optimizer에 의해 만들어짐. 
+
+
+![](/images/tuning-01.png)
+
+1. SQL 파싱과정을 통해 SQL에 문법적인 오류 없는지 검사
+2. 해당 SQL을 이전에 실행한 적이 있는지 SHARED POOL 메모리 검사. 만약 실행 기록이 있다면 그대로 실행 (```SOFT PARSING```)
+3. 만약 실행기록이 없다면 새로 실행 계획을 세운다. (```HARD PARSING```)
+
+
+## 접근 경로 (Access Path)
+
+(참조 : https://docs.oracle.com/database/121/TGSQL/tgsql_optop.htm#TGSQL228)
+
+- 실행 계획에서 Optimizer게 데이터를 읽을때 데이터를 접근하는 방식 
+
+1. FULL TABLE SCAN : 테이블 전체 데이터를 읽어 조건에 맞는 데이터 추출
+2. ROWID SCAN : ROWID를 기준으로 데이터를 추출
+3. INDEX SCAN:  인덱스 사용하여 추출
+
+## 무조건 TABLE SCAN 보다 INDEX SCAN이 우월한가? 
+
+- 사용용도에 따라 다름. 배치 처리를 위해 전체 데이터를 읽어들여 통계자료 생성시에는 TABLE SCAN이 유리 
+
+## INDEX SCAN의 종류 
+
+
+1. INDEX UNIQUE SCAN : 한건이하의 ROWID를 반환하는 방식
+2. INDEX RANGE SCAN : 한건이상의 필요한 데이터가 포함된 일정범위의 인덱스 블록을 오름차순으로 접근
+3. INDEX SKIP SCAN 

@@ -1,0 +1,30 @@
+---
+id: 88
+title: "Item12. toString은 항상 overriding하자"
+description: ""
+date: "2021-12-12 14:17:22"
+tags: ['Java', 'Effective Java 3/E']
+---
+Object toString 은 별도로 overrriding 하지 않는 경우에는 class명@16진수_해시코드 를 반환한다. 
+
+```java
+ getClass().getName() + '@' + Integer.toHexString(hashCode())
+```
+
+Object 명세에 보면 toString은 간결하며, 사람이 읽기 쉬운 형태의 정보를 반환해야 하며, 
+
+toString을 overrding한 모든 하위 클래스에서도 toString 을 재정의해야 하며, 해당 객체가 가진 주요 값 필드를 반환하는게 바람직하다.
+(https://docs.oracle.com/javase/7/docs/api/java/lang/Object.html)
+
+
+- toString을 재정의하면 다음과 같은 장점을 가지고 있다.
+
+  1. 해당 객체의 주요필드를 로그에 남김으로 빠른 디버깅 가능 
+
+
+- 선택사항 : toString 사용시 포맷을 문서화 여부 
+
+  - 값 class라면 문서화하는 것을 권장하나, 단점은 해당 포맷에 종속된다. 
+
+
+- 포맷 명시 여부와 상관없이 toString 반환 값에 포함된 정보를 가져올 수 있는 API 제공해야 함

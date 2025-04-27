@@ -1,0 +1,42 @@
+---
+id: 39
+title: "Item36. 비트 필드 대신 EnumSet을 사용하라"
+description: ""
+date: "2022-01-11 22:55:10"
+tags: ['Java', 'Effective Java 3/E']
+---
+열거한 값들이 주로 집합으로 사용될 경우, 예전에는 각 상수에 서로 다른 2의 거듭제곱 값을 할당한 정수 열거 패턴을 사용해왔다.
+
+다음과 같이 비트별 OR를 사용해 여러 상수를 하나의 집합으로 모을 수 있으며, 이렇게 만들어진 집합을 bit field라 한다. 
+```java
+public class Text {
+
+    public static final int STYLE_BOLD = 1 << 0;
+    public static final int STYLE_ITALIC = 1 << 1;
+    public static final int STYLE_UNDERLINE = 1 << 2;
+    public static final int STYLE_STRIKETHROUGH = 1 << 3;
+    // 매개변수 styles는 0개 이상의 STYLE_상수를 비트별 OR한 값
+    public void applyStyles(int styles){...}
+
+}
+```
+
+bit field의 문제점은 비트별 연산을 통해 집합 연산은 효율적으로 수행할 수 있으나, 정수 열거 상수의 단점들에 추가로 비트 필드값이 그대로 출력되면 해석하기 더 어렵다는 단점이 있다. 
+
+
+
+## EnumSet
+
+비트 필드의 대안으로 EnumSet class는 열거 타입 상수의 값으로 구성된 집합을 효과적으로 표현해준다. (내부는 비트 벡터로 구현되어 있다. )
+
+```java
+public class Text {
+    public enum Style { BOLD,ITALIC,UNDERLINE,STRIKETHROUGH}
+
+    public void applyStyles(Set<Style> styles){}
+}
+```
+
+```java
+text.applyStyles(EnumSet.of(Style.ITALIC, Style.UNDERLINE));
+```

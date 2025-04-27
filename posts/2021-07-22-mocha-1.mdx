@@ -1,0 +1,141 @@
+---
+id: 74
+title: "brower javascript test하기(Mocha,NodeJs)"
+description: ""
+date: "2021-07-22 19:30:02"
+tags: ['Javascript']
+---
+##
+
+
+Nodejs의 express framework를 사용하여 Backend개발을 하면서 단위 테스트는 mocha를 활용하였다. 서버 코드는 mocha로 테스트를 진행하였는데,  browser(client) 쪽 javascript  도 mocha (javascript test framework)가 지원한다고 한다. 
+
+기본 템플릿은 다음과 같다 유의할점은 command line interfcae를 지원해주지 않고, html 을 통해서 테스트 결과를 확인할 수 있다. 
+
+mocha.setup('{mocha interface style}') ex) mocha.setup('bdd'),mocha.setup('tdd') 
+를 통해 테스트 인터페이스 스타일을 지정하고,
+
+test할 client javascript file을 import한다. 이떄, javsacript module 시스템을 브라우저에서 하려면
+type="module"을 명시해야 한다.
+
+* internet explorer는 아예 지원되지 않으니 참고하자. https://developer.mozilla.org/ko/docs/orphaned/Web/JavaScript/Guide/Modules
+
+javascript에서 module loading 방식은 여러개가 있다. 아래에 간략하게 정리하였다. 
+
+<hr>
+1. AMD(Asynchronous module definition) module loader
+   
+   - AMD는 네트워크를 통해서 모듈을 받아야하는 브라우저 환경에서 javascript 환경에 유연하다.
+   - 비동기적으로 모듈을 import 할 수 있다. 
+   - define syntax를 사용한다. 
+
+<hr>
+2. CommonJs module loader 
+
+   - module.export , require syntax 로 모듈을 export, import 한다.
+   - 필요한 모든 파일이 로컬 디스크에 있다는 전제로 한다. 즉 serverside javascript 환경을 전제로 한다.
+
+<hr>
+3. ECMAScript 6 (ES6)
+   
+   - ES6부터 javascript module을 기본적으로 지원한다. 
+   - export, import ~ from "path.js" syntax로 모듈을 export,import한다. 
+   - Typescript에서는 ES6방식의 syntax를 지원한다. 
+<hr>
+
+(Reference to CommonJS vs AMD : https://d2.naver.com/helloworld/12864)
+
+
+실제로는 Commonjs 와 AMD방식을 모두 지원하는 module bundler (ex) webpack , browserify ) 를 통해 의존관계에 있는 모듈들을 엮어서 하나의 bundle 파일로 만드는 방식을 자주 사용한다. 
+
+아래의 테스트 환경은 node js에서 작성한 코드를 browserify라는 module bundler를 사용하여 의존관계가 있는 모듈들을 하나의 파일로 엮었다. (test_bundle~.js )
+
+(Reference to browserify module bundler : https://github.com/browserify/browserify )
+
+
+```html 
+<!-- test.html -->
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+    <script>var exports = {};</script>
+    <meta charset="utf-8" />
+    <title>Mocha Tests</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="https://unpkg.com/mocha/mocha.css" />
+  </head>
+  <body>
+    <div id="mocha"></div>
+
+    <script src="https://unpkg.com/chai/chai.js"></script>
+    <script src="https://unpkg.com/mocha/mocha.js"></script>
+
+    <script class="mocha-init">
+      mocha.setup('bdd');
+      mocha.checkLeaks();
+    </script>
+    <script type="module" src="./bundle_testCalculator.js"></script>
+    <script class="mocha-exec">
+      mocha.run();
+    </script>
+  </body>
+</html>
+```
+```javascript
+// calculator.ts
+class Calculator{
+    constructor(){
+    }
+    public static add(num1:number,num2:number) :number{
+        return num1+num2;
+    }
+    public static minus(num1:number,num2:number):number{
+        return num1-num2;
+    }
+    public static multiply(num1:number,num2:number):number{
+        return num1*num2;
+    }
+    public static divide(num1:number,num2:number):number{
+        return num1/num2;
+    }
+}
+
+export {Calculator};
+```
+
+테스트에 사용할 샘플 코드를 작성하였다. 간단하게 계산기 기능을 구현한 class이다. 
+
+```javascript
+// testCalculator.ts
+import * as assert from "assert";
+import {describe,it} from "mocha";
+import {Calculator} from "./calculator";
+
+describe("test Calculator on browser",()=>{
+    // -- testcase ---
+    const num1=20;
+    const num2=30;
+    // -----------
+    it("should add number",():void=>{
+        assert.strictEqual(Calculator.add(num1,num2),num1+num2);
+    })
+    it("should minus number",():void=>{
+        assert.strictEqual(Calculator.minus(num1,num2),num1-num2);
+    })
+    it("should multiply number",():void=>{
+        assert.strictEqual(Calculator.multiply(num1,num2),num1*num2);
+    })
+    it("should divide number",():void=>{
+        assert.strictEqual(Calculator.divide(num1,num2),num1/num2);
+    })
+    it("실패할 테스트입니다.",()=>{
+        assert.strictEqual(Calculator.add(num1,num2),num1*num2);    
+    })
+})
+
+```
+
+
+![](/images/browser-mocha-result.jpg)
+
+live server로 해당 html 을 열어보면 테스트 결과가 출력되는 것을 확인할 수 있다.

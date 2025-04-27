@@ -1,0 +1,88 @@
+---
+id: 160
+title: "nGrinder"
+description: ""
+date: "2024-07-22 21:07:51"
+tags: ['Load Testing']
+---
+## nGrinder란? 
+
+nGrinder는 네이버에서 만든 오픈소스 부하 테스트 도구입니다.
+
+nGrinder에서는 아래의 load parameter를 통해 performace test 결과를 보여줍니다. 
+
+테스트 결과를 바탕으로 target server가 동시 접속자 수 x명(`vUser`)일때, 서버가 적절한 response time으로 응답하는지 peak TPS는 어떻게 되는지, MTT는 어떻게 되는지 등을 판단할 수 있습니다. 
+
+
+| 매개변수               | 설명                                                                                      |
+|-----------------------|-------------------------------------------------------------------------------------------|
+| TPS                   | 초당 처리한 요청 수를 나타냅니다.                                                          |
+| Peak TPS              | TPS가 가장 높을 때, 즉 초당 처리 가능한 최대 요청 수를 나타냅니다.                            |
+| MTT (Mean Test Time)  | 개별 테스트의 평균 수행 시간으로, API 호출 외의 시간이 포함될 수 있습니다. [nGrinder QNA](http://ngrinder.373.s1.nabble.com/ngrinder-user-kr-vuer-증가와-MTT에-대한-문의-td1127.html)에서 평균 API 응답시간이라고 설명됩니다. |
+| MTTFB (Mean Time to First Byte) | 테스트 이후 테스트 타겟 서버로부터 첫 번째 바이트를 응답받기까지의 평균 시간입니다. (평균 API 응답시간과 동일) |
+| Executed Tests        | 실행한 테스트 수를 나타냅니다.                                                             |
+
+
+## nGrinder Architecture
+
+nGrinder는 2개의 주요 구성 요소로 구성됩니다:
+
+- **Controller**: 성능 테스트를 위한 웹 UI를 제공하며, 테스트 결과를 시각화하고 에이전트 풀을 관리하며, 테스트 스크립트를 생성, 수정, 삭제합니다.
+- **Agent**: 테스트 대상 서버에 실제 부하를 주는 서버로, API 사용자 역할을 합니다.
+
+![nGrinder Architecture](/images/nGrinder-01.png)
+
+Controller와 Agent는 12001~120XX 포트를 사용하여 통신합니다.
+
+
+
+## 테스트 스크립트 실행시..
+
+- Controller는 내장 SVN 서버를 포함하여 스크립트 코드를 버전 관리합니다.
+- Controller UI에서 테스트 스크립트를 실행하거나 예약할 수 있으며, 사용 가능한 에이전트를 풀에서 동적으로 할당하여 테스트 스크립트를 실행합니다.
+- Agent 서버가 대상 서버에 부하를 줍니다.
+
+
+## test configuration parameters
+
+![nGrinder test configuration](/images/nGrinder-03.png)
+
+| 필드            | 설명                                                        |
+|-----------------|-------------------------------------------------------------|
+| Agent           | 사용할 Agent 개수를 설정합니다.                                |
+| Vuser per agent | Agent 당 생성할 가상 사용자(vUser) 수로, Process * Thread 개수로 결정됩니다. |
+| Script          | Agent에서 실행할 테스트 스크립트를 선택합니다.                    |
+| Target Host     | 모니터링할 대상 서버를 설정합니다.                               |
+| Duration        | 각 테스트의 실행 시간을 설정합니다.                              |
+| Run Count       | 수행할 테스트 개수를 설정합니다. (API 호출 개수와 동일)               |
+
+전체 vUser는 아래와 같이 계산됩니다.
+
+```math
+vUser = Agent * Process * Thread
+```
+
+duration으로 부하 테스트를 지정 시간동안 돌릴 수 있고, Run Count로 테스트 개수별로 threshold를 주어 돌릴 수도 있습니다.
+
+
+## nGrinder Agent 설정
+
+nGrinder Agent는 Controller에서 다운로드하여 실행할 수 있습니다. 
+
+
+![nGrinder Agent Donwload](/images/nGrinder-02.png)
+
+설정 파일 (`ngrinder_agent/agent.conf`)을 통해 Agent의 설정 값을 지정할 수 있습니다.
+
+```bash
+common.start_mode=agent
+agent.controller_host=X.X.X.X ## Controller IP 주소
+agent.controller_port=160XXX ## Controller와 통신할 포트 번호
+agent.region=XXXX ## Agent의 지역 설정
+agent.host_id=test_agent_name ## Agent 이름 설정
+```
+
+**Reference**
+
+- [nGrinder Releases](https://github.com/naver/ngrinder/releases)
+- [nGrinder Architecture](https://github.com/naver/ngrinder/wiki/Architecture)

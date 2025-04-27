@@ -1,0 +1,166 @@
+---
+id: 46
+title: "Item18. 상속보다는 Composition을 사용해라"
+description: ""
+date: "2021-12-18 21:19:57"
+tags: ['Java', 'Effective Java 3/E']
+---
+## 상속의 단점 
+
+- 상속은 캡슐화를 꺠트린다. 
+  
+상위 class 내부 구현 변경에 따라 하위 class가 영향을 받을 수도 있다.  상위 class가 확장을 충분히 고려해두고 설계되지 않으면 하위 class는 상위 class의 변화맞추어 수정되야 한다. 
+
+
+hashSet에서 원소가 하나 추가될떄마다 count해주기 위해서 다음과 같이 HashSet을 상속받은 클래스가 있다고 가정하자.
+```java
+public class InstrumentedHashSet<E> extends HashSet<E> {
+
+    private int addCount = 0;
+
+    public InstrumentedHashSet() {
+    }
+
+    public InstrumentedHashSet(int initialCapacity, float loadFactor) {
+        super(initialCapacity, loadFactor);
+    }
+
+    @Override
+    public boolean addAll(Collection<? extends E> c) {
+        addCount += c.size();
+        return super.addAll(c);
+    }
+
+
+    @Override
+    public boolean add(E e) {
+        addCount++;
+        return super.add(e);
+
+    }
+}
+
+```
+
+위 class는 실제로 Test해보면 정상작동하지 않는다는 것을 알 수 있다. HashSet의 addAll이 내부적으로 add를 호출하기 떄문이다. addAll을 overriding안하면 해결되겠지만, 이는 HashSet의 내부구현방식이 변경되면 작동하지 않는다.
+
+```java
+class InstrumentedHashSetTest {
+
+    @Test
+    void test(){
+        InstrumentedHashSet<String> s = new InstrumentedHashSet<>();
+        s.addAll(List.of("str1","str2","str3"));
+        Assertions.assertThat(s.getAddCount()).isEqualTo(3); // fail
+    }
+
+}
+
+```
+
+또한 상위 class에서 추가된 methoid가 하위 classs의 method와 동일한 시그니처,다른 반환타입을 가진다면 컴파일 에러가 날 것이다. 
+
+## Composition 
+
+- 기존 class를 확장하는 대신 , private 필드로 기존 class의 인스턴스를 참조하도록 하는 방식 
+
+- 기존 class가 새로운 class의 구성요소로 쓰인다는 점에서 Composition (구성) 이라고 부른다. 
+
+- Forwarding: 새로운 class의 method(forwarding method) 들이 기존 class 에 대응되는 method를 호출하여 결과를 반환하는 방식 
+  (새로운 class가 wrapper class로 작동하고 , 반환하는 과정에서 기능 추가가 가능하다)
+
+```java
+//Wrapper Class
+public class ForwardingSet<E> implements Set<E>{
+
+    // composition
+    private final Set<E> s;
+
+    public ForwardingSet(Set<E> s) {
+        this.s = s;
+    }
+    // forwarding method 
+    public boolean addAll(Collection<? extends E> c) {return s.addAll(c); }
+
+    public boolean add(E e) { return s.add(e); }
+
+
+```
+
+- Proxy 를 활용한 여러 디자인 패턴에서 활용된다. 대표적으로 Decorator 패턴이 존재한다. 
+
+
+## Decorator pattern 
+<blockquote>
+
+객체에 추가적인 요건을 동적으로 첨가한다.
+Decorator pattern은 서브 클래스를 만드는 것을 통해서 기능을 유연하게 확장할 수 있는 방법을 제공한다. 
+
+</blockquote>
+
+
+```java
+public interface Beverage {
+    double getCost();
+}
+```
+
+```java
+public class Coffee implements Beverage{
+
+    private final double cost = 2000;
+
+    @Override
+    public double getCost() {
+        return cost;
+    }
+}
+```
+
+```java
+public class Whipping implements Beverage{
+
+    // Composition 
+    private final Beverage beverage;
+    private final double cost = 500;
+
+    public Whipping(Beverage beverage) {
+        this.beverage = beverage;
+    }
+    // 기능 추가
+    @Override
+    public double getCost() {
+        // forwarding 
+        double cost = beverage.getCost();
+        return cost + this.cost;
+    }
+}
+
+```
+
+```java
+Beverage beverage = new Whipping(new Coffee());
+```
+
+- Composition과 전달의 조합은 넓은 의미로는 위임(delegation)이라고 하는데, 정확히는 Wrapper 객체가 내부 객체에 자기 자신의 참조를 넘기는 경우만 위임에 해당 된다. 
+
+
+- 구현체가 여러개 있을떄, 전달 method을 매 구현체마다 작성하는 대신 공통적인 전달 method 묶음을 인터페이스로 만들어두면 편리하게 구현할 수 있다. 
+
+
+## Composition의 단점
+
+- callback framework 와 같이 자기 자신의 참조를 다른 객체 넘겨서 다른 객체에서 호출하는 경우 문제가 생길수도 있다. 
+
+(코드 예시 참조 : https://coderanch.com/t/670687/java/wrapper-class-suitable-callback-framework)
+
+
+
+
+## 상속을 사용하는 상황 
+클래스 A를 상속하는 클래스 B를 작성하려고 하면 ,  B is-a A 관계일떄만 클래스를 상속해야 한다.
+
+
+## 정리 
+
+상속은 상위 class가 변경됨에따라 하위class가 영향을 받으므로, 캡슐화를 해친다는 문제가 있다. 순수한 is-a관계일떄만 사용을 지향해야하고, 상속의 문제점을 피하려면 Composition과 전달을 사용하자

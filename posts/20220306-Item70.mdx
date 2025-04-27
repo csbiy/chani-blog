@@ -1,0 +1,39 @@
+---
+id: 166
+title: "Item70. 복구할 수 있는 상황에는 검사 예외를, 프로그래밍 오류에는 런타임 예외를 사용하라"
+description: ""
+date: "2022-03-06 16:46:53"
+tags: ['Java', 'Effective Java 3/E']
+---
+-Java는 문제 상황을 알리는 타입 (Throwable)으로 3가지 ( 검사 예외, 런타임 예외 , 에러 ) 를 제공한다. 
+
+<div style="width:700px; height:500px">
+
+<div style="margin:0 auto">
+
+![](/images/Item70.png)
+
+</div>
+</div>
+
+(ref- https://butter-shower.tistory.com/87 )
+
+- RuntimeException은 예외처리를 하지 않아도 컴파일 가능한 비검사형 예외이며, 검사형 예외(ex) IllegalAccessException)는 예외 처리를 하지 않으면 컴파일 오류가 터지므로 꼭 처리해주어야 하는 예외이다. 
+
+- Error class도 비검사형 예외에 속하며, Exception class 와 차이점은 시스템레벨에서 비정상적인 상황이 발생한 심각한 수준의 오류라고 한다. 반면 Exception은 개발자가 구현한 로직에서 발생한 오류이다. 
+
+
+
+## 어떤 상황에서 어떤 예외 타입을 사용해야 하는가?
+
+- <strong> 호출하는 쪽에서 복구하리라 판단되는 상황에서는 검사 예외를 사용하라. </strong> 검사 예외를 사용하면 client가 예외를 처리하거나 더 바깥쪽으로 throw 하도록 강제하게 된다. 
+
+- 검사 예외는 복구할 수 있는 조건에서 사용됨으로, client가 복구하기 편하게 필요한 정보를 알려주는 method를 제공해주면 좋다. 
+
+- 보통 API 설계자가 검사 예외를 사용했다는 말은 이 API를 사용하는 client가 이를 처리해야 한다고 요구한것이며, 이를 그냥 잡기만 하고 별도로 처리하지 않는 경우는 대부분 바람직하지 않다고 한다. 
+
+- <strong> 프로그래밍 오류를 나타내는 상황에서는 런타임 예외를 사용하라. </strong> 런타임 예외 대부분은 API를 호출한 client가 전제 조건을 만족시키지 못했을때 발생한다. 예를 들면 ArrayIndexOutOfBoundException 이 있다.
+
+- 에러는 시스템레벨의 오류이니, 에러 클래스를 상속해 하위 클래스를 만드는 행위는 지양하는 것을 권고하고 있다. 따라서 개발자가 만드는 비검사예외는 모두 RuntimeException의 하위 클래스여야 한다. (AssertionError 제외)
+
+- 추가로 Exception,RuntimeException,Error 를 모두 상속하지 않는 Throwable 인터페이스를 구현하는 것은 혼란만 주니 절대 사용하지 말라고 권고하고 있다.

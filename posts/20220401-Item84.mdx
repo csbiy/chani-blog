@@ -1,0 +1,56 @@
+---
+id: 98
+title: "Item84. 프로그램의 동작을 Thread Scheduler 에 기대지 말라"
+description: ""
+date: "2022-04-01 00:37:24"
+tags: ['Java', 'Effective Java 3/E']
+---
+- 실행 가능한 Thread의 평균적인 수를 processor 수보다 지나치게 많아지지 않도록 유지하는게 좋다. 그래야만 Thread scheudling 정책이 상이한 시스템에도 다른 시스템들과 동작이 크게 달라지지 않는다.
+
+## 실행 가능한 Thread 수를 적게 유지하는 기법 (불필요한 Thread 를 만들지 않는 방법) 
+
+1. Thread 가 busy wait 상태가 되지 않게 한다. 즉 처리할 작업이 없다면 실행되지 않도록 한다. 
+
+공유 객체의 상태가 바뀔떄까지 쉬지 않고 검사해서는 안된다는 뜻이다. busy wait는 processror 에 큰 부담을 주어 다른 유용한 작업이 실행될 기회를 박탈한다. 
+
+```java
+public class SlowCountDownLatch {
+
+    private int count;
+
+    public SlowCountDownLatch(int count){
+        if(count < 0 ){
+            throw new IllegalArgumentException(count + " < 0");
+        }
+        this.count = count;
+    }
+
+    public void await(){
+        while (true){ // busy wait
+            synchronized (this){
+                if(count == 0){
+                    return;
+                }
+            }
+        }
+    }
+
+    public synchronized void countDown(){
+        if(count != 0){
+            count --;
+        }
+    }
+}
+```
+위의 예제코드는 불필요하게 공유 객체를 검사하며 기다리는 busy wait 예시이다. 
+
+## Thread.yield
+
+- Thread.yield() method는 현재 thread 는 실행 대기 상태로 되고, 다른 우선순위가 높은 thread 를 실행시키는 method이다. 
+- 저자는 Thread.yield() 는 단기적으로 현재 개발환경에서 성능을 올려줄수는 있지만, 이식성은 오히려 떨어지며 test가능한 수단도 없으므로 되도록이면 지양하라고 권고하고 있다. 
+
+
+## 정리 
+
+- Thread scheduler 에게 프로그램의 동작을 결정하게 thread 우선순위에 의존하면 안된다. 이는 프로그램이 배포될 환경에 따라 동작이 달라지는 등 이식성이 매우 떨어진다.
+- Thread scheduler 로 프로그램을 고치는 용도로 사용하면 안된다

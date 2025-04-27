@@ -29,7 +29,7 @@ export function getAllPosts() {
 }
 
 // 특정 id에 해당하는 글 가져오기 (메타 + 본문)
-export function getPostById(id: number) {
+export async function getPostById(id: number) {
   const fileNames = fs.readdirSync(postsDirectory);
 
   for (const fileName of fileNames) {
@@ -38,6 +38,8 @@ export function getPostById(id: number) {
     const { data, content } = matter(fileContents);
 
     if (data.id === id) {
+      // MDX 컨텐츠 직렬화
+      // console.log(content)
       return {
         id: data.id,
         title: data.title,
@@ -45,7 +47,7 @@ export function getPostById(id: number) {
         date: data.date,
         tags: data.tags,
         discussionId: data.discussionId,
-        content,
+        content: content,
       };
     }
   }

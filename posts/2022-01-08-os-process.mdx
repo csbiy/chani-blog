@@ -1,0 +1,71 @@
+---
+id: 102
+title: "Process"
+description: ""
+date: "2022-01-08 21:55:49"
+tags: ['Computer Science', 'OS']
+---
+## Process concept 
+
+- program : disk 상에 존재하며,  명령어의 모음 
+- process : program이 os로부터 메모리를 할당받아 실행중인 상태로 memory 부분이 code / data(전역변수,static 변수) / stack(지역변수,함수 매개변수,함수 return주소) / heap(malloc과 같은 system call을 호출하여 동적으로 할당되는 영역) 영역과 program counter 나뉜다 
+
+정확히 얘기하면 초기 OS 에서는 program의 전체 영역을 메모리에 올렸지만, 현대 OS에서는 필요한 영역만 메모리에 올리는 데 이 부분은 paging , swapping 과 관련된 개념이다. 
+
+ ![](/images/program_in_memory.png)
+
+(ref - https://gabrieletolomei.wordpress.com/miscellanea/operating-systems/in-memory-layout/ )
+
+## Process State
+
+![](/images/process-state.jpg)
+
+
+- new state : process가 처음 메모리에 load된 상태 
+- ready state : process가 cpu에 의해 실행될 수 있는 상태 
+
+ready state에서 OS의 scheduling 정책에 따라 cpu를 할당해줄 process를 선택한다. 선택된 process는 running state가 된다. 
+
+- running state : process가 cpu에 의해 실행되고 있는 상태 
+
+running state에서는 3가지 state로 분기할 수 있다. 
+
+1. ready state : OS는 선점형 (pre-emptive) 방식으로 time quantuam (일반적으로 10ms) 간격으로 process가 termination state 가 되지 않으면 timer interrupt를 걸어준다. (Time sharing , 시분할 시스템 ) 따라서 timer interrupt 된 process는 다시 ready state가 된다.
+2. waiting state : process가 I/O 요청시 I/O응답이 오기전까지 CPU는 다른 process를 실행한다. I/O 작업 완료전까지는 waiting state가 되고, I/O 작업이 완료되면 다시 ready state가 된다. 
+3. termination state: process가 time quantuam이내에 정상 수행 종료된다. 
+
+정상 상태는 아니지만 예외적인 process 상태가 있다. UNIX system 에서는 zombie process 라고 부르는데 부모 process 가 fork() system call을 통해 부모 process와 동일한 code를 가진 자식 process를 생성하면 , 자식 process 는 exec() system call을 통해 새로운 code로 덮어씌워진 뒤 실행된다. 부모 process는 자식 process가 종료될떄까지 기다리고 자식 process 가 사용한 resource를 os에게 회수를 요청한다 (reaping)
+
+부모 process , 자식 process 종료가 비정상적으로 일어났을때 나타날수 있는 process 상태는 다음과 같다.
+
+1. zombie process : 자식 process가 비정상적으로 종료되어 부모 process는 waiting 중인 상태로 child process 의 resource가 반납이 안되고 있는 상태
+
+부모 process가 kernel에게 resource 회수를 요청하지 못하고 있는 상태로 memory 누수현상이 발생한다.
+
+2. orphan process : 반대로 parent process 가 wait() 하지않고 종료된 경우 자식 process는 orphan process가 된다. 
+
+
+
+
+## Process 관련 자료구조 
+
+
+- Process Control Block (PCB) : process 는 os에서 PCB라는 자료구조로 관리된다. 앞서 정리한 process state도 이 process control block 자료구조에 필드로 가지고 있다. 
+
+![](/images/process-control-block.jpg)
+
+PCB 에 포함된 필드들은 다음과 같다.
+
+0. PID (process id)
+1. process state
+2. program counter : process의 다음에 실행할 명령어를 가르키는 pointer 
+3. cpu registers : process가 cpu에 의해 실행중일떄 cpu register 의 상태값을 저장해둔다. interrupt 되고나서 다시 rescheduling되었을때 process context를 복구하기 위해서 저장한다. 
+4. CPU-scheduling information : process priority나 scheduling parameter 등을 저장한다.
+5. Memory-management information : base,limit register 값이나 page table 또는 segment table에 대한 참조값을 저장한다. 
+6. I/O status information : 해당 process가 열고 있는 file 이나, process에 할당된 I/O Device 정보등을 저장한다. 
+
+<!-- ## CPU Virtualization
+
+OS는 물리적인 자원인 CPU를 가상화하여 적은 개수의 CPU가 있더라도 마치 여러개의 CPU가 있는 것처럼 보이게 해준다. 
+
+## Time sharing , 시분할 시스템  -->

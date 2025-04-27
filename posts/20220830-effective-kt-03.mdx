@@ -1,0 +1,37 @@
+---
+id: 115
+title: "Effective Kotlin - Item03. 최대한 플랫폼 타입을 지양하자"
+description: ""
+date: "2022-08-30 20:48:33"
+tags: ['kotlin']
+---
+## Platform Type
+
+- 코틀린의 Null 타입 안정성은 자바에서 빈번하게 볼수 있었던 NPE (Null-Pointer Exception)이 발생할 포인트를 줄여준다.
+
+- 문제는 코틀린과 다른 프로그래밍 언어를 연결해서 사용할때이다. 아래와 같이 annotation 으로 nullable 여부를 판단할 수 있다면 정확한 타입을 추정할 수 있다. 
+
+```java
+public class Sample {
+
+    @NotNull
+    private String test;
+}
+```
+
+만약 annotation이 붙어있지 않다면 , Kotlin은 해당 타입을 nullable인지 아닌지 판단할 방법이 없다. 따라서 Kotlin은 해당 타입을 ```Platform Type```으로 간주한다. Platform Type은 타입 이름뒤에 ! 기호를 붙여서 표기한다 (String!)
+
+Platform Type은 코틀린이 Null 관련 정보를 알 수 없기 떄문에, 컴파일러는 Nullable 타입으로 처리하든, 아니든 모든 연산을 허용한다 하지만 개발자에게 전적으로 NPE을 처리할 책임이 넘어간다. 
+
+## JSR-Annotation 
+- java와 코틀린을 같이 사용할때에는 Java 코드를 만약 직접 변경할 수 있다면, 가능한 @Nullable , @NotNull annotation을 붙이는 게 안전하다. 
+
+대표적인 annotation 예시는 다음과 같다.
+
+- org.jetbrains.annotation : @Nullable , @NotNull
+- javax.annotation JSR-305 : @Nullable , @NonNull
+- Lombok :@NonNull 
+
+## 정리
+
+- 다른 프로그래밍 언어에서 Nullable 여부를 알 수 없는 타입을 Platform type이라고 하며 , 코틀린 컴파일러는 이에 대한 연산을 제약하진 않는다. 다만, 개발자가 전적으로 NPE을 핸들링 해야 한다, 따라서 Platform Type을 지양하고, 자바 쪽에서 수정이 가능하다면 Annotation 을 붙이자.

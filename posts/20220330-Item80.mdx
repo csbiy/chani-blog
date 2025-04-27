@@ -1,0 +1,65 @@
+---
+id: 135
+title: "Item80.Thread보다는 실행자,태스크,스트림을 애용하라"
+description: ""
+date: "2022-03-30 19:17:00"
+tags: ['Java', 'Effective Java 3/E']
+---
+- java.util.concurrent 패키지는 Executor Framework (실행자 프레임워크) 라고 하는 인터페이스 기반의 유연한 태스크 실행 기능을 담고 있다. 
+
+```java
+// 백그라운드 작업 큐 생성 ( 하나의 백그라운드 스레드 사용 )
+ExecutorService exec = Executors.newSingleThreadExecutor();
+
+// 백그라운드 스레드에게 실행할 작업을 넘기는 method
+exec.execute(runnable);
+
+// 실행자 종료 
+exec.shutdown();
+```
+
+ExecutorService 의 주요 기능들은 다음과 같다. 
+
+1. 특정 task 가 완료되기를 기다린다. (get method) 
+2. task 모음 중 아무것 하나 (invokeAny method )  혹은 모든 task (invokeAll method) 가 완료되기를 기다린다.
+3. ExecutorService가 종료하기를 기다린다(awaitTermination method) 
+4. 완료된 task들의 결과를 차례로 받는다 (ExecutorCompletionService 이용) 
+5. task를 특정 시간에 혹은 주기적으로 실행하게 한다. (ScheduledThreadPoolExecutor 이용) 
+
+Queue를 둘 이상의 Thread 가 처리하게 하고 싶다면 간단히 다른 정적 팩토리를 이용하여, 다른 종류의 실행자 서비스(ThreadPool)를 생성하면 된다.
+
+- 대부분의 필요한 ThreadPool은 java.util.concurrent.Executors 의 정적 팩토리 method들을 이용해 생성할 수 있다. 
+
+
+![](/images/Item80-01.png)
+
+- 작은 프로그램이나 가벼운 서버라면 Executors.newCachedThreadPool 이 일반적으로 좋은 선택이다. 
+
+CachedThreadPool 의 동작 방식은 요청받은 task를 queing 하지 않고 바로 thread에게 위임하여 실행시키는 것이다. 
+가용한 thread가 없으면 새로 하나를 생성한다. 따라서 무거운 서버의 경우에 task요청이 많을떄에는 thread를 계속해서 생성하므로 cpu 이용률이 과도하게 높아진다. 
+
+- 무거운 서버의 경우에는 Thread 개수를 고정한 Executors.newFixedThreadPool이나, 완전히 통제할 수 있는 ThreadPoolExecutor를 직접 사용하는 편이 휠씬 낫다. 
+
+
+
+## Task 
+
+- 작업 단위를 나타내는 핵심 추상 개념 
+- Callable과 Runnable이 있다. 아래 Callable 인터페이스 명세에도 적혀있지만,  Callable은 Runnable과 비슷하지만 값을 반환하고 임의의 예외를 던질 수 있다는 차이점이 있다.
+
+
+![](/images/Item80-02.png)
+
+![](/images/Item80-03.png)
+
+
+- 작은 프로그램이나 가벼운 서버라면 Executors.newCachedThreadPool 이 일반적으로 좋은 선택이다. 
+
+CachedThreadPool 의 동작 방식은 요청받은 task를 queing 하지 않고 바로 thread에게 위임하여 실행시키는 것이다. 
+가용한 thread가 없으면 새로 하나를 생성한다. 따라서 무거운 서버의 경우에 task요청이 많을떄에는 thread를 계속해서 생성하므로 cpu 이용률이 과도하게 높아진다. 
+
+- 무거운 서버의 경우에는 Thread 개수를 고정한 Executors.newFixedThreadPool이나, 완전히 통제할 수 있는 ThreadPoolExecutor를 직접 사용하는 편이 휠씬 낫다. 
+  
+- task (callable,runnable 구현체) 를 실행하는 일반적인 메카니즘이 바로 java.util.concurrent.ExecutorService이다
+- Jdk7부터 Executor Framework는 Fork-Join Task를 지원하도록 확장되었다. 
+- Fork-Join task는 여러 개의 하위 task로 나눌 수 있고, ForkJoinPool을 구성하는 thread 들이 이 task들을 처리하며 먼저 다 처리하면 thread는 남은 task를 가져와 대신 처리함으로 CPU 활용도를 높일 수 있다.

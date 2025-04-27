@@ -1,0 +1,50 @@
+---
+id: 89
+title: "Item40. @Override annotation을 일관되게 사용하라"
+description: ""
+date: "2022-01-14 23:24:07"
+tags: ['Java', 'Effective Java 3/E']
+---
+## @Override
+
+Java가 기본으로 제공하는 annotation중 @Override는 상위 타입 method를 재정의하였을때 달릴 수 있다. 
+
+@Override annotation을 사용함으로 여러 가지 버그들을 컴파일 시점에 예방해 줄 수 있다. 
+
+예를 들어 다음과 같은 영어 알파벳 2개로 구성된 문자열을 표현하는 클래스가 있다고 할때, main method에서 26개의 소문자를 set에 넣어준뒤 출력하면 당연히 26개의 size가 출력되야하지만 실제로는 260 개의 size가 나온다. 
+
+```java
+public class Bigram {
+    private final char first;
+    private final char second;
+
+    public Bigram(char first, char second) {
+        this.first = first;
+        this.second = second;
+    }
+    public boolean equals(Bigram o) {
+        return first == o.first && second == o.second;
+    }
+    public int hashCode() {
+        return Objects.hash(first, second);
+    }
+
+    public static void main(String[] args) {
+        Set<Bigram> s = new HashSet<>();
+        for(int i = 0; i< 10 ; i++){
+            for (char ch = 'a'; ch <= 'z';ch++){
+                s.add(new Bigram(ch,ch));
+            }
+        }
+        System.out.println(s.size()); // 260 
+    }
+}
+```
+
+그 이유는 바로 equals method를 실수로 parameter 를 Bigram type으로 받아 overrloading하였기 때문이다. @Override 를 붙여주면 바로 compile error를 보여준다. 
+
+따라서 상위 class의 method를 재정의하는 모든 method는 @Override annotation을 달 것을 권고한다. 
+
+
+
+추가로  구체 class에서 상위 추상 class의 추상 method를 재정의하는 상황에서 개발자가 실수로 method overrloading시에는 어차피 compile error가 터지기에 @Override annotation을 안달아도 되지만, 일관성을 위해서 달아도 무관한다.

@@ -1,0 +1,331 @@
+---
+id: 30
+title: "Item34. int 상수 대신 열거 타입을 사용하라"
+description: ""
+date: "2022-01-06 19:41:11"
+tags: ['Java', 'Effective Java 3/E']
+---
+## Enum Type 정의 
+
+Enum type은 일정 개수의 상수 값을 정의한 다음 그 외의 값들은 허용하지 않는 타입이다. Enum Type은 다음과 같은 특징을 가지고 있다.
+
+```java
+public enum Day {
+    SUNDAY, MONDAY, TUESDAY, WEDNESDAY,
+    THURSDAY, FRIDAY, SATURDAY 
+}
+```
+(https://docs.oracle.com/javase/tutorial/java/javaOO/enum.html)
+1. enum type 자체는 java.lang.Enum 추상 class를 상속받고 있는 class이다. (Java에서는 중복 상속이 불가하므로 다른 class는 상속받을 수 없다.)
+
+```java
+public abstract class Enum<E extends Enum<E>>
+        implements Comparable<E>, Serializable {
+```
+2. 상수당 자신의 instance를 하나씩 만들어 public static final 필드로 공개한다. (enum class내 상수는 public static final 필드와 같음 )
+
+3. 외부에서 접근할 수 있는 생성자를 제공하지 않는다. 때문에 singleton은 원소가 하나뿐인 열거타입이라고도 볼 수 있다. 
+
+
+
+## Enum Type의 장점 
+
+1. 안티 패턴인 정수 열거 패턴, 문자열 열거 패턴을 대체한다.  
+
+```java
+// 정수 열거 패턴 
+public class Fruit {
+
+    public static final int APPLE_FUJI = 0;
+    public static final int APPLE_PIPPIN = 1;
+    public static final int APPLE_GRANNY_SMITH = 2; 
+    public static final int ORANGE_NAVEL = 0;
+    public static final int ORANGE_TEMPLE = 1;
+    public static final int ORANGE_BLOOD = 2;
+
+}
+```
+정수 열거 패턴은 다음과 같은 단점을 가지고 있다.
+-  타입 안전을 보장할 방법이 없다. (== 연산자로 비교)
+-  프로그램이 깨지기 쉽다, 컴파일하면 상수 값이 그 client 파일에 그대로 쓰여지기 때문에 값이 바귀면 반드시 재컴파일해야 한다.
+
+```java
+// 문자열 열거 패턴 
+public class Operation {
+    public static final String PLUS = "+";
+    public static final String MINUS = "-";
+    public static final String DIVIDE = "/";
+    public static final String MULTIPLY = "*";
+}
+```
+문자열 열거패턴은 문자 상수 대신 문자 값을 그대로 하드코딩하는 개발자가 있는 경우 runtime error가 발생할 소지가 있다.  
+
+2. compile time 타입 안전성을 제공한다. 다음과 같이 enum type을 method로 받는 경우 type 자체가 해당 enum type이 아니라면 compile error가 발생한다.
+
+```java
+void doSomething(Fruit fruit){}
+```
+
+3. enum type에는 상수 필드마다 각자의 namespace 가 존재한다.
+
+문자열 열거,정수 열거패턴과 다르게 enum class는 상수별로 객체화(싱글톤)되어 이름이 같은 상수도 공존할 수 있다. 
+
+4. enum class 임의의 필드나 method를 추가할 수 있다. 더불어 상속하고 있는 java.lang.Enum type에서 이미 Object method를 구현해놓았으며, 기타 편의 method)  와 Comparable,Serializable도 구현해놓았다. 
+
+
+```java
+public enum Season {
+    WINTER(-5.1),
+    SUMMER(23.1),
+    SPRING(14.2),
+    FALL(8.4);
+
+    private final Double averageTemp; // 계절별 평균온도
+
+
+    Season(Double avgTemp){
+        this.averageTemp = avgTemp;
+    }
+
+    public Double avgTemp(){
+        return averageTemp;
+    }
+}
+```
+
+```java
+Arrays.stream(Season.values()).forEach(season-> System.out.println(season.name() + " : " + season.avgTemp() + "C"));
+//  WINTER : -5.1
+//  SUMMER : 23.1
+//  SPRING : 14.2
+//  FALL : 8.4
+```
+
+## Enum Type을 어떻게 사용해야 하는가 
+
+1. 널리쓰이는 enum type은 top-level class로 만들고, 특정 top-level class에서만 쓰인다면 해당 클래스의 member class로 만든다.
+ 
+```java
+public class FileReader {
+    enum Extension{
+        CSV,XLSX,TSV
+    }
+}
+```
+
+java library의 예시를 들면 소수 자릿수의 반올림 모드를 뜻하는 열거타입인 java.math.RoundingMode는 BigDecimal이 사용하는데, RoundingMode enum type 이BigDecimal과 관련 없는 영역에서도 유용한 개념이라 library 설계자는 RoudingMode를 top-level로 올림으로서 API 가 더 일관된 모습을 갖추도록 하였다.
+
+2. Enum type 상수마다 동작이 달라지는 코드 
+
+Enum type 상수마다 동작이 달라지는 경우 어떻게 코드를 구현하는게 좋을까 
+
+- switch문 사용
+```java
+public enum Operation {
+    PLUS,MINUS,TIMES,DIVIDE;
+
+    public double apply(double x , double y){
+        switch (this){
+            case PLUS:return x+y;
+            case MINUS:return x-y;
+            case TIMES:return x*y;
+            case DIVIDE:return x/y;
+        }
+        throw new AssertionError("알 수 없는 연산: " + this);
+    }
+
+}
+```
+```java
+    public static void main(String[] args) {
+        double result = Operation.PLUS.apply(1, 2);
+    }
+```
+switch문을 사용해서 구현하는 경우 단점은 다음과 같다. 
+   1) 연산이 추가될때마다 case문 내부 코드를 수정해야하는데, 수정하지 않아도 compile error가 뜨지 않는다. 
+
+
+
+- 상수별 메소드 구현
+
+abstract method를 선언하고, 상수별로 재정의한다
+
+```java
+public enum Operation {
+    PLUS{ public double apply(double x, double y) {  return x+y;}},
+    MINUS{ public double apply(double x, double y) {  return x-y;}},
+    TIMES{ public double apply(double x, double y) {  return x*y;}},
+    DIVIDE{ public double apply(double x, double y) {  return x/y;}};
+    public abstract double apply(double x, double y);
+}
+```
+상수별 method방식은 다음과 같은 장점을 갖는다. 
+
+  1. 상수별 메소드 구현 방식은 추상 method를 사용하므로, 특정 상수가 추상 method를 구현하지 않았다면 compile error를 띄워준다. 
+ 2. 상수별 필드와 결합해서 사용가능하다. 
+
+```java
+public enum Operation {
+    PLUS("+"){ public double apply(double x, double y) {  return x+y;}},
+    MINUS("-"){ public double apply(double x, double y) {  return x-y;}},
+    TIMES("*"){ public double apply(double x, double y) {  return x*y;}},
+    DIVIDE("/"){ public double apply(double x, double y) {  return x/y;}};
+
+    private final String symbol;
+
+    Operation(String symbol){
+        this.symbol = symbol;
+    }
+
+    @Override
+    public String toString(){
+        return this.symbol;
+    }
+
+    public abstract double apply(double x, double y);
+
+}
+```
+위 예제는 Operation enum type에 연산자 문자를 필드로 추가로 받았다. 
+
+```java
+double x = Double.parseDouble(args[0]);
+double y = Double.parseDouble(args[1]);
+for (Operation op : Operation.values()) {
+    System.out.printf("%f %s %f = %f \n", x , op , y ,  op.apply(x,y));
+}
+```
+추가된 필드는 다음과 같이 재정의한 추상 method 와 함께 사용될 수 있다.
+
+toString 을 overriding할떄는 반대로 toString한 문자열로부터 Enum Type을 만들 수 있는 fromString 편의 method를 만드는 것을 고려할 수 있다. 
+
+
+```java
+// key = symbol , value = Operation Enum type 
+private static final Map<String,Operation> stringToEnum 
+    = Stream.of(values()).
+             collect(toMap(Objects::toString,e->e));
+
+public static Optional<Operation> fromString(String symbol){
+    return Optional.ofNullable(stringToEnum.get(symbol));
+}
+```
+
+위 Operation Enum type이 stringToEnum map에 추가되는 시점은 열거 타입 상수 생성 후 정적 필드가 초기화될떄이다. 
+
+enum type의 static 필드 중 enum type의 생성자에 접근할 수 있는 건 상수 필드 뿐이다. 
+
+Jvm이 Jvm내부의 class loader system에 의해 enum class 의 bytecode가 Jvm이 OS로부터 할당받은 memory 영역 중  method 영역에 올라가고, class가 초기화될때 상수 필드(static field)가 가장 먼저 초기화 되고, 이후에 다른 static field가 초기화된다 --> enum type 생성자 실행 시점에는 static field들이 초기화 되기 전이다. 
+(ref - https://stackoverflow.com/questions/12639038/when-do-enum-instances-get-created)
+
+상수별 method 구현 방식에는 enum type 상수끼리 코드를 공유하기 어렵다는 단점도 있다. 
+
+```java
+public enum PayrollDay {
+
+    MONDAY,TUESDAY,WEDNESDAY,THURSDAY,FRIDAY,SATURDAY,SUNDAY;
+
+    public static final int MINS_PER_SHIFT = 8*60;
+
+    int pay(int minutesWorked , int payRate){
+        int basePay = minutesWorked * payRate;
+        int overTimePay;
+
+        switch (this){
+            case SATURDAY: case SUNDAY:
+                    overTimePay = basePay / 2;
+                    break;
+            default:
+                overTimePay = minutesWorked <= MINS_PER_SHIFT ?
+                        0 : (minutesWorked - MINS_PER_SHIFT) * payRate / 2;
+        }
+        return basePay+overTimePay;
+    }
+}
+```
+
+위 코드는 휴가와 같은 새로운 열거 타입이 추가되었을떄 case문에 추가해야한다. 이를 해결하기 위한 방안으로 책에서는 3가지를 제시하고 있다. 
+
+1. 상수별로 중복 코드 삼입 (지양)
+2. 도우미 method를 작성해 각 상수가 자신에게 필요한 method를 적절히 호출 
+3. 상수 추가시마다 전략 enum type을 선택하는, 전략 열거 타입 패턴.
+
+아래 예시는 잔업수당을 계산하는 enum class인데, 요일별로 다른 잔업수당 계산 로직을 선택할 수 있다. 
+```java
+public enum PayrollDay {
+
+        MONDAY(PayType.WEEKDAY),
+        TUESDAY(PayType.WEEKDAY),
+        WEDNESDAY(PayType.WEEKDAY),
+        THURSDAY(PayType.WEEKDAY),
+        FRIDAY(PayType.WEEKDAY),
+        SATURDAY(PayType.WEEKEND),
+        SUNDAY(PayType.WEEKEND);
+
+        private final PayType payType;
+
+        PayrollDay(PayType payType){
+            this.payType = payType;
+        }
+
+        int pay(int minuteWorked , int payRate){
+            return payType.pay(minuteWorked,payRate);
+        }
+
+        enum PayType {
+            WEEKDAY {
+                int overtimePay(int minutesWorked, int payRate) {
+                    return minutesWorked <= MINS_PER_SHIFT ? 0 : (minutesWorked - MINS_PER_SHIFT) * payRate / 2;
+                }
+            },
+            WEEKEND {
+                int overtimePay(int mins, int payRate) {
+                    return mins * payRate / 2;
+                }
+            };
+            abstract int overtimePay(int minutesWorked, int payRate);
+            public static final int MINS_PER_SHIFT = 8 * 60;
+    
+            int pay(int minutesWorked, int payRate) {
+                int basePay = minutesWorked * payRate;
+                return basePay + overtimePay(minutesWorked,payRate);
+            }
+    
+        }
+}
+```
+
+이 패턴은 switch문 대신에 하위 enum class를 추가하였으므로, 요일별로 잔업 수당 계산 로직의 변경이 필요할 경우에는 상수의 잔업 수당 전략만 변경해주면 된다. 
+
+```java
+// MONDAY(PayType.WEEKDAY) 
+  MONDAY(PayType.WEEKEND) // 월요일 연차 사용 ~
+```
+
+앞선 예제들에서는 switch 문은 enum type의 상수별 동작을 구현하는데 적합하지 않다고 설명하였으나, 기존 enum type에 상수별 동작을 혼합해 넣을때는 switch문을 선택하는게 좋을떄도 있다. 
+
+예를 들면 외부 library에서 가져온 enum type 의 상수별 동작을 변경할떄이다. 
+
+```java
+public static Operation inverse(Operation op){
+    switch (op){
+        case PLUS: return Operation.MINUS;
+        case MINUS: return Operation.PLUS;
+        case DIVIDE: return Operation.TIMES;
+        case TIMES: return Operation.DIVIDE;
+        default: throw new AssertionError();
+    }
+}
+```
+
+## Enum type 을 언제 사용해야 하는가 
+
+- 필요한 원소를 compile time에 알 수 있는 상수 집합인 경우 항상 Enum type을 사용할것을 권고한다. 
+
+또한 enum type에 추가로 상수를 정의하더라도 binary 수준에서 호환되도록 설계되었기 떄문에 enum type에 정의된 상수 개수가 영원히 고정 불변일 필요는 없다. 
+
+## 정리 
+
+Enum Type은 정수 , 상수 열거 패턴보다 compile time에 타입 안전하며, 
+Enum type 내 상수별로 다르게 동작하는 method가 필요할떄에는 enum class 에 추상 method를 선언해서 상수마다 method를 overriding해서 사용할 수 있다. 
+상수 일부가 같은 동작을 공유한다면 전략 열거 타입 패턴을 사용할 수 있다.

@@ -1,0 +1,126 @@
+---
+id: 113
+title: "Database Lock"
+description: ""
+date: "2024-01-28 10:21:42"
+tags: [None]
+---
+- 트랜잭션은 작업의 완전성을 보장해주는 것으로 논리적인 작업을 모두 완벽하게 처리하거나, 처리하지 못할 경우에는 원 상태로 복구해서 작업의 일부만 적용되는 현상 (partial update)를 막아준다.
+- 잠금은 하나의 레코드를 여러 Connection에서 동시에 변경하고자 할때, 동시성을 제어하는 기능이다.
+
+## Lock 종류
+
+1. Global Lock
+
+- 한 세션에서 Global Lock을 획득하면 다른 세션에서는 Select를 제외한 DDL,DML 문장 실행 불가
+
+- ```FLUSH TABLES WITH READ LOCK``` 명령어로 LOCK을 걸고, ```UNLOCK TABLES```명령어로 LOCK을 해제한다.
+
+2. Table Lock
+
+- 개별 테이블 단위로 설정되는 Lock으로 ```LOCK TABLES 테이블명 READ``` , ```LOCK TABLES 테이블명 WRITE``` 로 특정 테이블의 Lock을 획득할 수 있으며 ```UNLOCK TABLES```명령어로 Lock을 해제한다
+- InnoDB 테이블의 경우 스토리지 엔진 차원에서 레코드 기반 잠금을 제공하기 떄문에 DML로는 묵시적으로 Table Lock이 걸리지 않으나 DDL에서는 묵시적 Table Lock이 걸린다.
+
+
+3. Named Lock 
+
+- `GET_LOCK()` 함수를 이용해 임의의 문자열에 대해 잠금을 설정 할 수 있다. 
+- 잠금 대상이 데이터베이스 객체가 아니라 임의의 문자열이며, 주로 여러 Client간 동기화 시켜야할 작업이 있을떄 활용될 수 있다. 
+
+```sql
+SELECT GET_LOCK('lock',5); -- lock 문자열에 대해 5초간 잠금획득
+SELECT RELEASE_LOCK('lock'); -- lock 문자열에 대해 잠금해제
+SELECT RELEASE_ALL_LOCKS(); -- 모든 lock 해제
+```
+
+4. MetaData Lock
+
+- 데이터베이스 객체의 이름이나 구조를 변경하는 경우에 획득하는 Lock
+- 명시적으로 획득이 불가능하며, 자동으로 테이블 이름 변경시 획득된다.
+
+## InnoDB Storage 엔진 잠금
+
+1. Record Lock
+
+- 다른 상용 DBMS의 Record Lock과 동일한 역할 수행
+- Record 자체에 대해 Lock을 수행하지 않고, Index 의 Record를 잠근다.
+- 인덱스가 하나도 없는 테이블이라도 내부적으로 자동 생성된 클러스터 인덱스를 이용해 잠금을 설정한다.
+- 즉, 변경해야 할 레코드를 찾기 위해 검색한 인덱스의 레코드를 모두 락을 걸어야 한다.
+
+예를 들어 아래의 employees 테이블이 first_name 칼럼에 대해서만 index를 가지고 있다면, innoDB는 first_name이 'kim'인 모든 record에 대해서 lock을 수행한다. 
+테이블에 index가 하나도 없는 경우에는 풀스캔하면서 모든 record에 대해 lock을 건다. 
+```sql
+UPDATE employees SET hire_date=NOW() WHERE first_name = 'kim' and last_name ='cs'
+```
+
+2. Gap Lock
+
+- 인접한 레코드 사이의 간격을 잠그는 것을 의미한다.  즉 레코드와 레코드 사이 새로운 레코드가 생성되는 것을 제어하는 것이다.
+
+3. Next Key Lock
+- Record Lock과 Gap Lock을 합쳐놓은 형태의 잠금
+
+4. Auto Increment Lock
+- 자동 증가하는 숫자값이 중복되지 않고, 저장된 순서대로 증가함을 보장하기 위해 테이블 수준의 잠금을 사용
+- Insert 에서만 걸리며, Delete, Update에서는 걸리지 않는다. 2개의 Insert 쿼리가 동시에 실행되는 경우 하나의 Insert 쿼리가 Auto Increment Lock을 반납할떄까지 다른 하나의 쿼리는 대기해야한다.
+- 명시적으로 획득하거나 해제가 불가능하다.
+
+
+
+## 트랜잭션 잠금 정보
+
+- MySQL 8.0버전부터는 performance_schema의 `data_locks`, `data_lock_waits` 테이블로 잠금 정보를 확인할 수 있다.
+
+## MySQL의 격리 수준 
+
+- 트랜잭션의 격리 수준 (isolation level) : 여러 트랜잭션이 동시에 처리될때 특정 트랜잭션이 다른 트랜잭션에서 변경하거나 조회하는 데이터를 볼 수 있게 허용여부를 결정하는 수준을 말합니다. 
+- 격리 수준은 크게 4가지로 구분됩니다. 
+
+| Isolation Level  | Dirty Read | Non-Repeatable Read | Phantom Read |
+|:----------------:|:----------:|:-------------------:|:------------:|
+| READ UNCOMMITTED |     O      |          O          |      O       |
+| READ COMMITTED   |     X      |          O          |      O       |
+| REPEATABLE READ  |     X      |          X          |      O       |
+|   SERIALIZABLE   |     X      |          X          |      X       |
+
+
+### READ UNCOMMITTED 
+
+- 각 트랜잭션에서의 변경 내용이 COMMIT 이나 ROLLBACK에 상관없이 다른 트랜잭션에서 보인다. 
+- READ COMMITTED를 사용하게 될 경우, 특정 트랜잭션에서 작업이 끝나지도 않은 데이터를 다른 트랜잭션에서 볼 수 있는 `Dirty Read` 현상이 발생한다. 
+
+### READ COMMITTED 
+
+- Oracle의 기본 트랜잭션 격리 수준이다. 
+- 말그대로 COMMIT이 된 데이터만 다른 Transaction에서 볼 수 있다.
+- 어떻게 READ COMMITTED로 유지하는가?  MySQL에서는 A 트랜잭션이 특정 테이블의 데이터를 변경하면 언두로그로 변경전 데이터만 복사해놓는다. 
+이후 B 트랜잭션이 커밋전에 A트랜잭션이 업데이트한 데이터를 조회하려고 하면 언두로그 데이터를 조회한다. (MVCC 단락 참조)
+- `NON-REPEATABLE READ` 문제가 발생할 수 있다. 즉 트랜잭션 시작과 끝 사이에 다른 특정 트랜잭션이 데이터를 변경하면 일관되지 않은 읽기가 발생할 수 있다. 
+
+
+
+## MVCC (Multi Version Concurrency Control)
+
+- 레코드 레벨의 트랜잭션을 지원하는 DBMS가 제공하는 기능
+- 잠금을 사용하지 않는 읽관된 읽기를 제공하는 것이 목적이다.
+- 하나의 레코드에 대해 여러 버전이 관리되며, InnoDB에서는 Undo Log를 이용해 구현한다. 즉 특정 트랜잭션에서 값을 변경하면 변경전의 값을 Undo Log에 쓰고, InnoDB 버퍼 풀은 변경 후의 값을 저장한다.
+- 격리수준이 UNCOMMITTED라면 Buffer Pool의 데이터를 반환하고, 그 위(COMMITED ~ SERIALIZABLE) 라면 Undo Log의 데이터를 반환한다.
+
+### Repeatable Read
+- MySQL InnoDB 스토리지 엔진에서 기본으로 사용되는 격리 수준이다. 
+- MySQL에서는 MVCC 를 통해서 REPEATABLE READ를 보장하는데, 트랜잭션 번호 기준으로 REPEATABLE READ를 보장한다.
+
+예를 들어 아래와 같은 순서대로 데이터가 처리될때, MySQL은 트랜잭션 번호를 활용해 REPEATABLE READ를 보장한다. 
+1. 트랜잭션(6번)이 초기 데이터를 쓴다. 
+2. 트랜잭션(10번)이 데이터를 읽기 시작한다.
+3. 트랜잭션(12번)이 데이터를 변경한다. 
+4. 데이터가 언두로그로 복사된다. 이떄 트랜잭션 번호(6번)도 같이 복사된다.
+5. 트랜잭션(12번)이 커밋한다. 
+6. 트랜잭션(10번)이 데이터를 읽는다. 이떄는 언두로그에서 자신의 트랜잭션 번호보다 낮은 데이터가 있다면 이를 반환한다. 
+7. 트랜잭션(6번)이 쓴 초기 데이터가 반환된다. 
+
+### Serializable
+
+- Repeatable Read의 경우 다른 트랜잭션에서 수행한 변경 작업에 의해 추가적인 레코드가 보이거나, 보이지 않을 수도 있는 `PHANTOM READ`가 발생할 수 있다. 
+- 예를 들어 한 트랜잭션이 READ 이후 다른 트랜잭션이 INSERT, COMMIT시 추가적인 레코드가 보이는 `PHANTOM READ`가 발생될 수 있다. 
+- 이때는 가장 엄격한 격리 수준인 Serializable 격리수준을 적용하면 해결 할 수 있다. 다만 읽기 작업도 Lock을 획득해야 하며, 동시 처리 성능도 가장 떨어지게 된다.

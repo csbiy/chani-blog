@@ -1,0 +1,132 @@
+---
+id: 53
+title: "spring Core Technology - IoC"
+description: ""
+date: "2021-07-27 11:45:49"
+tags: ['spring', 'Core Concept']
+---
+### 1.1. Introduction to the Spring IoC Container and Beans
+
+##### *spring 공식 reference를 보고 정리한 글입니다.
+
+
+#### Spring IoC
+- application context (=spring container)가 bean 객체를 생성하면서 bean 객체가 의존하고 있는 다른 object를 생성하여 주입해준다(Dependency Injection), 이는 개발자가 직접 객체의 생명주기를 관리하는 게 아니라 , spring container가 bean 객체의 생명주기,종속성관리를 해주는 것임으로, 제어의 역전(Inversion of Control,IoC)라고 부른다. 
+
+- Bean 객체의 생명주기 및 종속성 관리는 Bean Factory가 수행하는 역할이고, application context는 Bean Factory interface의 sub-type으로 다음과 같은 추가 기능을 갖는다.
+
+1. spring AOP 관련된 추가 기능 
+2. Message resource handling 
+3. Event publication 
+4. Application-layer specific contexts
+
+- 그렇다면 application context는 어떻게 Bean 객체를 생성 및 관리하는 것일까? 
+xml 또는 annotation 이 달린 java code <strong> (@Configuration)</strong> 로 Configuration Meta Data를 개발자가 설정하면 application context는 여기에 설정된 메타 데이터를 보고 Bean 객체를 관리한다. 
+
+
+#### Spring Container
+```java
+org.springframework.context.ApplicationContext 
+```
+ - spring container는 위에서 설명했던 것처럼 java code 또는 xml file 기반의 설정파일을 보고 Bean 객체의 생성과 이들간의 종속성을 주입해준다.
+
+![](/images/spring-IoC-container.png)
+ - org.springframework.context.ApplicationContext 의 구현체는 여러 종류가 있다. Stand-alone applications의 경우 ClassPathXmlApplicationContext 또는 FileSystemXmlApplicationContext 를 사용하는 것이 대부분이다. 
+
+#### Configuration Meta Data
+
+ - spring 2.5 부터는 annotation 기반의 metadata 설정파일을 지원해주기 시작하였고, (@Configuration) 이전에는 xml 기반으로 metadata 설정파일을 사용하였다.
+
+    syntax를 보면
+
+```xml
+
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans
+        https://www.springframework.org/schema/beans/spring-beans.xsd">
+
+    <bean id="beanId" class="bean.class">  
+        <!-- collaborators and configuration for this bean go here -->
+    </bean>
+    <bean id="..." class="...">
+        <!-- collaborators and configuration for this bean go here -->
+    </bean>
+    <!-- more bean definitions go here -->
+</beans>
+```
+위와 같이 beans tag 안에 등록할 bean을 정의한다. id attribute에는 bean Name , class attribute에는 bean classpath를 기입한다. 
+
+#### Spring Container Initialization 
+
+- spring container는 configuration meta data 를 생성자로 받아, 만든다. 
+```java
+ApplicationContext context = new ClassPathXmlApplicationContext("services.xml", "daos.xml");
+```
+만약 annotation 기반의 설정파일인 경우에는 
+```java
+AnnotationConfigApplicationContext
+```
+를 사용한다. 
+
+services.xml 을 살펴보면, bean tag에 id="petStore" , class="org.springframework.samples.jpetstore.services.PetStoreServiceImpl" 임을 볼 수 있는데, 이는 petStore bean 이름을 가지고 있고, 해당 class path은 org.springframework.samples.jpetstore.services.PetStoreServiceImpl 이며,  
+property로는 accountDato, itemDao 을 가지고 있고 해당 property의 bean 이름이 각각 accountDato, itemDao 라는 것을 뜻한다. 
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans
+        https://www.springframework.org/schema/beans/spring-beans.xsd">
+    <!-- services -->
+    <bean id="petStore" class="org.springframework.samples.jpetstore.services.PetStoreServiceImpl">
+        <property name="accountDao" ref="accountDao"/>
+        <property name="itemDao" ref="itemDao"/>
+        <!-- additional collaborators and configuration for this bean go here -->
+    </bean>
+    <!-- more bean definitions for services go here -->
+</beans>
+```
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans
+        https://www.springframework.org/schema/beans/spring-beans.xsd">
+
+    <bean id="accountDao"
+        class="org.springframework.samples.jpetstore.dao.jpa.JpaAccountDao">
+        <!-- additional collaborators and configuration for this bean go here -->
+    </bean>
+
+    <bean id="itemDao" class="org.springframework.samples.jpetstore.dao.jpa.JpaItemDao">
+        <!-- additional collaborators and configuration for this bean go here -->
+    </bean>
+
+    <!-- more bean definitions for data access objects go here -->
+
+</beans>
+```
+
+#### Composing XML-based Configuration Metadata
+
+위 코드는 여러개의 xml file 을 configuration meta data로 가지고 있다.
+
+이는 다음과 같이 하나의 xml file 에서 import tag를 통해 다른 xml 설정파일을 불러들일 수도 있다.
+
+```xml 
+<beans>
+    <import resource="services.xml"/>
+    <import resource="resources/messageSource.xml"/>
+    <import resource="/resources/themeSource.xml"/>
+
+    <bean id="bean1" class="..."/>
+    <bean id="bean2" class="..."/>
+</beans>
+```
+
+#### Reference 
+
+1. Spring Public Documentation : https://docs.spring.io/spring-framework/docs/current/reference/html/core.html#spring-core

@@ -1,0 +1,80 @@
+---
+id: 93
+title: "Item22. 인터페이스는 타입을 정의하는 용도로만 사용하라"
+description: ""
+date: "2021-12-22 22:13:49"
+tags: ['Java', 'Effective Java 3/E']
+---
+## 인터페이스의 사용 용도 
+
+인터페이스는 자신을 구현한 class의 instance를 참조할 수 있는 타입 역할을 한다. 
+
+즉 class가 어떤 인터페이스를 구현한다는 것은 자신의 인터페이스로 무엇을 할수 있을 지 client에게 얘기해주는 것이며, 인터페이스는 오직 이 용도로만 사용해야 한다. 
+
+
+```java
+public interface Flyable {
+    void fly();
+}
+public class Bird implements Flyable{
+    @Override
+    public void fly() {
+        System.out.println(" fly " );
+    }
+}
+
+```
+```java
+Flyable bird = new Bird();
+bird.fly();
+```
+
+## 잘못된 인터페이스 사용예시
+이와 반대되는 안티 패턴으로 상수 인터페이스 라는 것이 있다.  상수 인터페이스는 method없이 오직 static final field 로만 채운 인터페이스를 말한다. 
+
+```java
+public class PhysicalConstants {
+
+    static final double AVOGADROS_NUMBER = 6.022_140_857e23;
+    
+    static final double BOLTZMANN_CONSTANT = 1.380_648_52e-23;
+    
+    static final double ELECTRON_MASS = 9.109_383_56e-31;
+
+}
+```
+
+ 상수 인터페이스는 이를 구현하는 class 내부 구현을 클래스의 API로 노출하는 행위이다. 
+ client의 관심사와는 전혀 관련이 없지만 클래스의 API로 노출되어 client에게 혼란만 주기 떄문에 사용해서는 안되는 안티 패턴이다. 
+
+ ## 상수 인터페이스 대안 
+
+1. 특정 class와 연관된 상수라면 그 class에 자체적으로 추가한다. ex) Integer의 MAX_VALUE
+
+```java
+public class Round {
+
+    public static final float PIE =3.14f;
+}
+
+```
+
+2. 열거 타입으로 나타내기 적합한 경우 열거 타입으로 만들어 공개한다. 
+
+3. 인스턴스화 할 수 없는 유틸리티 클래스에 담아 공개한다. 
+
+```java
+
+public class PhysicalConstants {
+
+    private PhysicalConstants(){}
+
+    static final double AVOGADROS_NUMBER = 6.022_140_857e23;
+
+    static final double BOLTZMANN_CONSTANT = 1.380_648_52e-23;
+
+    static final double ELECTRON_MASS = 9.109_383_56e-31;
+
+}
+
+```

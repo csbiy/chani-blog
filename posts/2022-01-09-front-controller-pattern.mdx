@@ -1,0 +1,212 @@
+---
+id: 120
+title: "Front Controller Pattern"
+description: ""
+date: "2022-01-09 23:57:12"
+tags: ['spring', 'Design Pattern']
+---
+## Front controller pattern
+
+front controller pattern 은 주로 web 환경에서 client 요청이 들어오면 먼저 공통적인 로직을 처리하는 하나의 controller를 두고, 해당 controller가 적합한 controller 를 호출하는 패턴이다.
+
+front controller의 정확한 정의는 다음과 같다.
+
+<blockquote>
+Front Controller is defined as “a controller that handles all requests for a Web site”. It stands in front of a web-application and delegates requests to subsequent resources. It also provides an interface to common behavior such as security, internationalization and presenting particular views to certain users
+</blockquote>
+
+(ref - https://www.baeldung.com/java-front-controller-pattern)
+
+## Front controller pattern의 장점
+-  front controller 가 결국 모든 controller이전에 수행됨으로 controller에서 발생할 수 있는 공통로직을 front controller에서 처리하고, 중복코드를 제거하고 유지보수성을 높여준다.
+- front controller를 제외한 나머지 controller는 servlet을 사용하지 않아도 된다.
+
+Front controller pattern 은  MVC pattern과 함께 자주 쓰인다. 대표적으로 spring framework에서 사용하고 있으며,org.springframework.servlet.dispatcherServlet이 front controller이다.
+
+
+## UML diagram
+
+![](/images/front-controller-uml.jpg)
+
+
+front controller pattern은 front controller와 요청을 위임할 class (controller) 로 구성된다. 이떄 요청을 위임할 class는 공통 abstract class 또는 interface를 상속하고 있다.
+
+
+
+## 예시
+
+UML diagram에서 AbstractCommand 클래스 위치가 Controller 이다. FrontController는 member field로 구현체가 아닌 Controller 인터페이스 (DIP)를 value가 가진 hashMap을 가지고 있다, FrontController가 client 요청 URI를 보고 적합한 controller를 찾아서 호출해주고, controller에서 반환되는 viewName을 활용해 rendering 해주는 기능을 가지고 있다.
+```java
+public interface Controller {
+  String process(Map<String, String> paramMap, Map<String, Object> model);
+}
+```
+```java
+@WebServlet(name = "frontController",urlPatterns = "/")
+public class FrontController extends HttpServlet {
+
+    private Map<String , Controller> controllerMap = new HashMap<>();
+    private static final String EXTENSION = ".jsp";
+    private static final String VIEW_PATH = "/WEB-INF/views/";
+
+    public FrontController(){
+        controllerMap.put("/front-controller/members/new-form",new MemberFormController());
+        controllerMap.put("/front-controller/members/save",new MemberSaveController());
+        controllerMap.put("/front-controller/members",new MemberListController());
+    }
+
+    @Override
+    protected void service(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+  String requestURI = request.getRequestURI();
+
+        Controller controller = controllerMap.get(requestURI);
+        if (controller == null) {
+            response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+            return;
+        }
+
+        Map<String, String> paramMap = createParamMap(request);
+        Map<String, Object> model = new HashMap<>(); //추가
+
+        String viewName = controller.process(paramMap, model);
+
+        MyView view = viewResolver(viewName);
+        view.render(model, request, response);
+        
+        
+    }
+
+
+    private MyView viewResolver(String viewName) {
+        return new MyView(VIEW_PATH + viewName + EXTENSION);
+    }
+
+     private Map<String, String> createParamMap(HttpServletRequest request) {
+        Map<String, String> paramMap = new HashMap<>();
+        request.getParameterNames().asIterator()
+                .forEachRemaining(paramName -> paramMap.put(paramName, request.getParameter(paramName)));
+        return paramMap;
+    }
+}
+```
+
+```java
+public class MyView {
+
+    private String viewPath;
+
+    public MyView(String viewPath) {
+        this.viewPath = viewPath;
+    }
+
+    public void render(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        RequestDispatcher dispatcher = request.getRequestDispatcher(viewPath);
+        dispatcher.forward(request, response);
+    }
+
+    public void render(Map<String, Object> model, HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        modelToRequestAttribute(model, request);
+        RequestDispatcher dispatcher = request.getRequestDispatcher(viewPath);
+        dispatcher.forward(request, response);
+    }
+
+    private void modelToRequestAttribute(Map<String, Object> model, HttpServletRequest request) {
+        model.forEach((key, value) -> request.setAttribute(key, value));
+    }
+```
+
+
+## Spring의 Front Controller
+
+spring은 front controller를 org.springframework.web.servlet.DispatcherServlet 으로 제공한다.  
+(https://docs.spring.io/spring-framework/docs/3.0.0.M4/reference/html/ch15s02.html)
+Dispatcher servlet은 controller를 바로 호출하는게 아니라 adapter를 호출함으로서 다른 종류의 interface를 구현한 클래스라고 할지라도 ModelAndView를 반환하게 해준다. 
+interface별로 adapter 구현체를 가져서 interface의 반환값이 무엇이든 adapter가 중간에서 Front Controller에서 사용할 modelAndView를 반환하게 해주는 것이다.
+( adapter 와 관련된 자세한 내용은 GOF- Adapter pattern 에 나와있다. )
+
+![](/images/dispatcher-servlet.png)
+
+DispatcherServlet은  HttpServlet을 상속받고 있으며, doService -> doDispatch -> handlerAdapter 을 찾아 호출한다. 
+```java
+
+public class DispatcherServlet extends FrameworkServlet{
+    @Override
+    protected void doService(HttpServletRequest request, HttpServletResponse response) throws Exception {
+        
+        //...
+        try {
+            doDispatch(request, response);
+        }
+        finally {
+            if (!WebAsyncUtils.getAsyncManager(request).isConcurrentHandlingStarted()) {
+                if (attributesSnapshot != null) {
+                    restoreAttributesAfterInclude(request, attributesSnapshot);
+                }
+            }
+            ServletRequestPathUtils.setParsedRequestPath(previousRequestPath, request);
+        }
+    }
+}
+```
+
+## DispatcherServlet 내부구현
+doDispatch 내부 로직을 보면 adapter를 찾아서 , modelAndView로 반환해주는 것을 볼 수 있다. 
+```java
+protected void doDispatch(HttpServletRequest request, HttpServletResponse response) throws Exception{
+        //...
+        // Actually invoke the handler.
+        ModelAndView mv=ha.handle(processedRequest,response,mappedHandler.getHandler());
+        //...        
+}
+```
+
+반환된 modelAndView에서 view 이름을 가져와서 resolveView method를 통해 view resolver가 view 이름으로부터 실제 view객체를 반환해준다. 
+```java
+    String viewName = mv.getViewName();
+    if (viewName != null) {
+        // We need to resolve the view name.
+        view = resolveViewName(viewName, mv.getModelInternal(), locale, request);
+        if (view == null) {
+            throw new ServletException("Could not resolve view with name '" + mv.getViewName() +
+                    "' in servlet with name '" + getServletName() + "'");
+        }
+    }
+```
+```java
+	/**
+ * Resolve the given view name into a View object (to be rendered).
+ * <p>The default implementations asks all ViewResolvers of this dispatcher.
+ * Can be overridden for custom resolution strategies, potentially based on
+ * specific model attributes or request parameters.
+ * @param viewName the name of the view to resolve
+ * @param model the model to be passed to the view
+ * @param locale the current locale
+ * @param request current HTTP servlet request
+ * @return the View object, or {@code null} if none found
+ * @throws Exception if the view cannot be resolved
+ * (typically in case of problems creating an actual View object)
+ * @see ViewResolver#resolveViewName
+ */
+@Nullable
+protected View resolveViewName(String viewName, @Nullable Map<String, Object> model,
+        Locale locale, HttpServletRequest request) throws Exception {
+
+        if (this.viewResolvers != null) {
+            for (ViewResolver viewResolver : this.viewResolvers) {
+                View view = viewResolver.resolveViewName(viewName, locale);
+                if (view != null) {
+                    return view;
+                }
+            }
+        }
+            return null;
+    }
+```
+view resolver가 하는 일은 view name에 prefix,suffix 설정해준다 (경로 설정)
+최종적으로 view객체를 사용해 model과 함께 rendering 해준다. 
+
+```java
+view.render(mv.getModelInternal(), request, response);
+```
+실제 DispatcherServlet 내부구현은 휠씬복잡한데, 이중에서 adapter가 ModelAndView 객체를 반환해주고, 
+반환된 ModelAndView의 view 이름으로부터 view resolver가 실제 사용할 View 객체를 반환해서 model과 함께 rendering해주는 주요 코드부분을 가져왔다.

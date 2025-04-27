@@ -1,0 +1,161 @@
+---
+id: 110
+title: "Item11. equals를 재정의시에는, hashCode도 같이 재정의하라."
+description: ""
+date: "2021-12-12 00:50:16"
+tags: ['Java', 'Effective Java 3/E']
+---
+hashCode method는 해싱(hashing) 기법에 사용되는 해시함수를 구현한 것이다. 
+
+hashCode가 반환해주는 결과값(해시코드값)은 hashTable,hashMap내 실제값이 저장되는 위치를 알려주는 일종의 인덱스로 사용된다.
+
+Object 명세에 보면 다음과 같이 기술되어 있다. 
+
+
+(https://docs.oracle.com/javase/7/docs/api/java/lang/Object.html#hashCode())
+
+```bash
+
+1. equals 비교에 사용되는 정보가 변환되지 않았다면, 
+   app이 실행되는 동안 객체의 hashCode값은 항상 같아야 함
+
+2. equals(Object)가 두 객체를 같다고 판단했다면, 
+   두 객체의 hashCode는 똑같은 값을 반환해야 한다.
+
+   => 논리적으로 같은 객체는 같은 해쉬코드값을 반환해야 함
+
+3. equals(Object)가 두 객체를 다르다고 판단했더라도,
+   두 객체의 hashCode 값이 다를 필요는 없음 
+
+```
+
+- Java HashMap은 hash함수 적용할떄, hashCode값을 사용함으로 다른 두 객체가 hashCode값이 같다면 두 객체는 같은 인덱스로 해쉬됨(collision)으로 성능상 단점이 있음. 
+(Jdk 8 hashMap:해시 키 값 충돌 시 separtate chaining 방식 사용)
+
+
+
+### hashCode 구현 방법 
+
+1. int 변수 result를 선언한 후 객체의 첫번쨰 핵심필드 (equals에서 값비교시 사용하는 첫필드)의 해시 코드 계산해 초기화 
+
+2. 나머지 핵심 필드들도 타입별로 해시코드 계산 
+
+  -  기본 타입 필드 : boxingClass.hashCode(f)
+  -  참조 타입 필드 : hashCode를 재귀적으로 호출 (null인 경우: 0 반환)
+  -  배열 : 배열 내 원소들을 필드처럼 다루어, 해시코드 값을 계산하고 
+      - 핵심 원소가 하나도 없는 경우 0 반환 , 모든 원소가 핵심원소라면 Arrays.hashCode 사용 
+
+3. 계산된 해시코드로 result 갱신 ( result = 31 * result + c )
+
+
+- ##### 31을 곱하는 이유 : 짝수를 곱하는 경우, 비트 쉬프트 연산과 같은 결과를 내고, overflow 발생시 값 소실될 가능성이 있음 
+
+
+- 예외: 파생필드는 제외, equals비교에 사용되지 않은 필드는 반드시 제외함 (똑같은 객체가 다른 해시 코드 값을 반환할 수 있다. )
+
+
+
+```java
+
+// 값 보관을 위한 class
+public class PhoneNumber {
+
+   // 값 비교를 위한 핵심필드 
+    private short areaCode;   
+    private short prefix;
+    private short lineNum;
+
+    @Override
+    public boolean equals(Object obj) {
+        if( obj == this){
+            return true;
+        }
+        if (!(obj instanceof PhoneNumber)) {
+            return false;
+        }
+        PhoneNumber pn = (PhoneNumber) obj;
+        return pn.lineNum == this.lineNum && pn.areaCode == this.areaCode && pn.prefix == this.prefix;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = Short.hashCode(areaCode);
+        result = 31 * result + Short.hashCode(prefix);
+        result = 31 * result + Short.hashCode(lineNum);
+        return result;
+    }
+
+}
+```
+
+```java
+class PhoneNumberTest {
+    
+    @Test
+    @DisplayName("핵심 필드가 모두 같은 경우에 두 객체는 논리적으로 같습니다.")
+    void testEqualsAndHashCode() {
+        PhoneNumber phoneNumberA = new PhoneNumber(900, 400, 200);
+        PhoneNumber phoneNumberB = new PhoneNumber(900, 400, 200);
+        Assertions.assertThat(phoneNumberA == phoneNumberB).isFalse();
+        Assertions.assertThat(phoneNumberA).isEqualTo(phoneNumberB);
+        Assertions.assertThat(phoneNumberA.hashCode()).isEqualTo(phoneNumberB.hashCode());
+    }
+
+    @Test
+    @DisplayName("핵심 필드가 다른 경우에 두 객체는 논리적으로 다릅니다. ")
+    void testNotEqualsAndHashCode() {
+        PhoneNumber phoneNumberA = new PhoneNumber(900, 400, 200);
+        PhoneNumber phoneNumberB = new PhoneNumber(900, 400, 0);
+        Assertions.assertThat(phoneNumberA == phoneNumberB).isFalse();
+        Assertions.assertThat(phoneNumberA).isNotEqualTo(phoneNumberB);
+        Assertions.assertThat(phoneNumberA.hashCode()).isNotEqualTo(phoneNumberB.hashCode());
+    }
+}
+```
+
+- Object static method 중에 hash method를 이용하면 손쉽게 hashCode 함수를 작성 가능하나 성능은 더 느림 (boxing - unboxing)
+
+```java
+    @Override
+    public int hashCode(){
+        Objects.hash(lineNum,prefix,areaCode);
+    }
+
+```
+
+
+- 해시의 키값으로 주로 사용되지 않는 객체인 경우에 굳이 클래스 로딩시점에 값을 초기화 시키지 않고, 지연로딩(Lazy Initialization)으로 성능 향상 가능 
+
+
+```java
+public class PhoneNumber {
+
+
+    private short areaCode;
+    private short prefix;
+    private short lineNum;
+    private int hashCode; // primitive int type - default 값 0으로 초기화
+
+   // ...equals method 생략
+    @Override
+    public int hashCode() {
+       // hashCode 가 실제로 호출될떄 값이 default면 초기화 
+        int result = hashCode;
+        if(result == 0){
+            result = Short.hashCode(areaCode);
+            result = 31 * result + Short.hashCode(prefix);
+            result = 31 * result + Short.hashCode(lineNum);
+            return result;
+        }
+    }
+}
+
+```
+
+### 정리 
+
+- equals overriding시에는 hashCode도 overriding해 hashMap,hashTable등 hashCode를 사용해 해싱하는 API들이 정상적으로 작동하도록 만들자
+  
+- 논리적으로 같은 객체인 경우, 무조건 같은 hashCode값을 반환해야 하나,
+  
+- 논리적으로 다른 객체인 경우, 같은 hashCode값을 가질수도 있으나, hashMap등에서 사용할떄 collision이 발생해 최악의 경우 O(n) 시간복잡도를 가지게 성능을 떨어트린다.

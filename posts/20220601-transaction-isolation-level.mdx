@@ -1,0 +1,58 @@
+---
+id: 63
+title: "Transaction 과 격리 수준"
+description: ""
+date: "2022-06-01 14:33:02"
+tags: []
+---
+## Transaction 격리성
+
+- Transaction은 ACID 라 하는 원자성 (Atomicity) , 일관성 (Consistency) , 격리성 (Isolation) , 지속성 (Durability) 을 보장해야 한다. 
+- 이중에 Transaction 격리 수준에 관련된 ACID 특성인 격리성만 간략하게 정리하면 , 동시에 실행되는 트랜잭션이 서로에게 영향을 미치도록 격리한다는 뜻이다. 
+
+## 왜 격리 수준을 나누어서 관리하는가?
+
+- 격리성이란 트랜잭션이 서로에게 영향을 미치지 않도록 해야 한다는 성질인데, 이를 완벽하게 100% 보장하려면 동시성과 관련된 성능 저하가 야기된다. 예를 들면 모든 트랜잭션이 순차적으로 실행되고 끝나야만 이를 보장할 수 있다. 
+
+## ANSI 표준 Transaction 격리 수준 
+
+- ANSI 표준에서는 트랜잭션 격리 수준을 4단계로 나누어서 정의하고 있다. 
+
+1. READ UNCOMMITED (커밋되지 않은 읽기)
+2. READ COMMITTED  (커밋된 읽기)
+3. REPEATABLE READ (반복 가능한 읽기)
+4. SERIALIZABLE    (직렬화 가능)
+
+(1->4으로 갈수록 격리 수준이 높아지고, 동시성은 떨어진다. )
+
+
+
+## READ UNCOMMITED
+
+- 커밋하지 않은 데이터를 읽을 수 있다.
+- Transaction A가 Transaction B 가 커밋하기 전에 수정한 데이터를 조회할 수 있다. 
+- 만약 Transaction B가 데이터를 수정하고 롤백을 해버렸는데, Transaction A는 이 ROLLBACK한 데이터를 참조하고 있는 경우 데이터 정합성 문제가 발생할 수 있다. (Dirty Read)
+
+## READ COMMITED 
+
+- 커밋한 데이터만 읽을 수 있다. 
+- Dirty Read가 발생하지 않는다. 
+- 만약 Transaction A 가 데이터를 수정하고 Commit하면 , Transaction B가 Transaction A가 변경하기 전의 데이터를 읽고, Transaction A가 변경하고 나서 커밋한 뒤에 데이터를 다시 읽었을때, 값이 다르다. 즉 Tranascation B가 실행되는 도중에 Transaction A 가 값을 변경하고 커밋해버리면 다시 읽었을떄 값이 달라지는 문제이다. (NON-REPEATABLE READ) 
+- 보통 데이터베이스는 READ COMMITED 격리 수준을 기본으로 제공한다. 
+
+## REPEATABLE READ
+
+- 동일 Trnasaction 내에서 한번 조회한 데이터를 다시 조회할때도 동일한 값이 조회되는 격리 수준이다. 즉 NON-REPEATABLE READ가 발생하지 않는다. 
+- 만약 Transaction B가 특정 결과집합을 조회하고 나서,  Transaction A가 데이터를 insert 하고 커밋하면 ,  Transaction B가 결과집합을 다시 조회하였을때, 데이터 값이 변경되진 않지만 추가된 상태를 읽는다. (PHANTOM READ)
+
+## SERIALIZABLE 
+
+- 가장 엄격한 Transaction 격리 수준으로 Dirty Read , NON-REPEATABLE READ , PHANTOM READ 어떠한 문제도 발생하지 않는다. 
+
+
+## Oracle Transaction Isolation Level 
+
+-  오라클에서는 기본적으로 READ COMMITED 격리 수준을 제공하고, serializable 격리 수준 , read - only mode 을 추가로 제공한다고 한다. (https://docs.oracle.com/cd/E25054_01/server.1111/e25789/consist.htm)
+
+
+- read - only mode의 경우에는 serializable isolation level과 유사하나 , SYS 유저가 아닌 경우에는 데이터 변경을 허용하지 않는다. 즉 일반 유저는 serializable isolation level 에서 데이터 변경까지 허용이 불가능한 격리 수준이 가장 높은 모드이다.

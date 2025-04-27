@@ -1,0 +1,185 @@
+---
+id: 156
+title: "Item79. 과도한 동기화는 피하라"
+description: ""
+date: "2022-03-28 18:47:56"
+tags: ['Java', 'Effective Java 3/E']
+---
+## Alien Method 
+
+- 과도한 동기화는 성능을 떨어트림과 동시에 교착상태(DeadLock) 에 빠트린다. 
+- 응답불가와 안전 실패를 피하려면 동기화 method나 동기화 block안에서는 client에게 제어를 양도하면 안된다. 
+- 동기화된 영역 안에서는 재정의할 수 있는 method는 호출하면 안되며 client가 넘겨준 함수 객체를 호출해서도 안된다. (동기화된 영역에 예외를 일으키거나, 교착상태에 빠뜨리게 할 수 있다.) 이렇게 client가 넘겨준 함수 객체를 alien method라고 부른다고 한다. 
+
+
+예를 들어보면 아래와 같이 집한을 감싼 wrapper class가 존재하고, 이 wrapper class의 client는 observer 가 추가되면 알림을 받을 수 있는 Observer pattern 이다. 여기서 synchronized block안에서 client로부터 lambda 식 (SetObserver) 을 입력받는다.
+```java
+public class ObservableSet<E> extends ForwardingSet<E> {
+
+    public ObservableSet(Set<E> set){
+        super(set);
+    }
+
+    private final List<SetObserver<E>> observers = new ArrayList<>();
+
+    public void addObserver(SetObserver<E> observer){
+        synchronized (observers) {
+            observers.add(observer);
+        }
+    }
+
+    public boolean removeObserver(SetObserver<E> observer){
+        synchronized (observer){
+            return observers.remove(observer);
+        }
+    }
+
+    private void notifyElementAdded(E element){
+        synchronized (observers){
+            for (SetObserver<E> observer : observers) {
+                observer.added(this,element);
+            }
+        }
+    }
+
+    @Override
+    public boolean add(E element){
+        boolean added = super.add(element);
+        if(added){
+            notifyElementAdded(element);
+        }
+        return added;
+    }
+
+    @Override
+    public boolean addAll(Collection<? extends  E> c){
+        boolean result = false;
+        for (E element : c) {
+            result |= add(element); // notifyElementAdded method를 호출한다.
+        }
+        return result;
+    }
+
+```
+```java
+
+@FunctionalInterface
+public interface SetObserver<E> {
+
+    void added(ObservableSet<E> set  , E element);
+}
+
+```
+
+위 class는 다음과 같이 사용될 수 있다. 
+
+```java
+    public static void main(String[] args) {
+        ObservableSet<Integer> set = new ObservableSet<>(new HashSet<>());
+        set.addObserver((s,e)-> System.out.println(e)); // client로부터  함수형 인터페이스의 구현체 (람다)를 입력받는다. 
+        for (int i = 0 ; i < 100 ; i++) {
+            set.add(i);
+        }
+    }
+```
+
+이제 위 로직을 수정해서, 값이 23이면 자기 자신을 제거하는 observer 객체를 추가해보자 
+
+```java
+public static void main(String[] args) {
+    ObservableSet<Integer> set = new ObservableSet<>(new HashSet<>());
+    set.addObserver(new SetObserver<Integer>() {
+        @Override
+        public void added(ObservableSet<Integer> set, Integer element) {
+            if(element == 23){
+                set.removeObserver(this);
+            }
+        }
+    });
+}
+```
+
+예상되는 결과는 0~23까지 출력한뒤, 자기 자신은 구독해지를 할 것으로 예상되나 실제로는 ConcurrentModificationException을 던진다. 
+observer의 added method가 호출된 시점이 notifyElementAdded method가 observer list를 순회하는 도중이기 떄문이다. 
+
+다른 형태로 observer가 removeObserver를 직접 호출하지 않고, ExecutorService를 사용해 다른 thread를 사용해 호출해보는 로직을 수정해보자. 
+
+```java
+set.addObserver(new SetObserver<Integer>() {
+    @Override
+    public void added(ObservableSet<Integer> set, Integer element) {
+        System.out.println(element);
+        if(element==23){
+            ExecutorService exec = Executors.newSingleThreadExecutor();
+            try{
+                exec.submit(()->set.removeObserver((this))).get();
+            } catch (ExecutionException | InterruptedException e) {
+                e.printStackTrace();
+            }
+            finally {
+                exec.shutdown();
+            }
+        }
+    }
+});
+```
+
+위 프로그램을 실행하면 예외 자체는 터지지 않지만 deadlock상태에 빠진다. 백그라운드 thread가 s.removeObserver를 호출하면 observer에 대한 lock을 얻어 잠그려고 시도하지만 main thread가 이미 lock을 가지고 있기 떄문에, lock을 얻을 수가 없는 상태이다. 동시에 main thread는 background thread가 observer를 제거하기만을 기다리고 있다. 
+
+위 두 예제는 사실 억지스러운 예제지만 동기화된 영역안에서 client로부터 넘겨받는 코드를 호출하는게 얼마나 프로그램이 오작동하게 만들기 쉬운지를 보여준다. 
+
+만약 불변식이 임시로 꺠진 경우라면 Java의 Lock은 재진입을 허용함으로 교착상태에 빠지지 않으므로,다음번 Lock 획득도 성공하고 결과적으로 데이터가 원치 않는 상태로 훼손될 수 있다. 
+
+## 해결 방안 
+
+alien method를 동기화 block 바깥으로 옮겨주면 된다고 한다. 이렇게 동기화 영역 바깥에서 호출되는 외계인 메소드를 열린 호출(open call)이라고 부른다고 한다. 
+
+
+
+```java
+
+private void notifyElementAdded(E element){
+    List<SetObserver<E>> snapshot = null;
+    synchronized (observers){
+        snapshot = new ArrayList<>(observers);
+    }
+    // client가 넘겨준 함수 객체를 synchronized block외부로 빼낸다. 
+    for(SetObserver<E> observer : snapshot){
+        observer.added(this,element);
+    }
+}
+```
+
+두번째 방법은 java 동시성 collection library에서 제공해주는 CopyOnWriteArrayList를 사용하는 것이다. ArrayList 내부를 변경하는 작업은 항상 복사본을 만들어 수행하도록 구현되어, 내부 원본 배열은 절대 수정되지 않는다. 따라서 수정없이 순회만 한다면 매우 빠르다. 
+
+위 예제에 ObservableSet을 CopyOnWriteArrayList 를 이용해 다시 구현하면 다음과 같다. 
+
+
+```java
+private final List<SetObserver<E>> observers = new CopyOnWriteArray<>();
+
+public void addObserver(SetObserver<E> observer){
+    observers.add(observer);
+}
+
+public boolean removeObserver(SetObserver<E> observer){
+    return observers.remove(observer);
+}
+
+private void notifyElementAdded(E element){
+    for(SetObserver<E> observer : observers){
+        observer.added(this,element);
+    }
+}
+```
+
+## 기본 원칙 
+
+(되도록이면 불변객체를 사용하되, 가변객체를 사용하는 경우에는 ..)
+- 동기화 영역에서는 가능한 일을 적게 수행하는게 좋다. 
+- 동기화 영역안에서는 alien method (client가 전달해주는 함수객체) 를 실행하지 말고 synchronized block밖으로 빼서 open call을 수행하자. 
+
+
+### 참고사항
+
+1. StringBuffer는 thread-safe , StringBuilder는 thread-safe하지 않은 반면 성능적으로 빠르다. StringBuffer가 단일 thread에서 주로 사용되는데 내부적으로 동기화 처리를 수행함으로 StringBuilder가 개발되었다고 한다.

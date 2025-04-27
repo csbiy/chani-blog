@@ -1,0 +1,268 @@
+---
+id: 90
+title: "PLSQL - Collection"
+description: ""
+date: "2022-05-18 19:24:54"
+tags: ['database', 'oracle']
+---
+## Collection 
+
+- Record 와 같은 복합형 데이터 타입이며, 동시에 여러 로우에 해당되는 데이터를 가질 수 있다. 
+- 객체지향언어의 클래스와 유사하다. 클래스처럼 생성자를 통해 초기화를 할 수 있고 (연관배열은 불가능), built-in 함수와 procedure로 구성된 collection 메소드를 제공한다. 
+- method를 통해서 collection 내 값을 수정,삭제할 수 있다. 
+
+
+## Collection의 종류
+
+- Oracle에서 제공하는 Collection 타입은 구조에 따라 3가지로 나뉜다.
+
+1. 연관 배열 (Associative Array)
+2. VARRAY  (Variable-Size Array)
+3. 중첩 테이블 
+   
+
+## 연관 배열 (Associative Array)
+
+- 키-값 pair로 구성된 Collection. Key를 인덱스라고도 부르기 떄문에 index-by 테이블이라고도 한다. 
+
+- 연관 배열 선언 문법
+
+```
+TYPE 연관배열명 IS TABLE OF 값타입 INDEX BY 인덱스(키)타입;
+```
+
+주의할점은 값타입은 어떠한 타입도 올 수 있지만 , 인덱스(키) 타입은 <strong>문자형,PLS_INTEGER 타입</strong>만 올 수 있다.
+
+```sql
+DECLARE
+    -- 연관 배열 타입 선언 
+    TYPE av_type IS TABLE OF VARCHAR2(40)
+                    INDEX BY PLS_INTEGER;
+    -- 연관 배열 변수 선언
+    vav_test av_type;
+BEGIN 
+    -- 연관 배열에 값 할당
+    vav_test(10) := 'value of key 10';
+    vav_test(20) := 'value of key 20';
+    
+    -- 연관 배열의 값 조회
+    DBMS_OUTPUT.PUT_LINE(vav_test(10));
+    DBMS_OUTPUT.PUT_LINE(vav_test(20));
+END;
+```
+
+- 위 예제에서 보다시피 연관 배열의 요소값은 연관배열변수명(키) 형태로 접근 가능하다. 
+- 연관배열에 값을 입력할때 마다 내부적으로는 인덱스 값을 기준으로 정렬된다. 
+
+## VARRY (Variable Size Array , 가변 길이 배열)
+
+- 연관 배열과 다르게 크기에 제한이 존재한다. 
+- 키 값을 개발자가 명시하는게 아니라 DB AUTO_INCREMENT처럼 자동으로 순번이 증가한다. 
+- VARRY 선언 문법
+
+```
+TYPE VARRY 명 IS VARRAY(최대요소개수) OF 값타입; -- ex) VARRY(10) : 최대 요소를 10개 가지는 가변 길이 배열 
+```
+
+만약 최대요수 개수보다 많은 요소를 선언하려고 하면 ORA-06532 오류가 터진다.
+
+```
+오류 보고 -
+ORA-06532: Subscript outside of limit
+ORA-06512: at line 1
+06532. 00000 -  "Subscript outside of limit"
+*Cause:    A subscript was greater than the limit of a varray
+           or non-positive for a varray or nested table.
+*Action:   Check the program logic and increase the varray limit
+           if necessary.
+```
+
+
+사용 예시를 보면 다음과 같다. 먼저 연관배열과 다르게 생성자로 VARRY 가변 길이 배열을 초기화하고 ,  변수명(인덱스) 형태로 값을 조회 또는 값을 저장 할 수 있다. 
+
+```sql
+
+DECLARE 
+    -- 5개의 문자형 값으로 이루진 VARRAY 선언
+    TYPE va_type IS VARRAY(5) OF VARCHAR2(20);
+    -- VARRY 변수 선언
+    vva_test va_type;
+    vn_cnt NUMBER := 0;
+    
+BEGIN 
+    -- 생성자를 통해 VARRAY 가변 배열 초기화 
+    vva_test := va_type('FIRST' , 'SECOND' , 'THIRD' ,'' ,''); -- 나머지 4,5번째 INDEX값은 NULL값이 된다. 
+    
+    LOOP
+        vn_cnt := vn_cnt+1;
+        IF vn_cnt > 5 THEN 
+            EXIT;
+        END IF;
+        -- VARRAY 요소에 접근할때는 VARRAY변수명(인덱스) 로 가능하다.
+        DBMS_OUTPUT.PUT_LINE(vva_test(vn_cnt));
+    END LOOP;
+    vva_test(1) := 'FIRST VALUE CHANGED';
+    DBMS_OUTPUT.PUT_LINE(vva_test(1));
+END;
+```
+
+## 중첩 테이블 (Nested Table)
+
+- 요소 제한이 없으나 , 숫자형 인덱스만 사용 가능하다.
+- 생성자를 사용하며 , 일반 테이블의 칼럼 타입으로 사용될 수 있다. 
+
+- 중첩 테이블 선언 문법
+
+```
+TYPE 중첩테이블명 IS TABLE OF 값타입; 
+```
+
+```SQL
+DECLARE 
+    -- 중첩 테이블 선언
+    TYPE nt_type IS TABLE OF VARCHAR2(10);
+    
+    -- 중첩 테이블 변수 선언
+    vnt_test nt_type;
+BEGIN
+    -- 중첩 테이블 생성자 사용
+    vnt_test := nt_type('FIRST','SECOND','THIRD','ETC');
+    DBMS_OUTPUT.PUT_LINE(vnt_test(4));
+END;
+```
+
+
+## Collection Method 
+
+- 컬렉션의 요소에 접근해 값을 수정 및 삭제하는 기능을 하는 함수 또는 프로시저 
+- "컬렉션명.메소드명" 형태로 사용
+
+### DELETE
+
+- Collection.DELETE(삭제할 인덱스)  , Collcetion.DELETE(삭제할 인덱스 from , to) 형태로 사용하며 해당 인덱스-값 을 삭제한다. 
+```SQL
+
+DECLARE
+    TYPE av_type IS TABLE OF VARCHAR2(40)
+                    INDEX BY VARCHAR2(10);
+    vav_test av_type;
+    vn_cnt NUMBER :=0;
+    
+BEGIN
+    vav_test('A') := '10';
+    vav_test('B') := '20';
+    vav_test('C') := '30';
+    vn_cnt := vav_test.COUNT;
+    DBMS_OUTPUT.PUT_LINE('삭제 전 요소 개수: ' || vn_cnt );
+    vav_test.DELETE('A','B');
+    vn_cnt := vav_test.COUNT;
+    DBMS_OUTPUT.PUT_LINE('삭제 후 요소 개수: ' || vn_cnt );
+END;
+```
+
+### TRIM 
+
+- Collection.TRIM(맨끝에서 삭제할 요소 개수) 형태로 사용한다. 삭제된 인덱스에 접근하려고 하면 ORA-06533 오류가 터진다.
+
+```SQL
+DECLARE
+    TYPE nt_typ IS TABLE OF VARCHAR2(10);
+    vnt_test nt_typ;
+BEGIN 
+    vnt_test := nt_typ('FIRST','SECOND');
+    vnt_test.TRIM(1); --맨끝에서부터 하나의 요소 삭제
+    
+    DBMS_OUTPUT.PUT_LINE(vnt_test(2));
+    
+    EXCEPTION WHEN OTHERS THEN 
+        DBMS_OUTPUT.PUT_LINE(SQLERRM);
+        DBMS_OUTPUT.PUT_LINE('맨 끝 요소가 삭제되어 접근할 수 없습니다.');
+END;   
+```
+
+### EXTEND 
+
+- Collection.EXTEND      : collection의 맨끝에 NULL인 요소 하나 추가
+- Collection.EXTEND(n)   : collection의 맨끝에 NULL인 요소 n개 추가
+- Collection.EXTEND(n,i) : collection의 i번째 있는 요소를 collection 맨 끝에 n개 복사해 추가해준다. 
+
+
+```sql
+DECLARE
+    TYPE nt_typ IS TABLE OF VARCHAR2(10);
+    vnt_test nt_typ;
+BEGIN 
+    vnt_test := nt_typ('FIRST','SECOND');
+    -- collection 맨 끝에 NULL 요소 추가 
+    vnt_test.EXTEND;
+    vnt_test(3) := 'THIRD';
+    -- collection의 1번쨰 원소를 collection의 맨 끝에 2개 추가 
+    vnt_test.EXTEND(2,1);
+    DBMS_OUTPUT.PUT_LINE(vnt_test(5));
+    DBMS_OUTPUT.PUT_LINE(vnt_test(4));
+END;
+```
+
+### FIRST와 LAST 
+
+- Collection.FIRST , .LAST : Collection의 첫번째와 마지막 요소의 인덱스를 반환한다. 만약 collection이 비어 있다면 두 함수 모두 NULL을 반환한다. 
+
+- 주로 반복문의 조건 체크시 활용한다.
+
+```sql
+DECLARE 
+    -- 중첩 테이블 선언
+    TYPE nt_typ IS TABLE OF VARCHAR2(10);
+    -- 변수 선언
+    vnt_test nt_typ;
+
+BEGIN
+    -- 생성자를 사용해 값 할당
+    vnt_test := nt_typ('FIRST','SECOND','THIRD');
+    
+    -- FIRST와 LAST method를 활용해 컬렉션값 iteration 
+    FOR i IN vnt_test.FIRST..vnt_test.LAST
+    LOOP
+        DBMS_OUTPUT.PUT_LINE(i || '번째 요소 값:' || vnt_test(i));
+    END LOOP;
+END;
+```
+
+### COUNT , LIMIT 
+
+- Collection.COUNT : 현재 collection이 가진 요소의 개수 
+- Collection.LIMIT : 현재 collection이 가질 수 있는 요소의 최대 개수 
+  * VARRAY 가변 길이 배열을 제외한 중첩 테이블 , 연관 배열의 경우 요소의 개수에 제한이 없기 때문에 LIMIT method 호출시 NULL을 반환한다. 
+
+```sql
+DECLARE 
+    TYPE nt_typ IS TABLE OF VARCHAR2(10); -- 중첩 테이블 선언 
+    TYPE va_type IS VARRAY(5) OF VARCHAR2(10); -- VARRAY 선언
+    vnt_test nt_typ;
+    vva_test  va_type;
+BEGIN 
+    vnt_test := nt_typ('FIRST','SECOND','THIRD','FOURTH');
+    vva_test := va_type('FIRST','SECOND','THIRD','FOURTH');
+    DBMS_OUTPUT.PUT_LINE('VARRAY COUNT : ' || vva_test.COUNT); --4
+    DBMS_OUTPUT.PUT_LINE('중첩테이블 COUNT : ' || vva_test.COUNT); --4
+    DBMS_OUTPUT.PUT_LINE('VARRAY LIMIT : ' || vnt_test.LIMIT); -- NULL
+    DBMS_OUTPUT.PUT_LINE('중첩테이블 LIMIT : ' || vva_test.LIMIT); --5
+END;
+    
+```
+
+### PRIOR , NEXT
+
+- Collection.PRIOR(i) , Collection.NEXT(i): i 번째 collection 원소의 이전 혹은 다음 인덱스를 반환한다.
+
+```sql
+DECLARE 
+    TYPE nt_typ IS TABLE OF VARCHAR2(10); -- 중첩 테이블 선언 
+    vnt_test nt_typ;
+BEGIN 
+    vnt_test := nt_typ('FIRST','SECOND','THIRD','FOURTH');
+    DBMS_OUTPUT.PUT_LINE('인덱스 2의 NEXT : ' || vnt_test.NEXT(2)); -- 3
+    DBMS_OUTPUT.PUT_LINE('인덱스 2의 PRIOR : ' || vnt_test.PRIOR(2)); -- 1
+END;
+    
+```

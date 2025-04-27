@@ -1,0 +1,86 @@
+---
+id: 66
+title: "Spring Configuration - Xml"
+description: ""
+date: "2021-07-28 23:44:44"
+tags: ['spring', '토비의 spring']
+---
+spring은 java annotaion 기반으로 DI 의존관계 설정 class를 만드는 것 이외에도 , 
+
+xml을 활용하여 DI 의존관계 설정 class를 만드는 것을 지원한다.
+
+xml의 이용할 경우  별도의 compile이 필요하지 않다는 장점을 가지고 있다.
+
+annotaion의 @Configuration 이 \<beans> tag, @Bean 이 \<bean> tag와 대응된다. 
+
+
+@Bean에서 bean이름이 될 method name은 xml에서 \<bean> tag 의 id attribute,
+@Bean에서 bean Class type은 xml에서 \<bean> tag의 class attribute 가 된다. 
+
+예를 들어 
+```java
+@Bean 
+public ConnectionMaker connectionMaker(){
+    return new DconnectionMaker();
+}
+```
+위 자바 코드는 아래의 xml 기반의 설정파일과 동일한 의미이다. 
+```xml
+<beans>
+    <bean id="connectionMaker" class="com.springstudy...DconnectionMaker">
+<beans>
+```
+
+다른 Bean 과의 관계설정은 xml에서 <property> tag를 통해 이루어질 수 있다. property tag의 name attribute는 property 이름  , ref attribute는 setter method를 통해 주입해줄 bean 객체의 이름이다.
+
+예를 들어 
+```java
+public class UserDao{
+    
+    private ConnectionMaker connectionMaker;
+
+    public void setConnectionMaker(ConnectionMaker connectionMaker){
+        this.connectionMaker=connectionMaker;
+    }
+}
+```
+위 자바 코드는 아래의 xml 기반의 설정파일과 동일한 의미이다. 
+```xml
+<beans>
+    <bean id="userDao" class="com.springstudy...UserDao">
+        <!-- name : property 명 , ref : bean 객체 이름  -->
+        <property name="connectionMaker" ref="connectionMaker" />
+    </bean>
+<beans>
+```
+application context 를 xml 설정파일로 만드는 방법은 간단하다 다른 구체 class를 사용하면 된다.
+
+```java
+GenericXmlApplicationContext("applicationContext.xml");
+```
+
+최종적으로 현재 userDao 를 xml설정파일로 bean으로 등록하였다.
+```xml
+<!-- applicationContext.xml  -->
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:util="http://www.springframework.org/schema/util" xsi:schemaLocation="
+        http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util.xsd">
+    <bean id="connectionMaker" class="com.springstudy.ioc.DconnectionMaker"></bean>
+    <bean id="userDao" class="com.springstudy.ioc.UserDao">
+        <property name="connectionMaker" ref="connectionMaker"></property>
+    </bean>
+
+</beans>
+```
+
+```java
+    public static void main(String[] args) {
+        ApplicationContext context = new GenericXmlApplicationContext("applicationContext.xml");
+        UserDao userDao = context.getBean("userDao", UserDao.class);
+        System.out.println("userDao = " + userDao);
+
+    }
+```

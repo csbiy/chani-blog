@@ -1,0 +1,101 @@
+---
+id: 122
+title: "Item9. try-finally 보다는 try-with-resource를 사용하라."
+description: ""
+date: "2021-12-06 20:07:02"
+tags: ['Java', 'Effective Java 3/E']
+---
+코딩을 하다보면 close method를 통해 반환해주어야 하는 리소스가 많다(java.sql.Connection, java.io 관련 리소스 ex) InputStream,OutputStream )  , 개발자가 실수로 리소스 정리를 깜빡하는 경우가 있다.
+
+주로 자원을 반환할떄 사용하던 try- finally 구문은 다음과 같다. 
+
+```java
+
+static String firstLineOfFile(String path) throws IOException {
+    BufferedReader br = new BufferedReader(new FileReader(path));
+    try{
+        return  br.readLine();
+    } finally {
+        br.close();
+    }
+}
+```
+
+위 try - finally 의 단점은 다음과 같다. 
+
+- 중첩 try - finally 문 작성으로 코드가 장황해지고, 디버깅이 힘들어질수 있다.
+
+
+
+예를 들면 , try문에서 예외가 터지고, finally문에서 다시 예외가 터지면, try문에서 발생한 예외가 finally 문에서 발생한 예외에 의해 삼켜진다.
+
+아래와 같이 치킨리소스가 있다고 하였을때, try문에서 발생한 예외는 finally문에서 또다시 발생한 예외로 인해 보이지 않는다. 
+```java
+public class ChickenResource implements AutoCloseable{
+
+    public void logicA(){
+        System.out.println("logicA 호출" );
+        throw new FirstError();
+    }
+
+    @Override
+    public void close() throws Exception {
+        System.out.println("eat chicken");
+        throw new SecondError();
+    }
+}
+```
+```java
+    public static void main(String[] args) throws Exception {
+
+        ChickenResource chickenResource = new ChickenResource();
+        try{
+            chickenResource.logicA();
+            // First Error 발생
+        }
+        finally {
+            chickenResource.close();
+            // First Error가 발생했지만, SecondError 가 이후에 발생하여 First Error는 보이지 않음 
+        }
+    }
+
+```
+
+![](/images/try_with_resource_01.jpg)
+
+
+위 코드에 try-with-resource를 사용하면 다음과 같이 코드가 간결해지고 명시적으로 close를 호출해줄 필요가 없다.
+
+```java
+
+public static void main(String[] args) throws Exception {
+
+    try(ChickenResource chickenResource = new ChickenResource()){
+        chickenResource.logicA();
+        // close 묵시적으로 호출 
+    }
+}
+
+```
+
+![](/images/try_with_resource_02.jpg)
+
+또한 두번쨰예외에 의해 삼켜진 첫번쨰예외도 suppressed : First exception stack trace도 확인할수가 있어 디버깅이 휠씬 유리하다는 장점이 있다. 
+
+
+또한 try안에 여러개의 리소스를 사용하여도 반환이 가능하다. 
+
+```java
+
+    public static void main(String[] args) throws Exception {
+
+        try(ChickenResource chickenResourceA = new ChickenResource();
+            ChickenResource chickenResourceB = new ChickenResource();
+        ){
+            chickenResourceA.logicA();
+            chickenResourceB.logicA();
+        }
+    }
+```
+
+정리하면 리소스 회수에 try-with-resource를 사용하여, 코드 간결성과 디버깅 측면에서 장점을 가져가자는 것이다.

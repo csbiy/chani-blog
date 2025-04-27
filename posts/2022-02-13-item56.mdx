@@ -1,0 +1,171 @@
+---
+id: 60
+title: "Item56. 공개된 API요소에는 항상 문서화 주석을 작성하라"
+description: ""
+date: "2022-02-13 17:57:25"
+tags: ['Java', 'Effective Java 3/E']
+---
+문서가 잘 갖춰지지 않은 API는 사용하기 헷갈려서 오류의 원인이 되기 쉽다. 
+
+method용 문서화 주석에는 해당 method 와 client 사이의 규약을 명료하게 기술해야 한다. 
+
+- how가 아닌 what 을 기술해야 한다. (어떻게 동작하는지보다 무엇을 하는지를 기술해야 한다.)
+- client가 해당 method를 호출하기 위한 precondition을 모두 나열해야 한다. 
+- client가 해당 method를 호출한 뒤에 postcondition을 모두 나열해야 한다.
+- 시스템의 어떠한 변화를 가져오는 경우, 문서에 밝혀야 한다. 
+
+
+
+## @param,@return,@thorws 태그 
+
+
+- 매개변수에 @param 태그 , 반환타입이 void가 아니라면 @return 태그 , 발생할 가능성이 있는 모든 예외에 @throws 태그를 달아야 한다. 
+- 관례상 @param 태그 , @return 태그의 설명은 해당 매개변수가 뜻하는 값이나 반환값을 설명하는 명사구를 쓴다. 
+- @throws 태그의 설명은 if로 시작해서 해당 예외를 던지는 조건을 설명하는 절이 뒤따른다. 
+
+
+```java
+
+/***
+* Returns the element at the specified position in this list. --> method가 무엇을 하는지 기술하는 요약 설명 
+                                                                (this:호출된 method가 가르키는 객체)
+* <p> This method is <i> not </i> guaranteed to run in constant time. 
+* In some complementations it may run in time proportional to element position 
+*
+*  @param index  idnex of element to return; must be non-negative and less than the size of this list
+*  @return the element at the specified position in this list
+*  @throws IndexOutOfBoundsException if the index is out of range 
+*           ( {@code index< 0 || index >= this.size() })
+*/
+
+E get(int index);
+```
+
+javadoc utility는 문서화 주석을 HTML로 변환함으로 문서화 주석안의 HTML 요소들이 최종 HTML 문서에 반영된다. 
+{@code} 태그는 코드용 폰트로 렌더링, 이스케이프 기능을 제공한다. 
+
+- 문서화 주석의 첫 번쨰 문장은 해당 요소의 요약 설명으로 간주되며, 이 요약 설명은 반드시 대상의 기능을 고유하게 기술해야 한다. 즉 한 class안에서 요약 설명이 똑같은 멤버가 둘 이상이면 안 된다.  (다중정의된 method라고 하여도 허용되지 않는다.)
+- 첫번째 문장의 마무리는 마침표여야 한다. 중간에 의도치 않는 마침표가 들어간 경우에는 @literal 태그 (아래에 설명 ) 를 활용하자 
+
+```java
+/**
+* A suspect , such as Colonel Mustard or {@listeral Mrs.} Peacok.
+*/
+public class Suspect{...}
+```
+- java 10부터는 이 요약 설명부분이 @summary 태그로 분리되었으니, 중간에 마침표를 별도로 literal태그로 감쌀필요가 없다
+
+```java
+/**
+* {@summary A suspect , such as Colonel Mustard or Peacok.}
+*/
+public class Suspect{...}
+```
+
+- 요약 설명은 method와 생성자의 경우에는 주어가 없는 동사구 여야 한다. 
+
+```java
+- ArrayList (int intialCapacity) : Constructs an empty list with the specified initial capacity
+```
+
+- 요약 설명은 class,interface,field의 경우에는 대상을 설명하는 명사절이여야 한다.
+
+```java
+- Instant : An instantaneous point on the time-line.
+```
+
+## @implSpec 태그 
+
+일반적인 문서화 주석은 해당 method와 client사이의 계약을 설명한다. 반면 @implSpec 주석은 해당 method와 하위 class사이의 계약을 설명하여, 하위 class들이 
+그 method를 상속하거나, super 키워드를 이용해 호출할때, 그 method가 어떻게 동작하는 지를 명확하게 인지하고 사용하도록 해줘야 한다. 
+
+예를 들면 다음과 같다.
+
+```java
+/**
+* Returns true if this collection is empty.
+*
+* @impleSpec
+* This implementation returns {@code this.size() == 0}
+*
+* @return true if this collection is empty.
+**/
+public boolean isEmpty() {...}
+```
+javadoc 명령줄에서 -tag "impleSpec:a:Implementation Requirements:" 를 추가해주지 않으면 @implSpec는 무시하니, 추가할경우에는 옵션을 주어야 한다.
+
+## @literal 태그
+
+- @code 와 동일하게 이스케이프 기능을 사용하고 싶다면 ,literal 태그를 사용하면 된다. 다만 코드 폰트로 렌더링 하진 않는다.
+
+```java
+/**
+*   A geometric series converges if {@literal |r| < 1 }
+**/
+```
+
+
+## @index 태그 
+
+- java9부터는 javadoc이 생성한 HTML 문서에 검색 기능이 추가되어,  index 태그를 사용해 api문서에 중요한 용어를 추가로 검색이 용이하게 색인화할 수 있다. 
+
+```java
+/**
+* This method complies with the {@index IEEE 754} standard.
+*/
+```
+
+## generic, enum, annotation type의 문서화 
+
+- generic 타입이나 generic method 문서화할때는 모든 타입 매개변수에 주석을 달아야 한다.
+
+```java
+/**
+* An Object that maps keys to values. A map cannot contain
+* duplicate keys; each key can map to at most one value.
+*
+* @param <K> the type of keys maintained by this map
+* @param <V> the type of mapped values
+*/
+public interface Map<K,V> {...}
+```
+
+- enum type 문서화시에는 각 상수에도 주석을 달아야 한다. 
+  
+```java
+/**
+* An instrument section of a symphony orchestra
+*/
+public enum OrchestraSection {
+    /**Woodwinds, such as flute , clarinet and oboe */
+    WOODWIND,
+    /**Brass instruments , such as french horn and trumpet. */
+    BRASS,
+    /** Percussion instruments, such as timpani and cymbals/ */
+    PERCUSSION
+}
+```
+
+- annotaion을 문서화시에는 멤버들에도 모두 주석을 달아야 한다.
+  
+```java
+/**
+* Indicates that the annotated method is a test method that must throw the designated exception to pass
+*/
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.METHOD)
+public @interface ExceptionTest {
+
+    /**
+    * The exception that the annotated test method must throw
+    * in order to pass
+    */
+    Class<? extends Throwable> value();
+}
+```
+
+- 패키지를 설명하는 문서화 주석은 package-info.java 파일에 적어야 하며, 패키지 선언에 반드시 포함되는 파일이다. 모듈의 경우에는 module-info.java에 작성한다.
+
+## 주의사항 
+
+- class , 정적 method가 thread-safe하든 아니든 반드시 thread 안전 수준을 API 설명에 포함되어야 하고, 직렬화 가능하다면 직렬화 형태도 API 문서에 포함해야 한다.

@@ -1,0 +1,124 @@
+---
+id: 117
+title: "Item38. 확장할 수 있는 Enum type이 필요하면 interface를 사용하라"
+description: ""
+date: "2022-01-12 19:53:25"
+tags: ['Java', 'Effective Java 3/E']
+---
+enum type은 상속이 불가능하다.  
+
+확장한 타입의 원소는 기반 타입으로 받을 수 있지만, 반대로 기반 타입은 확장한 타입으로 받을 수 없으며, 기반 타입과 확장한 타입들의 원소를 모두 순회할 방법도 마땅치 않다. 
+
+
+## enum type의 확장 
+
+그럼에도 불구하고 enum type의 확장시 유용한 경우가 종종 있는데, 그 예중에 하나가 연산 코드이다. 
+
+enum type은 상속이 불가능한 대신 interface 구현은 가능하다. 따라서 interface를 통해 간접적으로 확장이 가능하다. 
+
+client 가 접근할 interface를 두고, 그 interface의 구현체별로 enum type을 정의하는 방법이다. 
+
+![](/images/Item38-01.png)
+
+
+client가 접근할 operation interface를 두고 operation interface의 구현체로 enum class를 생성하였다. 
+
+
+
+```java
+public interface Operation {
+    double apply(double x, double y);
+}
+
+```
+```java
+public enum BasicOperation implements Operation{
+    
+    PLUS("+"){public double apply(double x, double y) { return x+y;}},
+    MINUS("-"){public double apply(double x, double y) { return x-y;}},
+    TIMES("*"){public double apply(double x, double y) { return x*y;}},
+    DIVIDE("/"){public double apply(double x, double y) { return x/y;}};
+
+    private final String symbol;
+
+    BasicOperation(String symbol) {
+        this.symbol = symbol;
+    }
+
+    @Override
+    public String toString() {
+        return symbol;
+    }
+}
+
+public enum ExtendedOperation implements Operation{
+    EXP("^"){public double apply(double x, double y) { return Math.pow(x,y);}},
+    REMAINDER("%"){public double apply(double x, double y) { return x%y;}};
+
+    private final String symbol;
+
+    ExtendedOperation(String symbol) {
+        this.symbol = symbol;
+    }
+
+    @Override
+    public String toString() {
+        return symbol;
+    }
+}
+```
+
+client측에서는 Operation 인터페이스를 사용하도록 작성되어 있기만 하면 구현체가 추가되어도 변경없이 동작할 수 있다. 
+
+```java
+public class Client {
+    public static void reportResult(Operation op,double x, double y){
+        System.out.printf("%f %s %f = %f \n",x,op,y,op.apply(x,y));
+    }
+    public static void main(String[] args) {
+        reportResult(BasicOperation.DIVIDE,10,2); // 5
+    }
+}
+```
+
+뿐만 아니라 타입 수준에서 class literal을 넘겨 특정 구현체의 원소를 모두 사용할수도 있다.
+
+```java
+private static <T extends Enum<T> & Operation > void test(Class<T> opEnumType , double x , double y){
+    for (Operation op : opEnumType.getEnumConstants()) {
+        System.out.printf("%f %s %f = %f \n",x,op,y,op.apply(x,y));
+    }
+}
+
+public static void main(String[] args) {
+    double x = Double.parseDouble(args[0]);
+    double y = Double.parseDouble(args[0]);
+    test(BasicOperation.class,x,y);
+
+}
+```
+
+위에는 한정적 타입매개변수를 사용하였지만, 두번째 대안으로 한정적 wildcard type을 넘길수도 있다.
+
+```java
+private static void test(Collection<? extends Operation> opSet , double x, double y){
+    for (Operation op : opSet) {
+        System.out.printf("%f %s %f = %f \n",x,op,y,op.apply(x,y));
+    }
+}
+```
+이 방법은 유연하게 여러 구현 타입의 연산을 다음과 같이 조합해 호출할 수 있다.
+
+```java
+test(List.of(BasicOperation.DIVIDE,ExtendedOperation.EXP),10.1,20.3);
+```
+
+## interface 확장 방식의 문제점 
+
+- enum type 은 상속이 불가능하므로, 중복된 로직이 일부 추가될 수 있다. 아무 상태도 의존하지 않는 경우라면 default method를 interface에 추가할 수도 있다. 
+
+예를 들면 연산기호(symbol)을 저장하고 찾는 로직이 구현체마다 중복되어 있다. 만약 구현체가 많다면 별도의 정적 도우미 method 혹은 class로 분리해야 한다. 
+
+## 정리
+
+- enum type 은 상속이 불가능하나 interface를 두고 구현체를 여러개 만들어 확장하는 효과를 낼 수 있다.

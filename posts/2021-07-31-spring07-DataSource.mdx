@@ -1,0 +1,108 @@
+---
+id: 83
+title: "DataBase Connection을 추상화한 DataSource Interface 적용"
+description: ""
+date: "2021-07-31 19:42:11"
+tags: ['spring', '토비의 spring']
+---
+기존에 DB connection을 만들어주기 위하여, 직접 DB-specific한  DriverManager로부터 DB connection을 가져왔으나, 실제로 java에서는 DB connection을 가져오는 기능과 여러가지 부가적인 기능을 추상화한 DataSource interface가 존재한다.
+ 
+```java
+// javax.sql.DataSource
+
+public interface DataSource  extends CommonDataSource, Wrapper {
+
+  /**
+   * <p>Attempts to establish a connection with the data source that
+   * this {@code DataSource} object represents.
+   *
+   * @return  a connection to the data source
+   * @exception SQLException if a database access error occurs
+   * @throws java.sql.SQLTimeoutException  when the driver has determined that the
+   * timeout value specified by the {@code setLoginTimeout} method
+   * has been exceeded and has at least tried to cancel the
+   * current database connection attempt
+   */
+  Connection getConnection() throws SQLException;
+
+```
+
+spring 이 제공해주는 DataSource interface를 구현한 구체 class 중에서 test환경에서 간단히 사용할 수 있는 SimpleDriverDataSource를 사용하여, Dao Class를 refactorying 하였다. 
+
+```java
+ org.springframework.jdbc.datasource.SimpleDriverDataSource
+```
+
+Dao class가 DB connection을 받으려면, datasource class를 spring bean 으로 등록해,  DI 받을 수 있게 해야한다. 
+
+따라서 DataSource class를 먼저 spring bean으로 등록한다. 
+```java
+@Bean
+public DataSource dataSource(){
+    SimpleDriverDataSource dataSource = new SimpleDriverDataSource();
+    dataSource.setDriverClass(com.mysql.jdbc.Driver.class);
+    dataSource.setUrl("jdbc:mysql://localhost:3306/spring_study?serverTimezone=UTC&useUnicode=true&characterEncoding=utf8 ");
+    dataSource.setPassword("1234");
+    dataSource.setUsername("root");
+    return dataSource;
+}
+```
+이후에는 Dao class가 setter 주입 방법을 통해 dataSource 객체를 주입받을 수 있게하여, run time object 관계를 만들어준다. 
+```java
+@Bean
+public UserDao userDao(){
+    UserDao userDao = new UserDao();
+    userDao.setDataSource(dataSource());
+    return userDao;
+}
+```
+Dao class 도 instance variable 로 DataSource를 갖도록 변경한다.
+```java
+public class UserDao {
+
+//    -- DataSource 적용 이전 --  
+//    private ConnectionMaker connectionMaker;
+//    public UserDao(ConnectionMaker connectionMaker) {
+//        this.connectionMaker =connectionMaker;
+//    }
+
+    private DataSource dataSource;
+
+    public void setDataSource(DataSource dataSource){
+        this.dataSource=dataSource;
+    }
+```
+
+아래와 같이 테스트 코드를 적용하면 잘 작동하는 것을 확인할 수 있다. 
+
+```java
+public static void main(String[] args) {
+    ApplicationContext context = new AnnotationConfigApplicationContext(DaoFactory.class);
+    UserDao userDao = context.getBean("userDao", UserDao.class);
+    System.out.println("userDao = " + userDao);
+
+}
+```
+
+위에는 annotation 기반의 java코드로 spring bean으로 등록할 설정파일을 작성하였는데, 우리가 이전에 배운 xml 로 spring bean 을 등록해볼 수도 있다. 
+주의할점은 DataSource 인터페이스의 경우 이전에 setter 주입을 해줄때, <strong>다른 bean object의 참조값을 넘겨주는게 아니라, text를 적어주므로, ref attribute가 아닌 value attribute를 사용한다.</strong>
+
+```xml 
+    <bean id="dataSource" class="org.springframework.jdbc.datasource.SimpleDriverDataSource">
+        <property name="driverClass" value="com.mysql.jdbc.Driver"/>
+        <property name="url" value="jdbc:mysql://localhost:3306/spring_study?serverTimezone=UTC&amp;useUnicode=true&amp;characterEncoding=utf8g"/>
+        <property name="username" value="root"/>
+        <property name="password" value="1234"/>
+    </bean>
+```
+마찬가지로 제대로 spring bean이 생성되는 지 테스트해본다. 
+xml 기반의 설정파일을 이용함으로 Application Cotext interface의 구체class를 GenericXmlApplicationContext를 사용한다. 
+```java
+public static void main(String[] args) {
+
+    ApplicationContext context = new GenericXmlApplicationContext(DaoFactory.class);
+    UserDao userDao = context.getBean("userDao", UserDao.class);
+    System.out.println("userDao = " + userDao);
+
+}
+```

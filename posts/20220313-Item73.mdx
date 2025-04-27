@@ -1,0 +1,71 @@
+---
+id: 45
+title: "Item73. 추상화 수준에 맞는 예외를 던지라"
+description: ""
+date: "2022-03-13 16:39:34"
+tags: ['Java', 'Effective Java 3/E']
+---
+## 예외 번역 (Exception Translation)
+
+- method가 저수준 예외를 처리하지 않고, 바깥으로 예외를 전파시킬 때 내부 구현 방식을 드러내어, 윗 레벨 API를 오염시킨다.  
+  다음 릴리스에서 구현 방식을 바꾸면 기존 client 프로그램을 깨지게 만들수도 있다. 
+
+- 이 문제를 피하려면 상위계층에서는 저수준 예외를 잡아, 자신의 추상화 수준에 맞는 예외로 바꿔 던져야 하는데 이를 예외 번역이라고 한다. 
+
+```java
+try{
+}catch(LowerLevelException e){
+    //추상화 수준에 맞게 예외를 잡아 번역한다.
+    throw new HigherLevelException(...);
+}
+```
+
+
+예외 번역의 예시로서, AbstractSequentialList 의 get method는 List 인터페이스의 get method 명세에 명시된 예외로 번역한다
+
+```java
+public E get(int idx){
+    ListIterator<E> i = listIterator(idx);
+    try{
+        return i.next();
+    }catch(NoSuchElementException e){
+        throw new IndexOutOfBoundsException("인덱스: " + index);
+    }
+}
+```
+
+
+## 예외 연쇄(Exception Chaining)
+
+- 예외를 번역할 때, 저수준 예외가 디버깅에 도움된다면 근본 원인인 저수준 예외를 고수준 예외에 실어 보내는 예외 연쇄를 활용하는 게 좋다. 
+
+```java
+try{
+}catch(LowerLevelException cause){
+    // 예외 연쇄 : 저수준 예외를 고수준 예외에 실어 보낸다. 
+    throw new HigherLevelException(cause);
+}
+```
+
+고수준 예외의 생성자는 상위 class의 생성자에 원인을 건네주어, 최종적으로 Throwable 생성자까지 건네지게 한다.
+
+```java
+class HigherLevelException extends Exception {
+    HigherLevelException(Throwable cause){
+        super(cause);
+    }
+}
+```
+
+- 고수준 예외를 처리할떄, 저수준 예외 정보를 Throwable getCause method를 통해 꺼내볼수 있다. 
+- 대부분의 표준 예외는 예외 연쇄용 생성자를 가지고 있으며 설사 그렇지 않더라도 Throwable 의 initCause method로 원인을 직접 명시할 수 있다. 
+
+```java
+public synchronized Throwable initCause(Throwable cause){}
+```
+
+
+## 권고사항 
+
+- 예외번역을 남용하는것보다 저수준 method에서 예외가 발생하지 않도록 처리해주는게 제일 좋다. 
+- 처리한 예외는 로깅기능을 활용해 기록해두면 API호출자가 추가 조치를 취할 수 있게 해준다.

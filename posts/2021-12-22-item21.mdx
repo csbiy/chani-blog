@@ -1,0 +1,31 @@
+---
+id: 65
+title: "Item21. 인터페이스는 구현하는 쪽을 생각해 설계해라"
+description: ""
+date: "2021-12-22 21:30:20"
+tags: ['Java', 'Effective Java 3/E']
+---
+## default method 
+
+java 8 이후부터는 interface에 default method를 추가할 수 있게 되었다. 
+
+default method 를 기존 인터페이스에 추가하였을떄 다음과 같은 사이드 이펙트가 발생할 수 있으니, 고려해서 추가하자는 내용이다. 
+
+## 기존 구현체와의 호환성 문제 
+
+org.apache.commons.collections4.collection.SynchronizedCollection 은 client가 제공한 객체에 lock 을 걸어주는 능력을 제공한다. (race condition 해결) 
+
+모든 method에서 lock 객체로 동기화 한 후, 내부 collection 객체에 기능을 위임하는 wrapper class이다. 
+
+이 wrapper class를 사용해 removeIf를 호출한다면, overriding이 안된 (lock 기능이 없는) interface default method가 호출된다, 즉 정상작동하지 않는다. 
+
+현재는 overriding 되어 있으나, 어쩄거나 구현체에서 default method와 호환이 안될수도 있다는 것이 핵심이다. 
+
+![](/images/synchronizedCollection.jpg)
+
+
+또한 default method는 컴파일에 성공하더라도 런타임 오류를 발생시킬 수도 있다. 
+
+## 테스트를 통한 결함예방 
+
+새로운 인터페이스라면 배포 이전에 반드시 테스트를 수행하고, 여러 방식으로 구현체를 구현해보고, 인터페이스가 의도한대로 작동되는지 확인해야 한다.

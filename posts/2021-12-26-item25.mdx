@@ -1,0 +1,64 @@
+---
+id: 152
+title: "Item25. top level class는 한 파일에 하나만 담으라"
+description: ""
+date: "2021-12-26 01:07:23"
+tags: ['Java', 'Effective Java 3/E']
+---
+소스 파일 하나당 top-level class를 여러개 선언해도 compile error는 나지 않는다,
+
+```java
+// Utensil.java 
+class Utensil {
+
+    static final String NAME = "pan";
+}
+
+class Dessert{
+    static final String NAME = "cake";
+}
+```
+```java
+ class Dessert {
+
+     static final String NAME = "pie";
+ }
+ 
+ class Utensil {
+     static final String NAME = "pot";
+ }
+```
+
+위와 같이 하나의 java file에 여러개의 class가 들어있는 경우 문제가 생길수도 있다.
+
+
+
+```java
+public class Main{
+    public static void main(String[] args) {
+        System.out.println("Utensil.NAME + Dessert.NAME = " + Utensil.NAME + Dessert.NAME);
+    }
+}
+```
+위 예제는 compile 순서에 따라 다른 결과를 출력한다.
+
+![](/images/item25.jpg)
+
+해결 방법은 top-level class들을 서로 다른 소스 파일로 분리하면 된다.
+굳이 여러개의 class를 하나의 소스 파일로 묶고자 하면 중첩 클래스 중 정적 멤버 class를 만드는 방법이 더 괜찮다.
+
+```java
+public class Outer{
+    // 정적 멤버 class 사용
+    public static class Utensil {
+
+        static final String NAME = "pan";
+    }
+
+    public static class Dessert{
+        static final String NAME = "cake";
+    }
+}
+```
+
+정리하면 compile 순서에 따라 출력결과가 달라지지 않으려면 하나의 java file에 하나의 top-level class만을 두자는 것이다.

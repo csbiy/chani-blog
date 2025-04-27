@@ -1,0 +1,67 @@
+---
+id: 52
+title: "Express Middleware concept"
+description: ""
+date: "2021-07-28 19:23:57"
+tags: ['Nodejs', 'express']
+---
+middleware 는 request, response 의 중간에 위치하며, requst,response에 필요한 작업을 수행한다. router,error handler 모두 middleware의 일종이다. 
+
+![](/images/express-middleware.png)
+
+- syntax 
+
+middleware 는 app.use(middleware) 형태로 실행된다. 
+
+middleware 의 parameter는 req,res,next이다. 
+
+express는 middleware를 <strong>위에서 아래로 순차적으로 실행하면서, 요청 url에 맞는 middleware를 실행</strong>하고 , 
+
+<strong> next() 호출시 다음 middleware로 요청이 넘어간다. </strong>
+만약 next() 호출되지 않으면 다음 middleware로 요청이 넘어가지 않는다. 
+
+```javascript
+//  기본 middleware 사용법 
+app.use((req,res,next)=>{
+    console.log("router exectued!");
+    next();
+})
+```
+위 middleware는 모든 요청에 대해 호출되는 middleware이고 
+특정 url에 대해 수행되는 middleware는 다음과 같이 수행될 수 있다.
+
+```javascript
+// GET,POST 
+app.use("/request-url",(req,res,next)=>{
+    console.log("router exectued!");
+    next();
+})
+// POST
+app.post("/request-url",(req,res,next)=>{
+    console.log("router exectued!");
+    next();
+})
+// GET
+app.get("/request-url",(req,res,next)=>{
+    console.log("router exectued!");
+    next();
+})
+```
+또한 하나의 요청 url에서 여러개의 router  수행이 가능하다 예를 들면 아래와 같이 호출하면 final_router 호출전에 router1,2의 로직을 수행된다. (주로 로그인여부확인 로직이 들어간다.)  
+```javascript
+// multiple router example
+// router1 contain next();
+// router2 contain next();
+app.get("/multiple-routers",router1,router2,final_router);
+```
+
+
+보통 모든 middleware에서 요청 url을 찾을 수 없을떄를 대비하기 위해, 가장 아래 middleware에 error handling 용 middleware를 두어 처리한다.
+```javascript
+
+app.use((err,req,res,next)=>{
+    console.log(`${err} occured !`);
+    // error 처리 로직
+    res.send(404)
+})
+```

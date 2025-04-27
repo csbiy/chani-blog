@@ -1,0 +1,311 @@
+---
+id: 112
+title: "Item2. 생성자에 매개변수가 많다면 빌더를 고려해라"
+description: ""
+date: "2021-07-17 21:51:06"
+tags: ['Java', 'Effective Java 3/E']
+---
+###
+
+- 객체 생성 방법 중 static factory method 와 constructor 를 통한 객체 생성 방법은 선택적 매개변수가 많을 때, 대응이 어렵다.
+
+1. 점층적 생성자 패턴(Telescoping constructor pattern)
+
+여러개의 생성자를 만들어서, 필요한 매개변수 조합을 선택하여 객체를 만드는 방식을 점층적 생성자 패턴이라고 한다. 위 방식은 매개변수 개수가 많아질수록 가독성이 매우 떨어진다.
+예를 들면 다음과 같다.
+```java
+//  점층적 생성자 패턴(telescoping constructor pattern)
+public Class NutritionFacts{
+    private final int serviceSize;
+    private final int servings;
+    private final int calories;
+    private final int fat;
+    private final int sodium;
+    private final int carbohydrate;
+
+    public NutritionFacts(int serviceSize, int servings){
+        this(servingSize,servings,0);
+    }
+    public NutritionFacts(int serviceSize, int servings,int calories){
+        this(servingSize,servings,calories,0);
+    }
+    public NutritionFacts(int serviceSize, int servings,int calories, int fat){
+        this(servingSize,servings,calories,fat,0);
+    }
+    public NutritionFacts(int serviceSize, int servings,int calories, int fat, int sodium , int carbohydrates ){
+        this.servingSize = servingSize;
+        this.servings = servings;
+        this.calories = calories;
+        this.fat = fat;
+        this.sodium = sodium;
+        this.carbohydrate = carbohydrate;
+    }
+
+    /*
+    위와 같이 생성자를 계속 추가함으로 , 
+    선택 매개변수를 받는 조합을 선택하여 객체를 만든다. 
+    가독성도 떨어지고, 코드의 길이가 불필요하기 길어진다.
+    */
+}
+```
+
+
+
+2. 자바빈즈 패턴(JavaBeans pattern) 
+
+매개변수가 없는 생성자로 객체를 우선 만든 뒤에,setProperty1,2.... 방식으로 원하는 매개변수 값을 설정하는 방식이다.
+
+
+```java
+// JavaBeansPattern
+public class NutritionFacts {
+
+    private  int serviceSize = -1;
+    private  int servings = -1;
+    private  int calories = 0;
+    private  int fat = 0;
+    private  int sodium = 0;
+    private  int carbohydrate = 0;
+
+    public NutritionFacts() {
+    }
+    public void setServiceSize(int serviceSize) {
+        this.serviceSize = serviceSize;
+    }
+    public void setServings(int servings) {
+        this.servings = servings;
+    }
+    public void setCalories(int calories) {
+        this.calories = calories;
+    }
+    public void setFat(int fat) {
+        this.fat = fat;
+    }
+    public void setSodium(int sodium) {
+        this.sodium = sodium;
+    }
+    public void setCarbohydrate(int carbohydrate) {
+        this.carbohydrate = carbohydrate;
+    }
+    public static void main(String[] args) {
+        NutritionFacts nutritionFacts = new NutritionFacts();
+        nutritionFacts.setServings(120);
+        nutritionFacts.setFat(20);
+        //set~
+    }
+}
+
+```
+점층적 생성자 패턴 방식에 비해 확실히 코드의 가독성은 증가하였다. 
+하지만 객체 하나를 만드려면 여러 메소드를 호출해야하고, 
+중간중간에 사용자가 원하지 않는 상태의 객체가 생긴다는 단점이 있다.
+이를 책에서는  "일관성이 무너진 상태"로 불변객체로 만들수가 없다고 한다. 
+
+단점을 완화하고자 객체 생성이 끝난 뒤에 freeze 메소드를 통해 객체를 수동으로 변경이 불가능하도록 만들 수 있다. 
+
+
+3. 빌더패턴(Builder Pattern)
+
+```java
+// Builder pattern
+public class NutritionFacts {
+
+    private  final int serviceSize;
+    private  final int servings;
+    private  final int calories;
+    private  final int fat;
+    private  final int sodium;
+    private  final int carbohydrate;
+
+    // 생성할 클래스 안에 static class로 builder를 만든다. 
+    public static class Builder{
+        // 필수 매개변수라고 가정한다.
+        private final int servingSize;
+        private final int serving;
+
+        // 선택 매개변수 - 기본값으로 초기화한다.
+        private int calories = 0;
+        private int fat = 0;
+        private int sodium =0;
+        private int carbohydrate =0;
+
+        public Builder(int servingSize, int serving) {
+            this.servingSize = servingSize;
+            this.serving = serving;
+        }
+
+        public Builder calories(int val){
+            // 1. 매개 변수에 값을 할당하고
+            calories = val;
+            // 2. 자기 자신(Builder)을 반환하여 chaining 형태로 메소드가 호출될수 있게한다.
+            return this;
+        }
+
+        public Builder fat(int val){
+            fat = val;
+            return this;
+        }
+
+        public Builder sodium(int val){
+            sodium = val;
+            return this;
+        }
+
+        public Builder carbohydrate(int val){
+            carbohydrate =val;
+            return this;
+        }
+
+        public NutritionFacts build(){
+            // 3. build 메소드 호출을 통해, 생성하고자하는 객체의 생성자에 빌더를 넣어준다.
+            return new NutritionFacts(this);
+        }
+    }
+
+    //4. 빌더 안에 세팅된 값을 할당해준다.
+    public NutritionFacts(Builder builder) {
+        serviceSize = builder.servingSize;
+        servings = builder.serving;
+        calories = builder.calories;
+        fat = builder.fat;
+        sodium = builder.sodium;
+        carbohydrate = builder.carbohydrate;
+    }
+}
+```
+ 
+정리를 하면, 생성할 class의 static class로 builder를 만들고, builder 안에서 property 를 설정할 수 있는 메소드를 정의하고, 메소드의 반환값을 builder로 하여, 
+method들이 연쇄적으로 호출될 수 있게한다.
+
+이를 메소드 체이닝 또는 Fluent API 라고 부른다. 어쩄거나 위의 방식을 통해 생성한 객체는 다음과 같이 만들 수 있다. 
+
+```java
+    public static void main(String[] args) {
+        NutritionFacts nutritionFacts = new Builder(280, 240)
+                .calories(100)
+                .sodium(35)
+                .build();
+    }
+```
+
+빌더 패턴의 장점은 가독성이 뛰어나고, 불변객체를 만들수 있다. 
+
+또한 계층적 구조에도 활용 가능하여, 확장이 용이하다. 
+
+```java
+
+// 계층적구조에 활용하는 빌더패턴
+public abstract class Pizza {
+
+    public enum Topping {HAM,ONION,PEPPER};
+    final Set<Topping> toppings;
+
+    /***
+     *  자식 클래스에서 상속받을 Builder 를 정의한다.
+     *  self()메소드를 통해 Builder를 반환하여 메소드 체이닝 형태로 호출 가능하다.
+     *  addToping method는 default method로 부모 객체에서 정의하였다.
+     */
+
+    abstract static class Builder<T extends Builder<T>>{
+        EnumSet<Topping> toppings = EnumSet.noneOf(Topping.class);
+
+        public T addTopping(Topping topping){
+            toppings.add(Objects.requireNonNull(topping));
+            return self();
+        }
+
+        abstract Pizza build();
+        protected abstract T self();
+    }
+
+    Pizza(Builder<?> builder){
+        toppings = builder.toppings.clone();
+    }
+
+}
+
+```
+
+```java
+public class MyPizza extends Pizza{
+    public enum Size {SMALL,MEDIUM,LARGE};
+    private final Size size;
+
+    public static class Builder extends Pizza.Builder<Builder>{
+        /*부모 빌더를 상속받아서 addTopping 메소드로, topping enum 값을 추가할 수 있으며, 
+        자식 빌더에서는 size enum값을 생성자로 받게하여,builder 생성시에 피자의 사이즈를 설정할 수 있다. 
+         */
+        private final Size size;
+
+        public Builder(Size size) {
+            this.size = Objects.requireNonNull(size);
+        }
+
+        @Override
+        Pizza build() {
+            return new MyPizza(this);
+        }
+
+        @Override
+        protected Builder self() {
+            return this;
+        }
+    }
+
+    MyPizza(Builder builder) {
+        super(builder);
+        size = builder.size;
+    }
+}
+```
+
+```java
+public class Calzone extends Pizza{
+
+    private final boolean sauceInside;
+
+    /***
+     * 마찬가지로 부모빌더를 상속하였는데, boolean property를 추가하여 구현하였다. 
+     */
+
+    public static class Builder extends Pizza.Builder<Builder>{
+
+        private boolean sauceInside = false;
+
+        public Builder sauceInside(){
+            sauceInside = true;
+            return this;
+        }
+        @Override
+        Pizza build() {
+            return new Calzone(this);
+        }
+
+        @Override
+        protected Builder self() {
+            return this;
+        }
+    }
+
+
+    Calzone(Builder builder){
+        super(builder);
+        sauceInside = builder.sauceInside;
+    }
+}
+
+```
+
+```java
+    public static void main(String[] args) {
+
+        Pizza pz1 = new MyPizza.Builder(MyPizza.Size.SMALL)
+                .addTopping(Topping.ONION).build();
+
+        Pizza pz2 = new Calzone.Builder()
+                .addTopping(Topping.HAM).sauceInside().build();
+    }
+```
+
+
+* 정리 : 생성자나 정적 팩토리 메소드가 처리해야할 매개변수가 많다면 빌더패턴을 선택하는게 코드 가독성 측면과 불변객체를 안전하게 만들 수 있다는 측면에서 더 바람직하다.

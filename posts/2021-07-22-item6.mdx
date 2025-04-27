@@ -1,0 +1,70 @@
+---
+id: 101
+title: "item6. 불필요한 객체 생성을 피하자"
+description: ""
+date: "2021-07-22 23:17:03"
+tags: ['Java', 'Effective Java 3/E']
+---
+##
+
+
+똑같은 기능을 하는 객체를 매번 생성하는 것보다 하나의 객체를 재사용하는 것이 메모리 측면에서 더 좋다. 
+
+예를 들면 아래의 코드는 매번 실행될떄마다 JVM 메모리의 Heap 영역에 객체가 저장되고, 그 객체를 가르키는 참조값인 newObj가 반환된다. 
+```java
+String newObj = new String("object"); 
+```
+그렇다면 String literal을 사용하는 것은 위 방식과 무슨 차이를 가지고 있을까? 
+```java
+String newObj = "object";
+```
+![](/images/String-Constant-Pool.png)
+JVM은 String literal을 JVM Heap 영역안의 string constant pool area에 저장한다. 
+ 
+string literal을 사용하게 되면 JVM은 다음과 같이 동작한다.
+
+1. string constant pool area에 같은 content를 가진 object가 있는지 확인한다.
+2. 있다면 새로운 객체를 만들지 않고, 해당 object의 참조값을 반환한다.
+   없으면 새로운 객체를 만들어 string constant pool area에 저장하고 그 참조값을 반환한다. 
+
+== 연산자를 사용해 객체의 주소값을 비교해보면 다음과 같은 결과를 볼 수 있다. 
+```java
+public class StringExamples
+{
+    public static void main(String[] args)
+    {
+        //Creating string objects using literals
+ 
+        String s1 = "abc";
+ 
+        String s2 = "abc";
+ 
+        System.out.println(s1 == s2);        //Output : true
+ 
+        //Creating string objects using new operator
+ 
+        String s3 = new String("abc");
+ 
+        String s4 = new String("abc");
+ 
+        System.out.println(s3 == s4);        //Output : false
+    }
+}
+```
+
+(reference to string contant pool : https://javaconceptoftheday.com/how-the-strings-are-stored-in-the-memory/ )
+
+정리해서 말하면 불필요하게 new를 하면 쓸데없이 JVM의 메모리만 갉아먹는다는 소리다. 물론 GC가 참조되지 않는 객체는 메모리에서 내리긴 하겠지만, literal 방식에 비해서 성능이 떨어진다. 
+
+따라서 생성자 대신 static factory method를 제공하는 경우, static factory method를 사용하면 불필요한 객체 사용을 피할 수 있다.
+
+```java
+// 예시코드 
+String = "true";
+// 생성자방식
+Boolean rs1 = Boolean(String);
+// static factory method; 
+Boolean rs2 = Boolean.valueOf(String); 
+```
+
+static method를 통해  instance 생성이전에 class loading 시점에서 memory공간이 할당되고 초기화됨으로, 불필요한 객체 생성을 피할수 있다.

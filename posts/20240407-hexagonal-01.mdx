@@ -1,0 +1,136 @@
+---
+id: 134
+title: "헥사고날 아키텍처"
+description: ""
+date: "2024-04-07 20:27:51"
+tags: ['architecture']
+---
+## 헥사고날 아키텍처를 왜 사용해야 할까요? 
+
+- 포트와 어댑터라는 컴포넌트를 두어 비즈니스 코드를 기술 코드로부터 분리 하여 즉 외부 기술이 변경되더라도 비즈니스 코드에 영향을 주지 않고도 기술 코드를 변경할 수 있습니다 (`Change-Tolerant`)
+- 도메인 규칙이 변할 경우에는 유일하게 도메인 헥사곤만 변경합니다. 만약 새로운 프로토콜을 사용하는 기능이 추가되면 프레임워크 헥사곤에서 사용하는 새로운 어댑터만 추가하면 됩니다. (`Maintainability`)
+- UI/데이터베이스에 의존하지 않는 도메인 헥사곤이 테스트하기 용이합니다. (`Testability`)
+
+## 헥사고날 아키텍처의 구성 요소 
+
+<figure>
+        <img src="/images/hexagonal_01.png">
+        <figcaption>hexagonal architecture</figcaption>
+</figure>
+
+### 도메인 헥사곤 (Domain Hexagon)
+
+- 소프트웨어가 해결하기를 원하는 핵심 문제를 설명하는 요소를 `Entity Object`와 `Value Object`(값 객체)를 사용하여 결합합니다.
+- 비즈니스 규칙을 엔티티와 값 객체로 캡슐화합니다.
+- 소프트웨어가 풀고자 하는 실 세계 문제를 이해하고 모델링하는 영역입니다.
+- `Entity`는 기술적인 요구사항으로부터 보호되어야 합니다. 즉 특정 기술에 연관되지 않아야 합니다.
+- 도메인 헥사곤에 위치한 도메인 서비스는 외부의 애플리케이션, 프레임워크 헥사곤에는 의존해서는 안됩니다. 반대로 애플리케이션 헥사곤이나, 프레임워크 헥사곤은 도메인 헥사곤에 의존하는 관계입니다. 
+
+### 애플리케이션 헥사곤 (Application Hexagon)
+
+- 도메인 헥사곤에서 나오는 비즈니스 규칙을 사용, 처리하고 조정하는 역할을 수행합니다. 비즈니스 측면과 기술 측면 사이에 상호 작용하는 역할 수행합니다.
+- 애플리케이션 헥사곤은 유스케이스, 입력포트, 출력포트로 구분됩니다.
+
+#### 유스케이스
+
+- 유스케이스는 도메인 제약 사항을 지원하기 위해 시스템의 동작을 소프트웨어 영역내 존재하는 애플리케이션 특화 오퍼레이션을 통해 나타냅니다. 
+- 도메인 헥사곤의 엔티티와 다른 유스케이스와 직접 상호작용할 수 있습니다. 
+- 다음과 같이 인터페이스로 소프트웨어가 할 수 있는 동작을 추상화로 나타냅니다.
+
+```java
+public interface RouterViewUseCase {
+
+    List<Router> getRouters(Predicate<Router> filter);
+}
+
+```
+
+#### 입력 포트 
+
+- 유스케이스가 인터페이스라면 유스케이스의 구현체가 입력 포트의 역할입니다.
+- 책에서는 "유스케이스에 서술된 소프트웨어의 의도를 만족시키는 입력 포트를 구현한다"라고 표현합니다.
+
+```java
+public class RouterViewInputPort implements RouterViewUseCase {
+
+    private RouterViewOutputPort routerViewOutputPort;
+
+    public RouterViewInputPort(RouterViewOutputPort routerViewOutputPort) {
+        this.routerViewOutputPort = routerViewOutputPort;
+    }
+
+    @Override
+    public List<Router> getRouters(Predicate<Router> filter) {
+        var routers = routerViewOutputPort.fetchRouters();
+        return Router.retrieveRouter(routers, filter);
+    }
+}
+```
+
+#### 출력 포트 
+
+- 유스케이스는 목표를 달성하기 위해 외부 리소스에서 데이터를 가져와야 하는 상황이 있습니다. 이때 출력 포트가 외부에서 데이터를 제공하는 인터페이스 역할을 수행합니다. 
+- 이떄 출력 포트는 특정 기술에 종속되지 않습니다. 즉 데이터가 RDB로부터 오던 API부터로 오던 세분화된 책임은 출력 어댑터에 할당됩니다.
+
+```java
+public interface RouterViewOutputPort {
+
+    List<Router> fetchRouters();
+    
+}
+```
+
+
+### 프레임워크 헥사곤 (Framework Hexagon)
+
+- 외부 인터페이스를 제공합니다. 즉 애플리케이션 기능의 노출 방법을 결정할 수 있는 곳입니다. 
+- 헥사고날에서는 소프트웨어의 통신 방식을 2가지로 봅니다. 첫번째는 `Driving` 방식이고, 두번째는 `Driven` 방식입니다. 
+
+#### Driving Operation 
+
+- 프론트 서버에서 우리 소프트웨어에 동작을 요청하는 방식이다.즉 입력 어댑터(`Input Adapter`)를 사용한다.
+- `드라이빙`이라는 용어를 사용하는 이유가 외부에서 우리 소프트웨어의 동작을 유도(`driving`)하기 때문에 `driving operation`이라고 부른다고 합니다.
+
+```java
+public class RouterViewCLIAdapter {
+
+    RouterViewUseCase routerViewUseCase;
+
+    public RouterViewCLIAdapter(RouterViewUseCase routerViewUseCase) {
+        this.routerViewUseCase = routerViewUseCase;
+    }
+
+    public List<Router> obtainRelatedRouters(String type){
+        return routerViewUseCase.getRouters(router-> router.filterRouterByType(type));
+    }
+
+    private void setAdapters(){
+        // 유스케이스 인터페이스를 통해 입력 포트를 사용한다. 
+        this.routerViewUseCase = new RouterViewInputPort(RouterViewFileAdapter.getInstance());
+    }
+}
+```
+
+- 위와 같이 입력 어댑터를 입력 포트에 연결하여 사용할 수 있다. 
+
+#### Driven Operation 
+
+- `Driving Operation`과 반대로 우리 소프트웨어에서 외부에 요구사항을 만족시키기 위한 데이터를 가져옵니다.
+- 출력 어댑터(`Output Adapter`)를 통해서 `Driven Operation`을 정의합니다.
+- 입력 어댑터가 입력 포트와 매핑되야 하듯이, 출력 어댑터도 출력 포트와 매핑되야 합니다. 
+- 구체적인 예시로 Oracle부터 데이터를 가져오는 출력 어댑터, MongoDb로부터 데이터를 가져오는 출력 어댑터 등이 있을 수 있습니다. 
+
+```java
+public class RouterViewFileAdapter implements RouterViewOutputPort {
+    
+    @Override
+    public List<Router> fetchRouters() {
+        return readFileAsString();
+    }
+
+    private List<Router> readFileAsString() {
+        // 외부파일을 읽어 List<Router>를 생성해서 반환하는 로직
+    }
+
+}
+```

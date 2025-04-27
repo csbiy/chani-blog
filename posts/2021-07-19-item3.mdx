@@ -1,0 +1,78 @@
+---
+id: 73
+title: "Item3. private 생성자나 열거 타입으로 singleton임을 보증하라"
+description: ""
+date: "2021-07-18 21:51:06"
+tags: ['Java', 'Effective Java 3/E']
+---
+###
+
+- singleton :  instance를 오직하나만 생성할 수 있는 class 
+  
+- singleton을 만드는 대표적인 2개의 방법은 다음과 같다.
+
+
+1. private 으로 감춰두고, 유일한 instance에 접근할 수 있는 수단으로 public static 멤버를 하나 마련해둔다. 
+
+```java
+// How to Make singleton Object 
+
+public class Elvis{
+    
+    // Elvis class를 통해 public static 으로 Elvis인스턴스를 접근할 수 있게함 
+    public static final Elvis INSTANCE = new Elvis();
+
+    // private 생성자로 외부에서 생성자 접근 불가능하게 막음
+    // Elvis  인스턴스가 초기화될때 한번만 호출된다.     
+    private Elvis(){};
+
+}
+
+```
+public , protected 생성자가 없으므로, 외부에서 접근이 막아서, 객체를 생성하는 것을 막는다. static method는 당연히 class 로딩시점에 딱 한번 메모리에 할당되고, final은 필드 초기값이 저장되면 도중에 수정이 안되는 상수와 유사한 개념으로 동작하므로, 최초로 static  호출하고 난뒤에는 singleton 객체를 보장해줄 수 있다. 
+
+* reflection api를 통해 private 생성자도 외부에서 호출이 가능함 (권한이 있는 client 경우)  이와 관련된 내용은 Item 65에서 소개하고 있다.
+
+
+
+2. static factory method를 public static 멤버로 제공한다. 
+```java
+public class Elvis{
+    // private으로 외부에서 접근을 막고, 정적 팩토리 메소드를 통해서만 접근이 가능하도록 한다. 
+    private static final Elvis instance = new Elvis();
+    private Elvis(){};
+    //static factory method
+    public static Elvis getInstance(){
+        return instance; 
+    }
+}
+```
+getInstance method는 new 객체를 생성해반환하는 것이 아니라, 이미 만들어진 instance의 참조를 넘김으로, 마찬가지로 singleton을 보장한다. 
+
+3. 원소가 하나인 열거타입을 사용한다. 
+```java
+public enum Elvis{
+    Instance;
+}
+```
+
+
+이제 세 방법의 장단점을 비교해보자 
+
+- public 필드 방식의 장점 
+1. 해당 클래스가 singleton임이 API에 명백하게 표현됨.
+2. 코드 간결성 
+
+- static factory method 방식의 장점 
+1. API를 바꾸지 않고도 singleton이 아니게 변경이 가능하다
+2. java Supplier API에 활용가능 
+```java
+//Elvis::getInstance 
+Supplier<Elvis>
+```
+
+ - enum type 방식의 장점
+1. 코드 간결성이 제일 뛰어나고, reflection 공격에서도 제 2의 instance가 생기는 것을 막아준다. 
+
+
+<u>effective java 에서는 enum type을 선언하여 싱글톤 객체를 만드는 것을 권하고 있다.단 만드려는 instance가 enum class 외의 class를 상속해야 한다면, 해당 방법은 당연히 사용이 불가능함으로, static factory method 방법을 고려하면 되겠다. <u>

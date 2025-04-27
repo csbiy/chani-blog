@@ -1,0 +1,44 @@
+---
+id: 150
+title: "Item1. 생성자 대신에 정적 팩토리 메소드를 구현하라"
+description: ""
+date: "2021-07-15 21:51:06"
+tags: ['Java', 'Effective Java 3/E']
+---
+
+- 정적 팩토리 메소드(static factory method)란 ? 클래스의 instance를 반환해주는 메소드  
+- 클래스의 인스턴스를 얻는 전통적인 방식은 public constructor
+- 생성자 방식보다는 정적 팩토리 메소드를 사용하여 instance를 만들면 다음과 같은 장단점이 있다. 
+
+
+#### 장점 
+1. 이름을 가질 수 있다. 생성자 방식은 별도로 이름을 지정할 수 없다. 하지만 정적 팩토리 메소드 방식은 직관적으로 naming을 하여, 코드 가독성이 증가한다. 
+
+
+```java
+
+// 생성자 방식
+BigInteger(int param, Random random){
+    // return random prime 
+}
+// static factory method 방식
+BigInteger.createRandomPrime(){
+    //return rnadom prime
+}
+
+```
+
+2. 호출될때마다 인스턴스를 새로 생성하지는 않아도 된다. static method이기 때문에 인스턴스를 new 해서 생성하지 않고 클래스로 바로 호출 가능하다. 
+
+---
+3. 반환 타입의 하위 타입 객체를 반환할 수 있는 능력이 있다. 
+즉 , 반할 객체의 클래스를 선택할 수 있는 유연성이 있다. 
+---
+
+4. 입력 매개변수에 따라 매번 다른 클래스의 객체를 반환할 수 있다. 
+---
+5. 정적 팩토리 method를 작성하는 시점에는 반환할 객체의 클래스가 존재하지 않아도 된다.
+---
+
+#### 단점
+1. 상속을 하려면 public,protected 생성자를 제공해야한다. 즉 , 정적 팩터리 메소드만 제공하면 하위 클래스를 만들 수없다.

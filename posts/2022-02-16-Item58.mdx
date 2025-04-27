@@ -1,0 +1,38 @@
+---
+id: 167
+title: "Item58. 전통적인 for문보다는 for-each문을 사용하라"
+description: ""
+date: "2022-02-16 00:00:57"
+tags: ['Java', 'Effective Java 3/E']
+---
+```java
+// collection 순회
+for(Iterator<Element> i = c.iterator(); i.haxNext(); ){
+    Element e = i.next();
+}
+// 배열 순회
+for(int i = 0; i < a.length ; i++){
+    //a[i];
+}
+```
+
+for문을 사용해 collection과 배열을 순환할 경우, 불필요한 반복자와 인덱스가 사용된다. 또한 collection이냐 배열이냐에 따라 코드 형태와 위와 같이 달라진다.
+
+반면 향상된 for문을 사용할때는 반복자와 인덱스 변수를 사용하지 않고, collection과 배열일때 모두 코드 형태가 동일하다.
+
+```java
+for ( Element e : elements ){
+    // e
+}
+```
+
+- for-each문은 collection과 배열은 물론 Iterable interface를 구현한 객체라면 무엇이든 순회할 수 있다.
+
+
+
+## for-each문을 사용할수 없는 상황
+
+- destructive filtering : collection을 순회하면서 선택된 원소를 제거해야 하는 경우에는 반복자의 remove method를 사용해야한다.
+
+- transforming : collection을 순회하면서 선택된 원소를 변형하는 경우
+- parallel iteration : 여러 collection을 병렬로 순회해야 할때, 각각의 반복자와 인덱스 변수를 사용해 명시적으로 제어해야 하는 경우

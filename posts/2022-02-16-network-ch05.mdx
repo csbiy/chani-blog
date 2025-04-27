@@ -1,0 +1,155 @@
+---
+id: 44
+title: "3계층 장비 (라우터,L3 스위치)"
+description: ""
+date: "2022-02-16 22:56:41"
+tags: ['Computer Science', 'Network', 'IT 엔지니어를 위한 네트워크 입문']
+---
+## Router 역할
+
+Router는 크게 아래와 같은 3가지 역할을 갖는다.
+
+1. 경로 지정 
+-  Router는 최적의 경로를 얻어서 Routing table에 저장하고, 패킷이 Router로 들어오면 도착지 IP주소와 Routing table을 비교해 최적의 경로로 패킷을 내보낸다. 
+
+2. 브로드캐스트 컨트롤  
+- 패킷의 목적지 주소가 Rotuing table에 없는 경우 패킷을 버린다. 
+- 멀티캐스트 정보를 습득하지 않고 브로드캐스트 패킷을 전달하지 않는다. (브로드캐스트가 다른 네트워크로 전파되는것을 막는다. )
+
+3. 프로토콜 변환 
+- 패킷 포워딩 과정에서 2계층 헤더를 변경할 수 있다.
+- 3계층에서 동작하는 장비이기 떄문에 2계층 헤더를 벗겨내고, 다시 2계층 헤더 정보를 새로 만들어 외부로 내보내는데, 이때 헤더 정보를 변경할 수 있다. 
+ex) WAN : PPP protocol / LAN : ethernet protocol 
+
+
+## Router 동작방식
+
+- Hop-by-Hop Routing : 인접한 Router(Next Hop)까지 경로를 지정하면 인접한 Router에서 다시 최적의 경로를 파악해서 Router로 패킷을 포워딩한다. 
+
+Next Hop 지정시에는 다음과 같은 3가지 방법이 사용된다.
+
+1. IP주소 지정
+2. 인터페이스 지정 : IP주소를 모르더라도, MAC주소정보를 아는 경우에 사용 
+3. IP,인터페이스 동시에 지정 
+
+- Router table 에 저장되는 데이터는 아래와 같다. 
+
+1. 목적지 주소 
+2. next hop IP 주소 , 나가는 로컬 인터페이스 
+
+- Router 에서 패킷의 출발지 주소를 이용해 라우팅하도록 PBR(Policy-Based Routing)기능을 사용할 수는 있으나 특별한 목적으로만 사용된다. 
+
+
+- TTL (Time To Live) : 3계층 IP헤더에는 TTL이라는 필드가 존재한다. 이 필드는 네트워크에 살아 있을 수 있는 시간(홉)을 제한하여 라우팅 루프 현상을 방지한다. 
+  (* 라우팅 루프 현상 : 라우터간에 패킷이 무한히 핑퐁되는 현상 )
+
+
+
+## Routing 
+
+- Routing : 라우터가 경로를 얻는 방법
+
+1. Directed Connected
+
+- IP주소와 Subnet mask로 해당 IP주소의 네트워크 주소 정보를 알 수 있다. 이 정보로 해당 네트워크에 대한 라우팅 테이블을 자동으로 만드는데, 이떄 이 경로 정보를 Direct Connected라고 부른다. 
+
+- 해당 네트워크 설정이 삭제되거나 비활성화되야만 사라진다. 
+
+
+2. Static Routing 
+
+- 관리자가 목적지 네트워크와 Next Hop을 라우터에 직접 지정해 경로 정보를 입력하는 것을 Static Routing 이라고 한다. 
+
+3. Dynamic Routing 
+
+- Static Routing의 단점으로 큰 네트워크는 관리자가 직접 관리하기 힘들며, 라우터 너머에 다른 라우터 상태정보는 파악 할 수 없어, 라우터간의 장애 파악하기 힘들다는 단점이 있다. 
+
+- 라우터끼리 자신이 알고 있는 경로 정보나 링크 상태 정보를 주기적으로 교환해 전체 네트워크 정보를 학습한다. 
+
+- 주기적으로 경로 정보를 교환함으로 링크 장애 파악이 가능하고 관리자의 개입이 불필요해 대부분의 네트워크에서 dynamic routing 방식이 사용된다.
+
+- 최적의 경로를 찾는 과정에서 얻은 원시 경로 정보를 저장하는 테이블을 topology table 이라고 하고, 최적의 경로를 저장하는 테이블을 routing table이라고 한다. 
+
+<strong> 
+
+- 패킷을 보낼때는 전체 경로를 고려하지 않고, 다음 라우터까지만 최단 거리로 보낸다. (Hop-By-Hop Routing 방식)   
+
+</strong>
+    
+
+## Switching 
+
+- 패킷이 들어와 routing table을 참조하고 최적의 경로를 찾아 router 외부로 forwarding 하는 작업
+- longest prefix match : routing table에 가지고 있는 경로 정보 중 가장 가까운 경로를 선택한다. 
+
+- longest prefix match 방식은 부하가 많이 걸려, 스위칭 작업을 캐싱해놓고 이어서 들어오는 패킷들은 캐시를 먼저 확인하고 없으면 routing table을 뒤지는 방향으로 최적화되어 있다. 
+
+## Routing, Switching 우선 순위 
+
+목적지 네트워크 정보가 동일한 서브넷을 가지는 경우 우선순위는 다음과 같다.
+
+1. Directed Connected
+2. Static Routing 
+3. Dynamic Routing 
+
+- 기본적인 우선순위는 위와 같이 정해져 있지만, 필요에 따라 관리자가 Router의 우선순위를 변경할 수 있는데 이러한 우선 순위를 AD(Administrative Distance , 관리거리) 라고 부른다. 
+
+- 만약 우선순위가 동일하다면 Cost(거리 비용) 값으로 우선순위를 선정 
+- Cost 우선순위까지 모두 동일하다면 ECMP(Equal-Cost Multi-Path) 방식으로 동일한 Cost 값을 가진 경로 값 정보를 모두 활용해 트래픽을 분산한다. 
+
+## Routing 설정 방법 
+
+1. Directed Connected
+
+- router는 패킷을 받아 routing table을 확인하는데 목적지가 동일 네트워크 (directed connect)라면 L2 통신으로 목적지에 도달한다. 
+
+2. Static Routing 
+
+- 사내 제한된 경로 정보를 static routing으로 처리하기는 쉬우나, 네트워크 규모가 큰 경우 routing 처리하기는 힘듦 (ISP가 직접 대형 라우터 운영하고, ISP가 운영하는 라우터에게 패킷 송신) 
+
+- Default  routing : 대체경로가 없는 경우, 마지막 대체 경로로 default routing을 사용 ( = default gateway와 동일한 의미 ) 하며, 목적지 주소의 subnet mask가 모두 0인 static routing을 default routing 이라고 한다.
+
+3. Dynamic Routing 
+
+- SPoF와 같이 static routing으로 관리하기 복잡한 경우를 router끼리 경로 정보를 교환하도록 하여 관리
+( *SPoF(Single Point Of Failure, 단일 장애점) : 한 요소에서 장얘발생시, 전체 시스템에서 장얘가 발생하는 지점 )
+- Dynmaic Routing 내에서도 Router 간에 경로 정보를 교환하는 여러 protocol 존재 
+
+![](/images/network-ch05-01.jpg)
+(ref- https://catsbi.oopy.io/225439bd-ec84-4e16-aeca-0dfcb9954ea6)
+
+## 역할에 따른 분류 
+
+- 일반적으로 Routing protocol은 unicast routing protocol을 말한다.
+
+- 인터넷에서는 AS(Autonomous System)이라는 자율 시스템이 존재하는데, ISP가 한개 이상의 AS를 운영한다.
+-  IGP(interior gateway protocol) : AS내부에서 사용하는 routing protocol
+-  EGP(exterior gateway protocol) : AS간에 통신에 사용하는 routing protocol 
+-  AS는 단지 최단거리보다는 ISP간 통신 비용에 따른 정책을 따른다. 
+
+## 동작 원리에 따른 분류 
+
+- IGP routing protocol은 동작원리에 따라 Distance Vector , Link State 알고리즘을 사용한다. 
+- Distance vector 를 사용할 경우 BGP , Link state 를 사용할 경우 OSPF 프로토콜이 자주 사용된다. 
+
+## Distance Vector 
+
+- 인접한 Router에서 경로정보를 습득하는 routing protocol  ex) RIP,BGP  
+- 인접한 Router가 아닌 경로정보는 한단계 거쳐서 인접한 라우터를 통해 간접적으로 전달받는다. 
+- 멀리 떨어진 라우터에 변경이 발생하면 동기화까지 다소 시간이 걸릴 수 있다는 단점이 존재함
+
+
+## Link State
+
+- Router에 연결된 Link 상태를 서로 교환하는 routing protocl  ex) OSPF
+- Link 상태를 교환해 topology database를 만들고, 이 정보를 다시 SPF(shortest path first) 알고리즘을 이용해 최단 경로 트리를 만든다 
+- distance vector는 이미 최적화된 routing table 교환하는데 비해 link state 알고리즘은 전체 네트워크의 링크 상태 정보를 받아 각자 처리하므로, 전체 네트워크 맵을 그리는데 유리하다.
+<strong>
+- 대신 리소스를 많이 사용한다는 단점이 있어 , 네트워크를 AREA단위로 분리하고, 분리된 AREA 내에서만 링크 상태 정보를 교환한다. (OSPF - AREA 개념 )
+- AREA 내부에서는 전체 링크 정보가 공유되지만, AREA 외부의 router간에는 가공된 routing table형태로 정보를 전달한다. 
+</strong>
+
+- AREA0라고 불리는 BackBone Area를 통해 모든 AREA가 연결된다. 
+
+- Backbone AREA와 다른 AREA간에 연결을 위해서는 경계 라우터 (ABR,Area Border Router) 가 필요하다.
+- 외부 routing domain을 AREA와 연결을 위해서는 외곽 라우터 (ASBR,Autonomous System Border Router)가 필요하다

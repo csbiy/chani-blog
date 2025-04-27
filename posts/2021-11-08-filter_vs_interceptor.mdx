@@ -1,0 +1,272 @@
+---
+id: 172
+title: "spring filter vs interceptor"
+description: ""
+date: "2021-11-08 21:16:37"
+tags: ['spring']
+---
+- application 여러 로직에서 공통으로 포함되어 있는 로직을 공통 관심사 (cross-cutting concern)이라고 한다. 
+
+- 웹 앱과 관련된 (ex) 로그인 )  공통 관심사를 처리하는데, 주로 servlet filter 나, spring interceptor를 사용한다. 
+
+
+
+<h2>Servlet Filter</h2>
+
+- filter가 호출된 뒤에, dispatcher sevlet이 호출된다.
+  ex) 모든 client 요청 로깅 
+- filter는 특정 url 패턴에만 호출되도록 설정가능하다. 
+  ex) 로그인 요청시 활용 가능
+
+```bash
+* filter 작동 흐름 1
+
+Client -> HTTP 요청 | WAS 영역 -> servlet filter 호출 -> dispatcher servlet 호출 -> controller 호출 |
+```
+
+
+- filter를 통해 적절하지 않은 사용자 요청 ex) 비로그인 사용자 라고 판단되면, dispatcher servlet 호출을 안할수도 있다. 
+
+```bash
+* filter 작동 흐름 2
+
+Client -> HTTP 요청 | WAS 영역 -> servlet filter 호출 (비로그인 확인)
+```
+
+
+- filter chain : 여러개의 filter 를 추가하여 적용 가능하다.
+
+```bash
+* filter chain
+Client -> HTTP 요청 | WAS 영역 -> filter A => filter B => ....
+
+```
+
+<strong> javax.servlet내 filter 는 다음과 같은 spec을 가지며, 해당 인터페이스를 구현하고, servlet container에 등록하면, servlet container가 생성될때, 해당 필터의 init() 초기화 메소드를 호출하고, 싱글톤 객체로 생성 및 관리한다. </strong>
+
+```java
+
+package javax.servelt
+
+public interface Filter{
+
+   // 필터 초기화 메소드, 서블릿 컨테
+    public default void init(FilterConfig filterConfig) throws ServletException {}
+
+/***
+The doFilter method of the Filter is called by the container each 
+time a request/response pair is passed through the chain due to a client request for a resource at the end of the chain. 
+The FilterChain passed in to this method allows the Filter to pass on the request and response to the next entity in the chain.
+
+***/
+// client 요청시마다 doFilter가 호출된다. 
+    public void doFilter(ServletRequest request, ServletResponse response,
+            FilterChain chain) throws IOException, ServletException;
+
+// servlet container가 종료될때 호출된다. 
+    public default void destroy() {}
+}
+
+```
+
+- servlet filter 예시 
+
+  1. javax.servlet.Filter 명세를 구현한 사용자 filter 생성
+   
+  2. doFilter 로직 구현 (filter.doFilter()를 호출해주어야, 다음 dispatcher servlet또는 다음순서의 filter 가 호출된다.)
+  
+  3. 사용자 filter 등록 
+     - FilterRegistrationBean을 spring bean 객체로 등록하는 방법, filter chain 내 filter 적용 순서 설정 가능 
+     - @ServletComponentScan
+     - @Webfilter(filterName = '' , urlPatterns = "/*")
+
+```java
+// Filter 생성 
+@Slf4j
+public class LogFilter implements Filter {
+
+    // servlet container 생성될떄 logFilter 객체가 생성되면서  호출됨
+    @Override
+    public void init(FilterConfig filterConfig) throws ServletException {
+        log.info("log filter init ");
+    }
+
+    @Override
+    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
+        log.info("log filter doFilter");
+
+        HttpServletRequest httpServletRequest =  (HttpServletRequest) request;
+        String requestURI = httpServletRequest.getRequestURI();
+        String uuid = UUID.randomUUID().toString();
+
+        try{
+            log.info("REQUEST [{}][{}]",uuid,requestURI);
+            // 다음 필터 호출 or 다음 필터가 없다면 servlet dispatcher 호출
+            chain.doFilter(request,response);
+        }catch (Exception e){
+            throw e;
+        }finally {
+            log.info("response [{}][{}]",uuid,requestURI);
+        }
+
+
+    }
+
+    // servlet container 종료될떄,  호출됨
+    @Override
+    public void destroy() {
+        log.info("log filter destroy");
+    }
+}
+```
+
+```java
+
+// Filter 등록 
+@Configuration
+public class WebConfig {
+
+    @Bean
+    public FilterRegistrationBean logFilter(){
+        FilterRegistrationBean<Filter> filterFilterRegistrationBean = new FilterRegistrationBean<>();
+        filterFilterRegistrationBean.setFilter(new LogFilter());
+        // filter는 chain으로 적용 가능하기 때문에 순서를 적용해주어야 한다.
+        filterFilterRegistrationBean.setOrder(1);
+        // 적용할 url 패턴
+        filterFilterRegistrationBean.addUrlPatterns("/*");
+        return filterFilterRegistrationBean;
+    }
+}
+
+```
+---
+
+<h2>Spring Interceptor</h2>
+
+- spring MVC 제공 기술 
+- servlet filter 와 적용되는 순서가 다르다. 
+  - dispatcher servlet과 controller 사이에서 호출된다. 
+- servlet filer와 마찬가지로 urlPattern 적용 가능 (마찬가지로 로그인 및 인증체크 모듈 개발에 용이하다. )
+
+```bash
+* Spring Interceptor 작동 흐름 1
+
+Client -> HTTP 요청 | WAS 영역 -> servlet filter 호출 -> dispatcher servlet 호출 -> spring interceptor 호출 ->controller 호출 |
+```
+
+
+- spring interceptor도 똑같이 chain으로 구성할 수 있다. 
+```bash
+* Spring Interceptor Chain 
+Client -> HTTP 요청 | WAS 영역 -> servlet filter 호출 -> dispatcher servlet 호출 -> spring interceptor A => spring interceptor B => ... |
+```
+
+
+org.springframework.web.servlet.HandlerInterceptor 인터페이스를 구현함으로, 사용 가능하다.
+
+
+* servlet filerd와 차이점 (=> inteceptor가 지원해주는 기능이 더 많다.)
+   <strong> 1.controller 호출 전 , 후 , 요청 완료 이후 총 3 단계로 세분화되어 있음</strong>
+   <strong> 2.preHandler에서 handler(Controller) 정보를 받을 수 있음</strong>
+   <strong> 3.postHandler에서 ModelAndView 정보를 받을 수 있음 </strong>
+
+
+```java
+
+package org.springframework.web.servlet;
+
+public interface HandlerInterceptor {
+        // controller 호출 전 
+        // handler == controller 
+        // return 값이 true인 경우에만 다음으로 진행된다. 
+    	default boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
+			throws Exception {return true;}
+        // controller 호출 후
+	default void postHandle(HttpServletRequest request, HttpServletResponse response, Object handler,
+			@Nullable ModelAndView modelAndView) throws Exception {
+	}
+        // Http 요청 완료 이후 (뷰 렌더링 이후에 호출된다.)
+        // handler에서 발생한 Exception을 parameter로 받을 수 있다. 
+    	default void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler,
+			@Nullable Exception ex) throws Exception {
+	}
+}
+```
+
+spring interceptor는 servlet filter 보다 세분화된 기능을 지원하며, handler에서 예외 발생시에는 postHandle은 호출되지 않고, afterCompletion method만 호출된다. 
+
+
+```bash
+* Spring Interceptor 작동 흐름 2 (handler에서 Exception 발생시 )
+
+Client -> HTTP 요청 | WAS 영역 -> servlet filter 호출 -> dispatcher servlet 호출 -> interceptor.preHandle() ->controller호출 -> Exception! -> interceptor.afterCompletion() |
+```
+
+- spring interceptor 예시 
+
+  1. org.springframework.web.servlet.HandlerInterceptor 명세를 구현한 interceptor 생성
+   
+  2. preHandle,postHandle,afterCompletion 로직 구현 (interceptor.preHandle method의 return true 해주어야 controller 가 호출된다. )
+  
+  3. 사용자 interceptor 등록 
+     - configuration class 가  WebMvcConfigurer implements 하도록 함 
+     - @Overide addInterceptors method 
+
+
+```java
+
+@Slf4j
+public class LogInterceptor implements HandlerInterceptor {
+
+    private static final String LOG_ID ="logId";
+    @Override
+    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+        String requestURI = request.getRequestURI();
+        String uuid = UUID.randomUUID().toString();
+        request.setAttribute(LOG_ID,uuid);
+        log.info("REQUEST [{}][{}][{}]",uuid,requestURI,handler);
+        if(handler instanceof HandlerMethod){
+            HandlerMethod hm = (HandlerMethod) handler;// 호출할 컨트롤러 메소드의 모든 정보
+        }
+        // handler 호출
+        return true;
+    }
+    @Override
+    public void postHandle(HttpServletRequest request, HttpServletResponse response, Object handler, ModelAndView modelAndView) throws Exception {
+    }
+    @Override
+    public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) throws Exception {
+
+        String requestURI = request.getRequestURI();
+        String logId = (String) request.getAttribute(LOG_ID);
+        log.info("RESPONSE [{}][{}][{}]",LOG_ID,requestURI,handler);
+
+        if(ex!=null){
+            log.error("ERROR",ex);
+        }
+
+    }
+}
+
+```
+
+```java
+@Configuration
+public class WebConfig implements WebMvcConfigurer {
+
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        registry.addInterceptor(new LogInterceptor())
+                .order(1)
+                .addPathPatterns("/**")
+                .excludePathPatterns("/css/**","/*.ico","/error");
+    }
+}
+
+
+```
+
+
+Reference 
+
+1. 스프링 MVC 2편 - 백엔드 웹 개발 활용 기술 , 김영한(https://www.inflearn.com/course/%EC%8A%A4%ED%94%84%EB%A7%81-mvc-2/dashboard)

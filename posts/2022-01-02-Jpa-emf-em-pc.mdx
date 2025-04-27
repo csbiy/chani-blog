@@ -1,0 +1,344 @@
+---
+id: 62
+title: "EntityManagerFactory ,EntityManager, Persistent Context 주요 개념"
+description: ""
+date: "2022-01-03 00:35:49"
+tags: ['Java', 'Jpa']
+---
+Jpa 의 EntityManagerFactory ,EntityManager, Persistent Context 주요 개념을 알아보기전에 spring boot에서 Jpa 환경을 setting 해주었다.  
+
+spring boot에서는 /meta-inf/persistence.xml JPA 설정파일을 인식하지 않고, 기본으로 설정해준다.
+
+spring이 아닌 환경에서는 /META-INF/persistence.xml 파일을 설정해주어야 한다. 
+
+boot에서는 다음과 같이 EntityManagerFactory 와 EntityManager 를 주입받을 수 있다.
+
+```java
+@PersistenceContext
+EntityManager em;
+
+@PersistenceUnit
+EntityManagerFactory emf;
+```
+
+```java
+@SpringBootTest
+class JpaApplicationTests {
+
+	@PersistenceUnit
+	EntityManagerFactory emf;
+
+	@Test
+	void basicJpa() {
+
+		EntityManager em = emf.createEntityManager();
+		EntityTransaction transaction = em.getTransaction();
+
+		try{
+			transaction.begin(); // transaction 시작
+			// 비즈니스 로직
+			transaction.commit();
+		}catch (Exception e){
+			transaction.rollback();
+		}
+		finally {
+			em.close();
+		}
+		emf.close();
+	}
+}
+```
+boot에서 자동으로 설정해준 Persistence class(Jpa 설정 정보)를 주입받아, EntityManagerFactory instance를 생성했다. 
+
+참고로 Jpa는 기본적으로 데이터 변경시 Transaction을 당연히 필요로 하며, transaction이 없는 경우는 예외를 던진다. (javax.persistence.TransactionRequiredException) 
+
+## EntityManagerFactory
+
+- EntityManagerFactory 는 Persistence class로부터 Jpa를 동작시키기 위한 기반 객체를 만들고, Jpa 구현체에 따라서는 DB connection pool도 만든다
+- 객체 생성 비용이 매우 큼으로, application 전체에 딱 한번만 생성하고 공유된다 (singleton)
+
+- DB 1개당 하나의 EntityManagerFactory가 생성된다. 
+
+- multi-thread 상황에서 공유 가능하다 
+
+## EntityManager 
+
+다음으로 EntityManagerFactory에서 EntityManager를 생성하게 되는데, 
+
+EntityManager 가 사실상 Jpa 기능의 대부분을 제공한다.
+
+- 요청시(Thread별로)마다 EntityManagerFactory로부터 EntityManager가 생성된다. (Thread간에 공유하면 race condition 이 생길 수 있다. )
+
+-  EntityManager는 내부적으로 DB connection을 가지고 DB와 통신하는데, DB 연결이 꼭 필요한 시점까지는 Connection을 가져오지 않는다. 
+
+
+
+## Persistence Context (영속성 컨텍스트)
+
+<blockquote>
+Entity를 영구 저장하는 환경으로, EntityManager가 생성될떄 하나 만들어지고, EntityManager는 이 영속성 컨텍스트에 Entity를 보관하고 관리한다. 
+</blockquote>
+
+
+
+여기서 Entity란 DB 테이블과 매핑한 Entity class를 말한다. 
+
+```java
+@Entity // entity 
+public class Member {
+    @Id
+    @Column(name = "ID")
+    private String id;
+    @Column(name = "NAME")
+    private String username;
+    private Integer age;
+}
+```
+
+다음과 같이 em.persist(entity객체) 코드를 실행하면 entityManager는 해당 객체는 영속성 컨텍스트에 저장한다. (영속화한다)
+
+```java
+em.persis(member);
+```
+
+## Entity 생명주기  
+
+영속성 컨텍스트에 저장된 엔티티는 다양한 생명주기를 갖는다.
+
+1. 비영속 (new/transient) : 영속성 컨텍스트와 전혀 관련없는상태
+2. 영속: 영속성 컨텍스트에 저장된 상태
+3. 준영속: 영속성 컨텍스트에 저장되었다가 분리된 상태로 영속성 컨텍스트내 준영속화된 entity 정보가 모두 제거된다. (ex) 1차 캐시 정보 , 내부 sql 저장소 ) 
+4. 삭제 
+
+```java
+void entityLifeCycle(){
+        Member member = new Member(); // 비영속 상태 : 영속성 컨텍스트와 무관한 상태
+        em.persist(member); //  영속 상태 (em.find도 영속 상태 엔티티를 반환한다)
+        em.detach(member); // 준영속 상태
+        em.remove(member); // 삭제 
+    }
+```
+
+추가로 준영속 상태는 entityManager가 다음과 같은 method를 호출했을때 모두 준영속 상태가 된다.
+
+1. em.detach(entity) : 특정 entity만 준영속화
+2. em.clear():영속성 컨텍스트 내 모든 entity 준영속화
+3. em.close():영속성 컨텍스트 종료 
+
+준영속화된 entity는 다음과 같이 영속화될수 있다. merge에 대해서는 동작방식이 persist와 약간 다른데, 아래에 정리하였다. 
+
+```java
+Entity nowAttachedEntity = em.merge(detachedEntity);
+```
+## Persistent Context의 특징 
+
+Persistent Context의 특징은 다음과 같다.
+
+1. 1차 Caches
+2. 동일성 보장 
+3. Write buffering
+4. Dirty Checking (변경 감지)
+5. Lazy Loading (지연 로딩)
+
+## 1차 cache 
+
+영속성 컨텍스트는 DB에 쿼리문을 바로 날리는게 아니라 내부적으로 1차 Cache 에 먼저 저장한다. 
+이떄 @Id (DB의 PK값) 와 Entity 객체를 K-V 로 저장한다. 
+
+그렇다면 왜 1차 Cache에 먼저 저장할까? 이름에서 알 수 있듯이 Cache의 장점이다. 접근하기 빠른 더 상위 계층의 저장계층에 저장함으로서 DB까지 I/O query가 안나가고 application에서 영속성 상태의 Entity 객체를 찾아 올 수 있는 것이다. (성능상 장점)
+
+```java
+Member member = new Member();
+member.setId("testId");
+em.persist(member); // 1차 cache <testId,member>
+em.find(Member.class,"testId") // DB에 I/O요청이 안나간다. 
+```
+
+
+따라서 EntityManger는 먼저 1차 Cache를 조회하고 , 1차 Cache에 Entity가 없다면 DB 에 I/O요청을 보낸다. DB에서 조회한 Entity도 먼저 1차 Cache에 저장하고 반환한다.  
+
+## 동일성 보장 
+
+1차 Cache와 동일한 내용이다. 1차 Cache에 보관된 Entity 를 계속 find 요청해도 동일한 Entity가 반환된다.
+
+```java
+@Test
+void test(){
+    EntityManager em = emf.createEntityManager();
+    EntityTransaction transaction = em.getTransaction();
+    try{
+        transaction.begin();
+        Member member = new Member(); // 비영속 상태 : 영속성 컨텍스트와 무관한 상태
+        member.setId("testId");
+        em.persist(member); //  영속 상태
+        Member foundMemberA = em.find(Member.class, "testId");
+        Member foundMemberB = em.find(Member.class, "testId");
+        Assertions.assertThat(foundMemberA == foundMemberB).isTrue(); // 동일한 참조값을 가짐.
+        transaction.commit();
+    }catch (Exception e){
+        transaction.rollback();
+    }finally {
+        em.close();
+    }
+    emf.close();
+
+}
+```
+
+## Write buffering 
+
+EntityManager는 Trnasaction commit 전까지 내부 쿼리 저장소에 쿼리를 저장해둔다. 그리고 Transaction commit 시점에 한번에 데이터베이스에 쿼리를 보낸다 (flush) 
+
+- flush : 영속성 컨텍스트의 엔티티는 유지한 채  영속성 컨텍스트의 변경사항을 DB에 동기화하는 작업으로 EntityManager.flush() method 혹은 transaction commit 시점 혹은 JPQL 쿼리 반환 결과를 위해 JPQL 쿼리 실행시에도 자동으로 호출된다. 
+
+```java
+Member member = new Member(); // 비영속 상태 : 영속성 컨텍스트와 무관한 상태
+member.setId("testId");
+em.persist(member); //  영속 상태
+member.setUsername("test1"); //update
+member.setUsername("test2"); //update
+transaction.commit(); // 최종적으로는 snapshot과 비교후 1개의 update 쿼리가 나간다  
+```
+
+![](/images/jpa-basic-01.png)
+
+이렇게 write buffering 하면 불필요한 쿼리를 줄일 수 있다 예를 들어 위와 같이 member에 대해 update 를 수행하였을떄 바로바로 update query가 나가지 않고, commit 시점에 snapshot과 비교해 한번의 update쿼리가 나간다 (dirty checking) . 이부분은 영속성컨텍스트의 또다른 특징으로 아래에 정리하였다. 
+
+
++) 만약 성능 최적화를 위해 JPQL 쿼리 실행시에도 flsuh가 호출되지 않게하려면 다음과 같이 설정할 수 있다. 
+
+```java
+     EntityManager em = emf.createEntityManager();
+    em.setFlushMode(FlushModeType.COMMIT);
+```
+
+## Dirty Checking (변경 감지)
+
+Jpa는 Entity를 영속화해서 영속성 컨텍스트에 보관할떄 최초의 상태를 복사해 저장해준다 (SNAPSHOT)
+
+그리고 flush 시점에 SNAPSHOT과 Entity를 비교해서 변경된 Entity를 찾고 ,update query를 생성해서 EntityManager 내부 쿼리 저장소에 쿼리를 저장해두고 flush 시점에 한번에 커밋한다. 
+
+```java
+em.update(member) // 존재하지 않는 코드
+member.setAge(23);
+em.flush(); // 최초 SNAPSHOT과 비교후 AGE가 변경되었음으로 
+            //update쿼리를 쓰기지연 저장소에 보내고, 한꺼번에 커밋된다 (write buffering)
+```
+
+Dirty checking 기능은 최초의 SNAPSHOT을 비교해서 update 쿼리 기능을 생성하는 것임으로 당연히 SNAPSHOT이 없는 영속 상택 아닌 Entity들은 적용되지 않는다. 
+
+
+- default로는 변경되지 않는 필드도 update된다. 아래의 코드는 userName 필드만 변경하고 있는데 실제로 나가는 쿼리를 보면 전체 필드에 대한 쿼리가 나간다. 
+
+```java
+Member member = new Member(); 
+member.setId("testId");
+em.persist(member); 
+member.setUsername("test1");
+member.setUsername("test2");
+transaction.commit(); 
+```
+
+![](/images/jpa-basic-01.png)
+
+ - I/O 요청시 데이터 전송량이 증가함에도 불구하고  이렇게 모든 필드에 대해 업데이트하는 이유는 무엇일까?
+
+1. 수정쿼리가 항상 동일함으로,application 로딩시점에 미리 수정쿼리를 생성해두고 binding 시킬 수 있다. 
+2. 데이터베이스에 동일한 쿼리를 보내면 데이터베이스는 이전에 parsing한 쿼리를 재사용할 수 있다. 
+
+ org.hibernate.annotations.DynamicUpdate 을 사용하면 변경되는 필드에 대해서만 쿼리가 나갈수도 있으나, 성능상이점을 얻는 정도는 약 30개이상의 필드가 존재할떄라고 한다. (ref - https://www.baeldung.com/spring-data-jpa-dynamicupdate )
+
+ 
+
+```java
+@Entity
+@Table(name = "MEMBER")
+@Setter
+@DynamicUpdate // 동적으로 update sql 생성 
+public class Member {}
+
+```
+
+
+## Lazy Loading (지연로딩)
+
+준영속 상태가 아닌 실제 Entity 객체 대신 proxy 객체를 반환받고, 해당 객체를 실제 사용할떄 영속성 컨텍스트를 통해 데이터를 불러오는 방법이다. 이와 반대되는 개념이 즉시로딩 (eager loading)이 있는데, entity간 관계를 mapping하는 chapter에서 다시 정리하려고 한다. 
+
+
+## Merge vs Persist 
+
+```java
+
+
+@SpringBootTest
+public class ExamMergeMain {
+
+    @PersistenceUnit
+    EntityManagerFactory emf;
+
+    Member createMember(String id,String username){
+        EntityManager em = emf.createEntityManager();
+        EntityTransaction transaction = em.getTransaction();
+        transaction.begin();
+        Member member = new Member();
+        member.setId(id);
+        member.setUsername(username);
+        em.persist(member);
+        transaction.commit();
+
+        em.close();//영속성 컨텍스트가 종료됨
+        return member; // 영속 --> 준영속 
+    }
+
+    void mergeMember(Member member){
+        EntityManager em = emf.createEntityManager();
+        EntityTransaction transaction = em.getTransaction();
+        transaction.begin();
+
+        Member mergeMember = em.merge(member);
+
+        transaction.commit();
+
+        System.out.println("member.getUsername() = " + member.getUsername()); // 준영속 상태
+        System.out.println("mergeMember.getUsername() = " + mergeMember.getUsername()); //영속 상태
+
+        System.out.println("em.contains(member) = " + em.contains(member));
+        System.out.println("em.contains(mergeMember();) = " + em.contains(mergeMember));
+        em.close();
+    }
+
+    @Test
+    void test(){
+        Member member = createMember("testId", "tester"); // 준영속상태 
+        member.setUsername("changed");
+        mergeMember(member);
+    }
+}
+
+```
+
+
+1. createMember(...) method가 실행됨에따라 entitymanager가 transaction을 열고, 데이터를 변경하는데 member  entity를 영속화하고, commit()한다. commit 시점에 insert into Member query가 수행된다.
+
+2. em.close() 호출함에따라 member는 영속성컨텍스트가 종료되어 이젠 준영속상태이다. 
+
+3. member.setUsername("changed")를 호출해도 준영속상태임으로 dirty checking되지 않고 ,mergeMember(...)의 parameter로 넘어간다. 
+
+4. 새로운 entitymanager가 transaction을 다시 열고 , 준영속상태의 member를 merge 한다.
+
+merge 동작 방식은 다음과 같다. 
+
+1. parameter로 넘어온 준영속상태의 entity key 값으로 1차cache에서 조회하고 , 1차 cache에 없다면 DB까지 가서 값을 가져오고, 1차 cache에 저장한다.
+2. 조회된 entity를 준영속상태의 entity 의 모든 값으로 변경한다. ***
+3. 영속 상태인 조회된 entity를 반환한다. 
+
+정리하면 merge는 persist와 다르게 준영속상태의 entity를 영속화시킬떄 쓰이는데 , 모든 필드의 값을 덮어씌운다는게 차이점이다. 
+
+
+어쩄거나 영속 상태인 조회된 entity의 값이 변경되었으므로 commit시점에 다시 dirty checking이 일어난다. 
+
+![](/images/jpa-basic-02.png)
+
+## 정리 
+
+Jpa는 Java 표준 ORM으로 요청시마다 EntityManagerFactory로부터 entity manager가 생성되고, 이 entity manager가 DB connection 을 가지고 와 요청을 수행한다. 이떄 entity manager는 논리적인 persistent context에 entity를 관리하는데, persistent context의 특징은 1차캐시/동일성 보장/write buffering/dirty checking/lazy loading이 있다.

@@ -1,0 +1,94 @@
+---
+id: 121
+title: "Kotlin 고차 함수안에서 흐름 제어"
+description: ""
+date: "2022-08-03 21:10:28"
+tags: ['kotlin']
+---
+## 람다 안에서의 return 문
+
+- Java와 다르게 Kotlin에서는 람다안에서 return 을 사용하면 람다로부터만 반환되는게 아니라, 그 람다를 호출하는 함수가 실행을 끝내고 반환된다.
+
+- 이를 Non-Local Return 이라고 부른다. 
+
+```java
+// java
+List.of("a","b","c").forEach((item)-> {
+    if (item.equals("a")){
+        return;
+    }
+    // b,c에 대해서도 실행됨. 
+});
+// kotlin 
+listOf("a","b","c").forEach {
+    if (it.equals("a")){
+        return;
+    }
+    println(it)
+    // a에서 종료됨 
+}
+```
+
+## Non-Local Return 이 적용되는 상황 
+
+- 람다 안의 return 문이 바깥쪽 블록의 함수를 반환시킬 수 있는 상황은 람다를 인자로 받는 함수가 인라인 함수인 경우에만 가능하다. 즉 위의 forEach 함수는 인라인이기에 Non-local return 이 가능한 것이다.
+
+## Label을 사용한 Local return 
+
+- 람다식안에서 람다의 실행을 끝내고 람다를 호출했던 코드의 실행을 이어서 실행하기 위해서는 Local Return을 사용하면 된다. 
+
+- Non-Local Return 과 구분하기 위해서 Local Return에는 레이블을 추가해야 한다. 
+
+```java
+fun lookForBob(people : List<Person>){
+    people.forEach label@{
+        if (it.name == "Bob"){
+            println("found Bob!")
+            return@label
+        }
+    }
+    // Local Return을 사용하면 람다가 종료되고 람다 아래의 코드가 실행된다.
+    println("end of function")
+}
+```
+
+- 또는 인라인 함수의 이름을 label로 사용하여도 위의 코드와 동일하다. 
+```java
+fun lookForBob(people : List<Person>){
+    people.forEach {
+        if (it.name == "Bob"){
+            println("found Bob!")
+            return@forEach
+        }
+    }
+    println("end of function")
+}
+
+```
+
+## Anonymous Function 을 사용한 깔끔한 Local Return 
+
+- 앞선 Local Return 방식은 레이블을 통해 구현하여, 조건 분기에 따라 여러번 Return 문을 기입해야 할떄는 반환문이 장황해 질 수 있다.
+
+- Anonymous Function은 (익명,무명함수) 코드 블록을 함수에 넘길때 사용할 수 있는 방법 중에 하나로 일반 함수와 차이점은 함수 이름과 파라미터 타입을 생략 가능하다는 점이다.
+
+
+```java
+fun lookForBob(people : List<Person>){
+    people.forEach (fun(person){
+        if (person.name == "Bob"){
+            println("found Bob!")
+            return
+        }
+        println("end of anonymous function")
+    })
+
+```
+
+- 기본적으로 익명함수도 반환타입을 기입해줘야 하지만, 함수 표현식 (expression body)를 바로 쓰는 경우에는 반환타입 생략이 가능하다. 
+
+## 정리
+
+- Inline 함수의 경우 람다안의 return문이 바깥쪽 block의 함수를 반환시키는 Non-Local Return을 사용할 수 있다. 
+
+- Anonymous Function을 활용하면 람다를 대체해서 Local Return을 깔끔하게 Label 사용없이 작성 가능하다. 

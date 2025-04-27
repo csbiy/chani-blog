@@ -1,0 +1,292 @@
+---
+id: 151
+title: "Servlet Filter 와 Spring Interceptor"
+description: ""
+date: "2021-12-29 00:11:43"
+tags: []
+---
+## Servlet Filter
+
+- servlet filter는 http 요청이 dispatcher servlet에 전달되기전에 호출되는 객체로서, 호출되는 순서는 아래와 같다.
+
+HTTP message --> WAS --> Filter --> dispatcher servlet 
+
+- dispatcher servlet: Tomcat과 같은 servlet container 안에 HTTP 요청을 가장 먼저 받아, 적합한 controller에게 요청을 forwarding 해주는 일종의 front controller
+  (https://docs.spring.io/spring-framework/docs/3.0.0.M4/spring-framework-reference/html/ch15s02.html)
+
+- 주로 logging, encryption , input validation 과 같은 공통 관심사에 기능을 적용하고자 할떄 활용된다. 
+
+- Filter chain : Filter는 chain 형태로 구성되어, 여러개의 필터를 끼울 수 있다. 
+
+
+
+```java
+package javax.servlet;
+
+import java.io.IOException;
+
+/**
+ * A filter is an object that performs filtering tasks on either the request to
+ * a resource (a servlet or static content), or on the response from a resource,
+ * or both. <br>
+ * <br>
+ * Filters perform filtering in the <code>doFilter</code> method. Every Filter
+ * has access to a FilterConfig object from which it can obtain its
+ * initialization parameters, a reference to the ServletContext which it can
+ * use, for example, to load resources needed for filtering tasks.
+ * <p>
+ * Filters are configured in the deployment descriptor of a web application
+ * <p>
+ * Examples that have been identified for this design are<br>
+ * 1) Authentication Filters <br>
+ * 2) Logging and Auditing Filters <br>
+ * 3) Image conversion Filters <br>
+ * 4) Data compression Filters <br>
+ * 5) Encryption Filters <br>
+ * 6) Tokenizing Filters <br>
+ * 7) Filters that trigger resource access events <br>
+ * 8) XSL/T filters <br>
+ * 9) Mime-type chain Filter <br>
+ *
+ * @since Servlet 2.3
+ */
+public interface Filter {
+    public default void init(FilterConfig filterConfig) throws ServletException {}
+
+    public void doFilter(ServletRequest request, ServletResponse response,
+            FilterChain chain) throws IOException, ServletException;
+
+    public default void destroy() {}
+}
+}
+```
+
+java.servlet.Filter interface는 3가지 method를 가지고 있다.
+
+1. init() : servlet container가 생성될떄 호출되는 filter 초기화 method이다.
+
+2. destroy() : servlet contrainer가 종료될떄 호출되는 method
+
+3. doFilter() : client 요청시마다, 해당 method가 호출된다.
+
+## Servlet Filter 예제 
+
+```java
+import lombok.extern.slf4j.Slf4j;
+
+import javax.servlet.*;
+import javax.servlet.http.HttpServletRequest;
+import java.io.IOException;
+
+
+@Slf4j
+public class TestFilter implements Filter {
+    @Override
+    public void init(FilterConfig filterConfig) throws ServletException {
+        log.info("filter init");
+    }
+
+    @Override
+    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
+        HttpServletRequest httpServletRequest = (HttpServletRequest) request;
+        log.info("request path : {}",httpServletRequest.getRequestURI());
+        chain.doFilter(request,response);
+    }
+
+    @Override
+    public void destroy() {
+        log.info("filter destroy");
+    }
+}
+
+```
+
+Filter interface를 implement한 Filter는 다음과 같이 등록이 가능하다. 
+
+```java
+  @Bean
+  public FilterRegistrationBean<TestFilter> testFilter(){
+      FilterRegistrationBean<TestFilter> registrationBean = new FilterRegistrationBean<>();
+      registrationBean.setFilter(new TestFilter()); // 등록할 필터
+      registrationBean.setOrder(1); // filter chain 순서 
+      registrationBean.addUrlPatterns("/*"); // 적용할 url pattern 
+      return registrationBean;
+  }
+```
+등록할떄 필터간에 실행될 순서도 조절할 수 있는데, Filter chain을 어떤 순서로 실행할지 설정할 수 있다. 
+
+```java
+    @Bean
+    public FilterRegistrationBean<TestFilter> testFilter(){
+        FilterRegistrationBean<TestFilter> registrationBean = new FilterRegistrationBean<>();
+        registrationBean.setFilter(new TestFilter());
+        registrationBean.setOrder(1);
+        registrationBean.addUrlPatterns("/*");
+        return registrationBean;
+    }
+
+    @Bean
+    public FilterRegistrationBean<SecondFilter> secondFilter(){
+        FilterRegistrationBean<SecondFilter> registrationBean = new FilterRegistrationBean<>();
+        registrationBean.setFilter(new SecondFilter());
+        registrationBean.setOrder(2);
+        registrationBean.addUrlPatterns("/*");
+        return registrationBean;
+    }
+```
+![](/images/filter-order.jpg)
+
+## Servlet Filter - 요청에 따른 분기 처리
+
+만약 Filter에서 특정 요청 url에 따라 분기처리를 하고 싶다면 다음과 같이 구현이 가능하다.
+
+```java
+@Slf4j
+public class TestFilter implements Filter {
+
+    private final String[] allowPath ={"/test"};
+
+    @Override
+    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
+        HttpServletRequest httpServletRequest = (HttpServletRequest) request;
+        String requestURI = httpServletRequest.getRequestURI();
+        log.info("filterName : {} / request path : {}","FirstFilter",requestURI );
+        if(isAllowPath(requestURI)){
+            chain.doFilter(request,response);
+            // 다음 filter chaninig
+        }else{
+            response.getWriter().write("허용되지 않는 경로입니다.");
+            return;
+            // dispatcher servlet 전달이전에 요청종료 
+        }
+    }
+
+    private boolean isAllowPath(String requestURI) {
+        return PatternMatchUtils.simpleMatch(allowPath, requestURI);
+    }
+
+```
+
+## Spring Interceptor 
+
+spring interceptor는 filter와 유사한 기능을 하나 , servlet 이 제공하는 기술이 아니라 spring MVC에서 제공해주는 기술이다. 
+  
+## Servlet filter와 Spring Interceptor와 차이점
+
+1. 적용 순서
+   
+spring interceptor는 servlet container위에서 동작하는 spring이 제공해주는 기술으로 적용순서가 servlet filter 보다 뒷단계에서 적용된다.
+
+HTTP 요청 --> WAS --> servlet filter  --> dispatcher servlet --> spring interceptor --> controller
+
+2. 요청 url pattern 조절
+
+spring interceptor는 interceptor를 등록할떄 특정 url을 제외하고 spring interceptor를 적용가능하다
+
+3. method 적용시점 
+
+interceptor는 controller 호출 전, 호출 후, 요청 완료 이후 까지 세분화되어 적용이 가능하다. 이에 반해 filter는 filter 초기화,소멸시점과 filter 로직을 넣을수 있는 doFilter() 만 제공한다. 
+
+## Spring Interceptor Interface
+
+spring interceptor interface는 org.springframework.web.servlet.HandlerInterceptor interface이다.
+
+```java
+public interface HandlerInterceptor {
+
+	/**
+	 * Interception point before the execution of a handler. Called after HandlerMapping determined an appropriate handler object, but before HandlerAdapter invokes the handler
+	 */
+	default boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
+			throws Exception {
+
+		return true;
+	}
+
+	/**
+	 * Interception point after successful execution of a handler. Called after HandlerAdapter actually invoked the handler, but before the DispatcherServlet renders the view.
+	 */
+	default void postHandle(HttpServletRequest request, HttpServletResponse response, Object handler,
+			@Nullable ModelAndView modelAndView) throws Exception {
+	}
+
+	/**
+	 * Callback after completion of request processing, that is, after rendering
+	 * the view. Will be called on any outcome of handler execution, thus allows
+	 * for proper resource cleanup.
+	 */
+	default void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler,
+			@Nullable Exception ex) throws Exception {
+	}
+
+```
+
+interface 설명에도 적혀있지만 세 method는 적용 시점이 다르다.
+
+1. preHandle(...) : controller 요청 전 ( Called after HandlerMapping determined an appropriate handler object, but before HandlerAdapter invokes the handler )
+   
+2. postHandle(...) : controller 요청 이후  (Called after HandlerAdapter actually invoked the handler, but before the DispatcherServlet renders the view.)
+   
+3. afterCompletion(...) : 요청 완료 이후 (= 뷰 렌더링 이후 ) 
+
+afterCompletion같은 경우에는 interface 설명에 보면 예외가 발생해도 실행됨으로, resource 정리에 활용될 수 있다고 한다. 반면 postHandle은 controller가 예외없이 성공적으로 실행됬을때만 실행된다. 
+
+## spring interceptor 예제
+
+```java
+@Slf4j
+public class TestInterceptor implements HandlerInterceptor {
+
+    @Override
+    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+        log.info("before handler / handler : {}" , printClassName(handler));
+        return true; // true 를 반환하면 다음 interceptor 가 호출된다. 
+    }
+
+
+    @Override
+    public void postHandle(HttpServletRequest request, HttpServletResponse response, Object handler, ModelAndView modelAndView) throws Exception {
+        log.info("after handler  / handler : {}" , printClassName(handler));
+    }
+
+    @Override
+    public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) throws Exception {
+        log.info("view rendering / handler: {} / ex: {} ",printClassName(handler) , ex.getMessage());
+    }
+    private String printClassName(Object handler) {
+        return handler.getClass().getName();
+    }
+
+}
+```
+
+interceptor는 다음과 같이 등록할 수 있다. 
+
+```java
+@Configuration
+public class WebConfig implements WebMvcConfigurer {
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        WebMvcConfigurer.super.addInterceptors(registry);
+
+        registry.addInterceptor(new TestInterceptor())
+                .addPathPatterns("/**")
+                .excludePathPatterns("/exclude") // interceptor적용하지 않을 path 명시
+                .order(1); // interceptor 적용순서 
+    }
+}
+```
+
+다음과 같이 handler에 예외가 발생하면 postHandle(...)은 호출되지 않고, afterCompletion(...) method에 예외정보가 담겨 반환된다. 
+```java
+@RestController
+public class TestController {
+
+    @GetMapping("/test-ex")
+    public String testEx(){
+        throw new RuntimeException("runtime exception.");
+    }
+}
+```
+
+![](/images/spring-interceptor.jpg)

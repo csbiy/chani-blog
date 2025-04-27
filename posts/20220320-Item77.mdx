@@ -1,0 +1,33 @@
+---
+id: 84
+title: "Item77. 예외를 무시하지 말자"
+description: ""
+date: "2022-03-20 18:30:09"
+tags: ['Java', 'Effective Java 3/E']
+---
+API 설계자가 메소드 선언에 예외를 명시하는 이유는 메소드를 사용할때 적절한 조치를 취해달라고 요청하는 것이다. 
+하지만 사용하는 측에서는 다음과 같이 아무 일도 하지 않으면 끝이다. 
+
+```java
+try{
+    //
+}catch (SomeException e){}
+```
+
+위와 같이 catch block을 비워두면 예외가 존재할 이유가 없어진다.
+
+반대로 예외를 무시해야 할 때도 있는데 예를 들면 FileInputStream을 닫을때 그렇다. 입력 전용 스트림으로 파일의 상태를 변경하지 않았으니 복구할 것이 없으며, 남는 작업을 중단할 이유도 없다. 
+
+만약 예외를 무시하기로 결정했다면 catch block안에 그렇게 결정한 이유를 죽석으로 남기고, 예외 변수의 이름도 ignored로 바꿔놓자.
+
+```java
+Future<Integer> f = exec.submit(planarMap::chromaticNumber);
+int numColors=4; // 기본값 
+try{
+    numColors = f.get(1L,TimeUnit.SECONDS);
+}catch(TimeoutException | ExecutionException ignored){
+    // 기본값을 사용 
+}
+```
+
+- 예외를 무시할수 있는 상황이 아닌데, 빈 catch block 을 사용하면 원인도 모른채 프로그램이 죽어 디버깅하기 힘들다. 최소한 throws로 예외를 던지기만 해도 디버깅 정보를 남긴채 프로그램이 중단되게는 할 수 있다. 

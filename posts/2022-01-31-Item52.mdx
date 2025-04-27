@@ -1,0 +1,217 @@
+---
+id: 48
+title: "Item52. 다중정의는 신중히 사용하라"
+description: ""
+date: "2022-01-31 11:34:20"
+tags: ['Java', 'Effective Java 3/E']
+---
+## 매개변수가 동일한 부모 타입일떄 overloading의 문제점 
+
+다음과 같이 collection을 집합, 리스트 , 그외로 구분하고자 만든 CollectionClassifier 프로그램이 있다.
+
+```java
+public class CollectionClassifier {
+
+    public static String classify(Set<?> s){
+        return "set";
+    }
+    public static String classify(List<?> lst){
+        return "list";
+    }
+    public static String classify(Collection<?> c){
+        return "others";
+    }
+
+    public static void main(String[] args) {
+        Collection<?>[] collections = {
+                new HashSet<String>(),
+                new ArrayList<BigInteger>(),
+                new HashMap<String,String>().values()
+        };
+
+        for (Collection<?> c : collections) {
+            System.out.println(classify(c));
+        }
+    }
+}
+```
+
+collection에 set,list,map을 넣어주면 예상결과는 set,list,others인데 실제로는 others만 세번 출력된다. 
+그 이유는 다중정의(overloading)된 classify증에 어느 method를 실행할지가 compile time에 정해지기 떄문이다. compile time에 for문안의 c는 항상 Collection\<?> 타입이다. runtime에는 타입이 매번 달라지지만 호출할 method를 선택하는데는 영향을 주지 못한다. 
+
+## overloading vs overriding 
+
+재정의한 method는 동적으로 runtime에 선택되고, 다중정의한 method는 정적으로 compile time에 선택된다. method를 재정의했다면 해당 객체의 runtime 타입이 어떤 method를 호출할지의 기준이 된다. 
+
+```java
+class Wine{
+    String name() {return "Wine";}
+}
+
+class SparklingWine extends Wine{
+    @Override
+    String name() {return "SparklingWine";}
+}
+class Champagne extends SparklingWine{
+    @Override
+    String name() {return "Champagne";}
+}
+
+public class Overriding {
+
+    public static void main(String[] args) {
+        List<Wine> wineList = List.of(new Wine(), new SparklingWine(), new Champagne());
+        for (Wine wine : wineList) {
+            System.out.println("wine.name() = " + wine.name());
+        }
+    }
+}
+```
+```bash
+//출력 결과 
+wine.name() = Wine
+wine.name() = SparklingWine
+wine.name() = Champagne
+```
+위와 같이 runtime에 객체 타입을 보고 재정의한 method가 호출된다. <strong> 반면에 다중정의한 method사이에서는 객체의 runtime 타입은 전혀 중요치 않다. 선택은 compile time에 오직 매개변수의 compile time 타입에 의해 이뤄진다. </strong>
+
+CollectionClassifier program이 runtime에 객체 타입에 따라 반환결과를 다르게 하고 싶다면 아래와 같이 classify method를 모두 하나로 합친 뒤, instanceof 로 명시적으로 runtime에 수정해야 한다.
+
+```java
+public static String classify(Collection<?> c){
+    return c instanceof Set ? "set" : c instanceof List ? "list" : "others";
+}
+```
+
+
+- overloading시 compile time에 호출 method가 매개변수 타입을 보고 결정되므로, overriding 과는 동작방식이 다르다. 따라서 client가 사용했을때, 혼동을 일으키는 상황을 되도록 주지 않는 것이 좋다.
+
+
+  
+
+## 대안 
+
+1. 매개변수 수가 같은 다중정의를 만들지 않는게 좋다. 
+2. 다중정의 대신 method이름을 다르게 지어준다. 
+
+예를 들면
+
+java.io.ObjectOutputStream class의 경우 다중정의 대신에 method이름을 다르게 지어주는 방식을 선택하였다
+
+```java
+// ObjectOutputStream class
+public void writeBoolean(boolean val) throws IOException {
+    bout.writeBoolean(val);
+}
+public void writeByte(int val) throws IOException  {
+    bout.writeByte(val);
+}
+public void writeShort(int val)  throws IOException {
+    bout.writeShort(val);
+}
+```
+
+3. 생성자의 경우는 이름을 다르게 지을 수 없으니, 2번쨰 생성자부터는 무조건 overloading이 적용된다. 하지만 정적 팩토리 method를 활용하는 방안도 있다. 
+   
+4. 매개변수 수가 같은 다중정의 method가 많다하더라도 매개변수가 서로간에 근본적으로 다른 경우 ( = 형변환이 아예 불가능한 경우)는 사용하여도 어차피 다중정의 method가 매개변수의 runtime 타입으로만 결정된다. 
+
+5. 인수를 forward 해서 다중정의한 method가 동일한 일을 하도록 보장한다.
+예를 들면 String class의 contentEquals method는 CharSequence 인터페이스를 확장한 StringBuffer 를 매개변수로 받는 method, CharSequence 인터페이스 타입을 매개변수로 받는 method를 overrloading하였으나, 내부적으로 수행되는 코드는 단지 다른 overrloading된 method로 forward해주는 방식이다. 즉 동일한 기능을 수행한다. 
+
+```java
+public boolean contentEquals(StringBuffer sb) {
+    return contentEquals((CharSequence)sb);
+}
+public boolean contentEquals(CharSequence cs) {
+        //...
+}
+```
+## autoboxing 과 관련된 overloading의 문제점 
+
+jdk 4까지는 기본 타입과 참조 타입이 근본적으로 달랐지만, jdk 5부터는 autoboxing이 도입됨으로 기본 타입과 박싱 타입간 변환이 가능해졌다. 
+
+이 때문에 기존에 overrloading된 method 에서 각각 기본 타입과 박싱 타입을 매개변수로 받는 경우 혼동이 생길 수 있다.
+
+```java
+ E remove(int index); // list내에서 인덱스의 원소를 제거 
+ boolean remove(Object o); // list내에서 해당 원소를 제거 
+```
+
+예를 들어 아래와 같은 예제 코드에서 remove(int 타입) 으로 받는 경우에는 인덱스가 제거된다. 
+
+```java
+public class SetList {
+    public static void main(String[] args) {
+
+        Set<Integer> set = new TreeSet<>();
+        List<Integer> list = new ArrayList<>();
+
+        for(int i = -3 ; i < 3 ; i++){
+            set.add(i);
+            list.add(i);
+        }
+        for(int i = 0 ; i < 3 ; i++){
+            set.remove(i);
+            // list.remove(int idx) method 선택 
+            list.remove(i);
+        }
+        System.out.println(set + " " + list);
+    }
+}
+```
+```bash
+//출력결과
+[-3, -2, -1] [-2, 0, 2]
+```
+
+반면 Integer로 명시적 형변환했을떄는 Object 매개변수를 받는 method가 선택되어 정상적으로 작동하낟. 
+
+```java
+public class SetList {
+
+    public static void main(String[] args) {
+
+        Set<Integer> set = new TreeSet<>();
+        List<Integer> list = new ArrayList<>();
+
+        for(int i = -3 ; i < 3 ; i++){
+            set.add(i);
+            list.add(i);
+        }
+        for(int i = 0 ; i < 3 ; i++){
+            set.remove(i);
+            // list.remove(Object o) method 선택 
+            list.remove((Integer) i);
+        }
+        System.out.println(set + " " + list);
+    }
+}
+```
+
+```bash
+//출력결과
+[-3, -2, -1] [-3, -2, -1]
+```
+
+## lambda와 method reference과 관련된 overloading의 문제점
+
+```java
+// 1. Thread의 생성자 호출 방식
+new Thread(System.out::println).start();
+
+// 2. ExecutorService의 submit method호출 방식 
+ExecutorService exec = Executors.newCachedThreadPool();
+exec.submit(System.out::println); // compile error
+```
+1,2번모두 매개변수는 같고 , Runnable을 받는 method를 다중 정의하고 있다. 하지만 2번의 경우에만 compile error가 나는데  그 이유는 submit 다중정의 method 중에 Callable\<T>를 받는 method도 있기 떄문이다. 
+
+```java
+<T> Future<T> submit(Callable<T> task);
+    Future<?> submit(Runnable task);
+```
+
+println method는 반환값이 없으니, 반환값이 있는 Callable method와 혼동될 이유가 없다고 생각할수도 있으나, compiler에서 다중정의 method를 찾는 알고리즘은 내부적으로 이렇게 동작하지 않는다고 한다. 
+
+결론은 다중정의된 method들이 함수형 인터페이스를 인수로 받을 수 있을때, 서로 다른 함수형 인터페이스라고 할지라도 인수 위치가 같으면 혼란이 생길 수도 있다는 게 결론이다. 
+
+따라서 method를 다중정의할떄, 서로 다른 함수형 인터페이스라고 할지라도 같은 위치의 매개변수로 받아서는 안된다.

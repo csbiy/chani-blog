@@ -1,0 +1,168 @@
+---
+id: 17
+title: "Item 33. 타입 안전 이종 컨테이너를 고려하라"
+description: ""
+date: "2022-01-05 20:03:57"
+tags: ['Java', 'Effective Java 3/E']
+---
+Generic은 Collection과 단일 원소 컨테이너에서도 흔히 사용된다. 
+
+```java
+Set<E>;
+Map<K,V>;
+ThreadLocal<T>;
+```
+이런 타입들의 경우 매개변수화되는 대상은 컨테이너 자신이다. 따라서 하나의 컨테이너에서 매개변수화 할 수 있는 타입의 수가 정해져있다.  
+
+## Type safe heterogeneous container pattern 
+
+타입 안전 이종 컨테이너 패턴(Type safe heterogenous container pattern) 
+
+- 컨테이너 대신에 컨테이너의 키값을 매개변수하는 방식
+
+- 일급 Collection  : Collection을 Wrapping하면서, 그 외 다른 멤버 변수가 없는 상태로 Collection의 상태와 행위를 한곳에서 관리 (SRP) 
+
+    (ref- https://jojoldu.tistory.com/412)
+
+
+
+```java
+public class Favorites {
+    // collection의 key값을 매개변수화 
+   private Map<Class<?>,Object> favorites = new HashMap<>();
+
+    // type token 
+    public <T> void putFavorite(Class<T> type,T instance){
+        favorites.put(Objects.requireNonNull(type),instance);
+    }
+
+    public <T> T getFavorite(Class<T> type){
+        return type.cast(favorites.get(type));
+    }
+}
+```
+타입 안전 이종 컨테이너 패턴의 예시로, 타입별로 주요 사용되는 객체를 저장하는 Favorites class 예시를 들 수 있다. 
+- wrapping되고 있는 collection의 key는 비한정적 wildcard type으로 어떤 class도 받을 수 있다.  (실체화 불가 타입 제외 ex) List\<String>.class)
+
+- wrapping되고 있는 collection의 value는 object type으로 key와 value사이의 타입정보를 유지하지 않지만, getFavorite method에서 Class.cast() method를 통해 타입을 runtime에 동적으로 형변환해준다. 
+
+굳이 다음과 같이 형변환하지 않고 Class.cast() method를 사용해서 형변환하는 이유는 무엇일까?
+
+![](/images/Item33-01.jpg)
+
+client에게 compiler 경고가 나오는데 Class.cast method는 타입 안전함을 확인하고 비검사 경고를 제거해주기 떄문이다. 
+
+```java
+@SuppressWarnings("unchecked")
+@HotSpotIntrinsicCandidate
+public T cast(Object obj) {
+    if (obj != null && !isInstance(obj))
+        throw new ClassCastException(cannotCastMsg(obj));
+    return (T) obj;
+}
+```
+
+
+getFavorite(Class\<T> type) method는 container의 키와 타입 정보를 건네주는데, 이처럼 타입 정보를 알아내기 위해 건내주는 class literal을 type token이라고 한다. 
+
+- type token : compile time 타입 정보와 run time 타입 정보를 알아내기 위해 method간에 주고받는 class literal
+
+```java
+// 타입 안전 이종 컨테이너 - client 
+public static void main(String[] args) {
+
+    Favorites favorites = new Favorites();
+    favorites.putFavorite(String.class,"Java");
+    favorites.putFavorite(Integer.class,20);
+    favorites.putFavorite(Class.class,Favorites.class);
+
+    String favoriteStr = favorites.getFavorite(String.class);
+    Integer favoriteInt = favorites.getFavorite(Integer.class);
+    Class<?> favoriteClz = favorites.getFavorite(Class.class);
+
+    System.out.printf("%s %d %s",favoriteStr,favoriteInt,favoriteClz.getName());
+}
+```
+
+## Type safe heterogeneous container pattern 제약사항
+
+현재 Favorite class의 제약은 다음과 같다.
+
+1. 악의적인 client가 generic이 아닌 raw type으로 넘기는 경우 타입 안전성이 꺠진다. 
+
+```java
+Favorites favorites = new Favorites();
+favorites.putFavorite( ((Class) Integer.class),"not generic type");
+// Integer result = favorites.getFavorite(Integer.class); ClassCastException ! 
+```
+
+
+
+이를 해결하는 방안으로 값을 넣을떄에도 매번 동적 형변환하는 방법이 있다.
+
+```java
+    public <T> void putFavorite(Class<T> type,T instance){
+        favorites.put(Objects.requireNonNull(type),type.cast(instance));
+    }
+    // 값넣기이전에 ClassCastException이 터진다. 
+```
+
+2. 실체화 불가 타입에는 적용이 불가능하다. ex)List\<String>.class
+
+그 이유는 Generic간의 class는 같은 Class 객체를 공유하기 떄문이다. 예를 들어 List\<String>.class와 List\<Integer>.class 는 List.class라는 같은 Class객체를 공유한다. 
+
+추가적으로 현재 예제에서 사용하고 있는 Favorite class는 타입 token 에 제약이 없지만, 이를 한정적 타입매개변수로 제약할 수 있다. 
+
+```java
+// Number class 하위 타입의 타입매개변수를 가진 Generic만 넣을 수 있음. 
+public <T extends Number> void putFavorite(Class<T> type,T instance){
+    favorites.put(Objects.requireNonNull(type),type.cast(instance));
+}
+```
+
+
+java.lang.reflect.AnnotatedElement interface의 getAnnotation method는 명시한 타입의 annotation이 대상 요소에 달려있다면 그 annotation을 반환하고, 없다면 null을 반환한다.  
+
+한정적 타입매개변수로 입력 타입매개변수에 Annotation type만 오도록 하였다.
+
+favorites 예제와 유사하게 annotation된 요소는 key가 annotation 타입 매개변수임으로  타입 안전 이종 컨테이너라고 볼 수 있다. 
+
+```java
+   /**
+     * Returns this element's annotation for the specified type if
+     * such an annotation is <em>present</em>, else null.
+     *
+     * @param <T> the type of the annotation to query for and return if present
+     * @param annotationClass the Class object corresponding to the
+     *        annotation type
+     * @return this element's annotation for the specified annotation type if
+     *     present on this element, else null
+     * @throws NullPointerException if the given annotation class is null
+     * @since 1.5
+     */
+    <T extends Annotation> T getAnnotation(Class<T> annotationClass);
+```
+
+만약 Class\<?> 타입의 객체를 getAnnotation method에 넘기려면 아래와 같이 Annotation type으로 한정적 타입매개변수로 형변환할 수 있겠지만, 이는 비검사임으로 compiler 경고가 뜬다. 
+
+```java
+Class<? extends Annotation> clazz = (Class<? extends Annotation>) wildCardInstance;
+```
+
+형변환해주는 방법 대신에 Class 클래스에서 제공하는 asSubClass method를 활용하면 parameter로 넘어온 클래스로 형변환해줄 수 있다. 
+
+```java
+static Annotation getAnnotation(AnnotatedElement element, String annotationTypeName){
+    Class<?> annotationType = null;
+    try{
+        annotationType = Class.forName(annotationTypeName);
+    } catch (Exception e) {
+        throw new IllegalArgumentException();
+    }
+    return element.getAnnotation(annotationType.asSubclass(Annotation.class));
+}
+```
+
+## 정리 
+
+container (일급 collection)  자체를 generic class로 만드는 것보다 key 값만 generic으로 변경한 타입 안전 이종 컨테이너는 타입 제약에서 비교적 자유로우며, Class를 key 로 써서 값을 넣고 뺀다, 이떄 parmeter로 넘어오는 class literal을 type token이라고도 부른다.

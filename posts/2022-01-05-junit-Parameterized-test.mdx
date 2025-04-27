@@ -1,0 +1,219 @@
+---
+id: 140
+title: "Junit5 Parameterized Test"
+description: ""
+date: "2022-01-05 20:04:36"
+tags: ['Java', 'Junit']
+---
+## Parameterized Test
+```java
+public class SetTest {
+    private Set<Integer> numbers;
+    @BeforeEach
+    void setUp(){
+        numbers = new HashSet<>();
+        numbers.add(1);
+        numbers.add(1);
+        numbers.add(2);
+        numbers.add(3);
+    }
+    @Test
+    void contains() {
+        assertThat(numbers.contains(1)).isTrue();
+        assertThat(numbers.contains(2)).isTrue();
+        assertThat(numbers.contains(3)).isTrue();
+    }
+}
+```
+
+위와 같이 Set의 API에 대한 학습테스트를 수행한다고 하였을떄 각 원소를 포함했는지 중복코드가 발생한다.
+
+Junit 5부터는 이를 ParameterizedTest 로 테스트에 여러개의 매개변수를 넣어주게 해줌으로써 테스트 코드 리팩토링을 원할하게 해준다.
+
+필요한 library dependency는 다음과 같다. 
+
+```java
+// maven
+<dependency>
+    <groupId>org.junit.jupiter</groupId>
+    <artifactId>junit-jupiter-params</artifactId>
+    <version>5.8.1</version>
+    <scope>test</scope>
+</dependency>
+
+//gradle
+testCompile("org.junit.jupiter:junit-jupiter-params:5.8.1")
+```
+
+## Argument Source
+
+parameterized test 에는  @ParameterizedTest annotaion을 명시하고 , 테스트할 매개변수들이 필요한데, Junit에서는 이를 @~source로 annotation에 입력값을 넣도록 제공하고 있다. 
+
+
+- ValueSource
+
+다음과 같이 홀수를 판별하는 method가 있다고 가정하자. 
+
+```java
+public class Numbers {
+    public static boolean isOdd(int number){
+        return number % 2 != 0;
+    }
+}
+```
+
+@ValueSource는 literal 값 타입의 매개변수를 전달해준다. 
+```java
+    @ParameterizedTest
+    @ValueSource(ints = {1, 3, 5, 7, 9})
+    void isOdd_shouldReturnTrueForOddNum(int num){
+        assertThat(Numbers.isOdd(num)).isTrue();
+    }
+```
+
+허용되는 타입은 다음과 같다. 
+
+<blockquote>
+Supported types include shorts, bytes, ints, longs, floats, doubles, chars, booleans, strings, and classes. Note, however, that only one of the supported types may be specified per @ValueSource declaration.
+The supplied literal values will be provided as arguments to the annotated @ParameterizedTest method.
+</blockquote>
+
+@ValueSource는 null 을 매개변수로 전달할수 없다는 제약을 가지고 있다. 
+
+- NullSource
+
+null은 별도로 @NullSource annotaion을 통해 매개변수로 받을 수 있다.
+
+```java
+    @ParameterizedTest
+    @NullSource
+    void isNull(String src){
+        assertThat(src).isNull();
+    }
+```
+
+- EmptySource
+
+null 이 아닌 빈 문자열은 @EmptySource annotaion을 통해 매개변수로 받을 수 있다.
+
+```java
+    @ParameterizedTest
+    @EmptySource
+    void isEmpty(String src){
+        assertThat(src).isEmpty();
+    }
+```
+
+- @NullAndEmptySource
+
+다음과 같이 null 또는 빈 문자열인지 판단하는 method가 있다고 가정하자 
+```java
+public class Strings {
+    private static boolean isNullOrEmpty(String src){
+        return src == null || src.trim().isEmpty();
+    }
+}
+```
+@NullAndEmptySource는 매개변수에 null과 빈문자열을 넣어준다 . (method가 2번 호출된다.  )
+
+src = null <br>
+src = 
+
+```java
+    @ParameterizedTest
+    @NullAndEmptySource
+    void isNullOrEmpty(String src){
+        assertThat(Strings.isNullOrEmpty(src)).isTrue();
+    }
+```
+
+@ValueSource, @Null,EmptySource는 하나의 test에 같이 적용이 가능하다.
+
+```java
+    @Test
+    @NullAndEmptySource
+    @ValueSource(strings = { "\n" , "  ","\t"})
+    void isNullOrEmpty(){
+        assertThat(isNullOrEmpty("\n")).isTrue();
+    }
+```
+
+- @EnumSource
+
+
+@EnumSource는 Enum타입 매개변수를 테스트에 넘겨줄떄 사용한다. name 속성값에 특정 Enum 만 명시할 수 있지만, 명시하지 않을 경우 전체 이넘이 넘어간다. 
+
+```java
+    @ParameterizedTest
+    @EnumSource(Month.class)
+    void getValueForAMonth_IsAlwaysBetweenOneAndTwelve(Month month){
+            System.out.println("month = " + month);
+            int monthNumber = month.getValue();
+            assertThat(monthNumber >= 1 && monthNumber <= 12).isTrue();
+            }
+```
+value속성에 Enum class 타입을 명시해주고, name 속성에 Enum 값을 넣어주면 해당 Enum들만 매개변수로 받을 수 있다 
+```java
+    @ParameterizedTest
+    @EnumSource(value = Month.class,names = {"APRIL", "JUNE","SEPTEMBER","NOVEMBER"})
+    void someMonths_Are30DaysLong(Month month){
+        final boolean isALeapYear = false;
+        assertThat( month.length(isALeapYear)).isEqualTo(30);
+    }
+```
+mode 속성에 name 에 명시한 Enum 값을 포함할건지 제외할건지 옵션을 줄 수 있다. default는 포함이고 제외하고 싶다면 아래와 같이 EXCLUDE 옵션을 주면 된다. 
+```java
+    @ParameterizedTest
+    @EnumSource(
+            value = Month.class,
+            names = {"APRIL","JUNE","SEPTEMBER","NOVEMBER","FEBRUARY"},
+            mode =  EnumSource.Mode.EXCLUDE
+    )
+    void exceptFourMonths_OthersAre31DaysLong(Month month){
+        final boolean isALeapYear = false;
+        assertThat(month.length(isALeapYear)).isEqualTo(31);
+    }
+```
+
+- @CsvSource
+
+csvSource 는 ,로 구분되는 입력값,예상결과값 문자열 배열을 받아서 매개변수로 넣어준다 {"입력값1,예상결과값1" , "입력값2,예상결과값2"} 와 같은 형식이다. 
+
+```java
+    @ParameterizedTest
+    @CsvSource({"test,TEST","tEst,TEST","Java,JAVA"})
+    void toUpperCase_ShouldGenerateTheExpectedUppercaseValue(String input,String expected){
+        String actualValue = input.toUpperCase();
+        assertThat(actualValue).isEqualTo(expected);
+    }
+```
+
+, 로 구분되지 않고 다른 구분문자를 사용하고 싶으면 delimitter 옵션으로 변경할 수 있다. 
+
+- @MethodSource
+
+복잡한 매개변수를 던질떄는 매개변수를 전달하는 부분을 별개의 method로 추출해서 @MethodSource에 method이름을 명시해주면 된다. 
+
+```java
+    @ParameterizedTest
+    @MethodSource("argumentProvider")
+        void isBlank_ShouldReturnTrueForNullOrBlankStringsOneArgument(String input){
+                Assertions.assertThat(isNullOrEmpty(input));
+                }
+
+    private static Stream<String> argumentProvider() {
+            return Stream.of(null, "", "  ");
+            }
+```
+
+꼭 Argument stream 을 반환하지 않고, Argument의 List 등 collection interface를 반환해도 괜찮다. 
+
+```java
+    private static List<Arguments> argumentProvider() {
+        return List.of(Arguments.of(null, "", "  "));
+    }
+```
+
+## 정리
+
+Junit 5부터는 테스트 코드에서 매개변수를 받아 리팩토링 여지를 줄 수 있는 ParameterizedTest 를 제공한다.  입력값 또는 입력값에 대한 예상결과값을 별개의 annotation  , method로 분리하여 매개변수로 전달해준다.

@@ -1,8 +1,6 @@
-import Header from "@/components/Header";
+import Header from "@/app/components/Header";
+import Main from "@/app/components/Main";
 import { getAllPosts } from "@/app/lib/posts";
-
-import Main from "@/components/Main";
-
 
 export default function App() {
   const posts = getAllPosts();

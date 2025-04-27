@@ -1,0 +1,69 @@
+---
+id: 57
+title: "Item78. 공유 중인 가변 데이터는 동기화해 사용하라"
+description: ""
+date: "2022-03-21 00:32:48"
+tags: ['Java', 'Effective Java 3/E']
+---
+synchronzied 키워드는 해당 method나 block을 한번에 한 thread만 수행하도록 보장한다. 
+
+동기화를 사용하면 일관된 상태의 객체에 접근하는 method는 그 객체에 lock을 건다. 
+lock을 건 method는 객체의 상태를 확인하고 필요하면 수정한다. 즉 객체를 하나의 일관된 상태에서 다른 일관된 상태로 변화시킨다. 
+
+동기화에는 중요한 기능이 하나 더 있는데, 동기화 없이는 한 thread가 만든 변화를 다른 thread에서 확인하지 못할 수도 있다는 점이다. 
+Java는 long 과 double외에 primitive 타입 변수는 원자적(atomic)인데, 이는 여러 thread가 같은 변수를 동기화 없이 수정하는 중이라도, 항상 어떤 thread가 정상적으로 저장한 값을 온전히 읽어옴을 보장한다는 뜻이다. 
+
+하지만 주의할점이 있다. 데이터 타입이 원자적이라고 하더라도, 자바 언어 명세는 thread가 field를 읽을 때 항상 수정이 완전히 반영된 값을 얻는다고 보장하지만 한 thread가 수정한 값이 다른 thread에게 언제 보이는가는 보장되지 않는다고 한다. 
+
+따라서 동기화는 thread간에 배타적인 실행에서 중요할 뿐 아니라, thread간에 안정적인 통신에도 중요하다고 한다. 
+
+예를 들어봐서 thread간에 공유중인 가변 데이터를 원자적으로 쓸 수 있다고 하더라도, 동기화를 하지 않으면 다른 thread는 수정이 되기 전의 상태값을 볼수도 있다. 
+
+```java
+public class StopThread {
+
+    public static boolean stopRequested; // 공유 가변 데이터 
+
+    public static void main(String[] args) throws InterruptedException {
+
+        Thread backgroundThread = new Thread(() -> {
+            int i = 0;
+            while (!stopRequested) {
+                i++;
+            }
+        });
+
+        backgroundThread.start(); 
+        TimeUnit.SECONDS.sleep(1); // main thread 1초간 sleep
+        stopRequested=true; // 공유 가변 데이터의 상태를 바꾼다. 
+    }
+}
+
+```
+
+위 코드를 보면 main thread가 공유 가변 데이터의 상태를 원자적으로 바꾸면 , backgroundThread도 이 변경된 데이터 상태를 보고 종료될 것 같지만 종료되지 않고 계속해서 실행된다. 
+
+그 이유는 동기화 떄문인데, 아까 정리한 것처럼 값을 원자적으로 써서, 수정이 완전히 반영된 값을 얻는다고 보장은 하지만 다른 thread가 그 상태를 언제 보게 될지는 모르기 떄문이다.
+
+위 코드는 JVM 가성머신이 다음과 같이 최적화를 수행할 수도 있기 떄문이다.
+
+```java
+
+//원래 코드
+while(!stopRequested){
+    i++;
+}
+
+// JVM에 의해 최적화된 코드
+while(!stopRequested){
+    while(true){
+        i++;
+    }
+}
+```
+
+위 최적화 기법은 openJDK 서버 VM이 실제로 적용하는 hoisting 기법이다. 
+
+
+
+따라서 다음과 같이 바꾸면 기대한대로 1초 후에 종료된다.

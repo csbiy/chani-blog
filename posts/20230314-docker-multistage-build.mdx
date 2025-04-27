@@ -1,0 +1,56 @@
+---
+id: 51
+title: "Docker Multi-Stage Build"
+description: ""
+date: "2023-03-14 20:09:18"
+tags: ['Docker']
+---
+## 멀티 스테이지 빌드
+
+- 각 빌드 단계는 FROM 명령어로 시작한다. 필요한 경우 AS 파라미터를 통해 이름을 붙일 수 있다. 
+- 빌드가 여러 단계로 나뉘어져 있다고 하더라도 최종 산출물은 마지막 내용물을 담은 도커 이미지이다.
+- 각 빌드 단계는 격리되어서, 독립적으로 실행되지만 앞선 단계에서 만들어진 파일을 복사할 수 있다. 
+- 예를 들면 아래와 같이 ```--from``` 인자를 사용해서 해당 파일이 호스트 컴퓨터의 파일 시스템이 아니라 , 앞선 빌드 단계의 파일 시스템에 파일을 복사할 것임을 명시할 수 있다. 
+```dockerfile
+FROM diamol/base AS build-stage 
+RUN echo 'Building...' > /build.txt
+
+FROM diamol/base AS test-stage
+COPY --from=build-stage /build.txt /build.txt
+RUN echo 'Testing...' >> /build.txt
+
+FROM diamol/base
+COPY --from=test-stage /build.txt /build.txt
+CMD cat /build.txt
+```
+
+## Application 빌드 예시
+
+```dockerfile
+## 빌드 단계
+FROM diamol/maven AS builder
+
+WORKDIR /usr/src/iotd
+COPY pom.xml .
+RUN mvn -B dependency:go-offline
+
+COPY . .
+RUN mvn package
+## 배포 단계 
+FROM diamol/openjdk
+
+WORKDIR /app
+COPY --from=builder /usr/src/iotd/target/iotd-service-0.1.0.jar .
+
+EXPOSE 80
+ENTRYPOINT ["java", "-jar", "/app/iotd-service-0.1.0.jar"]
+```
+- 첫번쨰 빌드 단계에서는 Maven 이미지로 Maven을 이용해 의존 라이브러리를 내려받고 , ```mvn package```를 통해 빌드&패키징을 수행한다.
+
+- 두번쨰 단계에서는 첫번쨰 빌드 단계의 파일 시스템에 존재하는 jar파일을 복사해서 포트를 외부 공개하고 , jar파일을 실행한다. ENTRYPOINT 명령어는 해당 이미지가 컨테이너로 실행될때 실행될 명령어이다. 
+
+- 멀티 스테이지 빌드를 통해서 최종적으로 생성되는 Application 이미지에는 빌드도구를 포함시키지 않을 수 있다. 
+
+### 왜 멀티 스테이지 빌드를 사용해야하는가?
+
+- 애플리케이션 이미지 사이즈 감소 : 정말 필요한 리소스만 담아 ,이미지 크기를 줄일 수 있다.

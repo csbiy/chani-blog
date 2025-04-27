@@ -1,0 +1,50 @@
+---
+id: 173
+title: "Item4. 인스턴스화를 막을려면 private생성자를 이용하라"
+description: ""
+date: "2021-07-20 21:51:06"
+tags: ['Java', 'Effective Java 3/E']
+---
+#### static method,static field만을 담은 유틸리티성 클래스의 객체 생성을 막으려면 어떻게 해야할까?
+
+java.lang.Math, java.util.Array 와 같은 class는 주로 static method, static field만을 담은 class이다.
+
+이러한 class들은 객체를 만드는 것이 목적이 아니라, class의 static method, field를 이용하는 것이 주 목적이다. 
+
+객체를 만드는 것이 목적이 아니기 때문에, API를 이용하는 client가 객체를 생성하는 것을 막는 게 바람직하다.
+
+
+"추상클래스로 만드는 방법은 바람직하지 못하다. client가 해당 class를 상속받아서 객체를 만들면 그만이기 때문이다"
+
+그렇다면 객체의 생성을 막는 방법은 무엇일까? singleton 패턴에서 자주사용하는 것처럼 <u> <strong>private 생성자를 이용</strong> </u> 하면 된다. 
+
+예를 들면 다음과 같다.
+
+```java
+public class UtilityClass{
+    /*
+      기본 생성자가 생성되는 것을 막고, 외부에서 생성자를 
+        호출할 수 없도록 private constructor를 만든다.
+    */
+    private UtilityClass(){
+
+    }
+
+    public static void doSomeThing(){
+            // utiliy Method
+    } 
+}
+
+```
+
+추가로 위 방식은 상속을 불가능하게 하는 효과도 가지고 있다, 모든 생성자는 명시적 또는 묵시적으로 부모class의 생성자를 호출하는데 
+```java
+constructor(){
+    super(parent);
+    // ~
+}
+```
+이를 private 로 막아버리면 자식 class가 부모class에게 접근할 방법이 막혀버린다.
+
+
+- #### 정리: class에 utility 성 static method,field만 담아둔다면 client가 객체를 생성할 이유가 없으므로, 설계상 객체를 막아두는게 바람직하다. 객체의 생성을 막는 방법으로는 생성자를 private로 만들면 된다.

@@ -1,0 +1,118 @@
+---
+id: 176
+title: "Item28. 배열보다는 리스트를 사용하라"
+description: ""
+date: "2021-12-29 19:23:18"
+tags: ['Java', 'Effective Java 3/E']
+---
+## 배열과 Generic type의 차이점 
+
+1. 배열은 공변(covariant) 인 반면 Generic은 불공변(invariant) 이다.
+
+Sub class가 Super class의 하위 class라고 가정하면 배열 Sub[]는 Super[]의 하위 타입이 된다. 
+반면에 서로 다른 타입인 Type1과 Type2가 있을떄 Generic인 List\<Type1> List\<Type2> 은 아무 계층관계도 가지지 않는다. 
+
+```java
+// Array 
+Object[] longs = new Long[1];
+longs[0] = "타입이 다름에도 컴파일에러가 나지 않습니다."; //ArrayStoreException
+
+// Generic 
+List<Object> ol = new ArrayList<Long>(); // compile Error
+
+```
+배열은 type으로 인해 runtime Exception이 발생할 수 있는 반면, generic인 compile 경고를 먼저 띄워준다. 
+
+
+2. 배열은 실체화 된다. 
+
+배열은 runtime 에도 원소의 타입을 인지하고 확인한다, 예를 들면 Long 배열에 String을 넣으려고 하면 runtime에 이를 확인하고 예외를 발생시킨다. 
+반면 generic은 runtime에 타입을 소거한다 (type erasure). 원소의 타입을 compile time에만 검사하며 , runtime에는 모른다. 
+
+
+
+위와 같은 차이점 떄문에 Generic 배열은 Java에서 허용되지 않는다. 
+
+예시로 아래와 같이 List<String> 를 원소로 갖는 제너릭 배열을 만든다고 가정하면, 배열은 공변이기 떄문에 Object[] 으로 배열을 받을 수 있고,Object[] 배열은 모든 타입의 원소를 받을 수 있으므로 값을꺼낼때 runtime error가 발생할수도 있다.
+
+```java
+List<String>[] stringList = new List<String>[1];
+List<Integer> integerList = List.of(42);
+Object[] objects = stringList;
+objects[0] = integerList;
+String s = stringList[0].get(0);
+```
+
+
+## 실체화 불가 타입 
+
+E,List\<E>,List\<String>과 같은 type을 실체화 불가 타입이라고 한다. 실체화 불가 타입이란 runtime에는 compile time보다 타입 정보를 적게 가지는 타입이다. runtime시 타입 소거 떄문에 매개변수화 타입 중에 실체화 될 수 있는 타입은 List\<?> 와 Map\<?,?> 와 같은 비한정적 wildcard 타입 뿐이다. 
+
+## Generic type을 배열로 형변환 
+
+```java
+public class Chooser {
+    private final Object[] choiceArray;
+
+    public Chooser(Collection choice){
+        this.choiceArray = choice.toArray();
+    }
+
+    public Object choose(){
+        Random rnd = ThreadLocalRandom.current();
+        return choiceArray[rnd.nextInt(choiceArray.length)];
+    }
+}
+
+```
+
+이를 client에서 꺼내쓰려면 매번 형변환이 필요하다
+```java
+List<String> stringList = List.of("a1", "a2", "a3");
+Chooser chooser = new Chooser(stringList);
+String result = (String) chooser.choose();
+```
+
+따라서 다음과 같이 generic collection을 생성자에서 받고, T 배열로 형변환하면 된다.
+
+```java
+public class Chooser<T> {
+    private final T[] choiceArray;
+
+    public Chooser(Collection<T> choice){
+        this.choiceArray = (T[]) choice.toArray();
+    }
+
+    public T choose(){
+        Random rnd = ThreadLocalRandom.current();
+        return choiceArray[rnd.nextInt(choiceArray.length)];
+    }
+}
+```
+
+```java
+List<String> stringList = List.of("a1", "a2", "a3");
+Chooser<String> chooser = new Chooser<>(stringList);
+String result = chooser.choose();
+```
+또는 배열과 Generic을 섞어 쓰는 상황에서는 아래와 같이 배열을 리스트로 아예 대체하는 해결방안도 제시하고 있다. 
+```java
+public class Chooser<T> {
+    private final List<T> choiceList;
+
+    public Chooser(Collection<T> choice){
+        this.choiceList =  new ArrayList<>(choice);
+    }
+
+    public T choose(){
+        Random rnd = ThreadLocalRandom.current();
+        return choiceList.get(rnd.nextInt(choiceList.size()));
+    }
+}
+```
+
+## 정리 
+
+배열과 Generic은 다른 타입 규칙이 적용된다. 배열은 공변 , Generic은 불공변이다. 
+Generic은 compile time에 type 관련 error를 잡아주고 type이 지워진 bytecode를 만드는 반면, 배열은 runtime에도 type을 검사하고, type과 관련된 runtime exception이 터질 수도 있다. 
+Generic과 배열을 같이쓰는 상황에서는 배열을 List로 대체하는 것을 고려하자

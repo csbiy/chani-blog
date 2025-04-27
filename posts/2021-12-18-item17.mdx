@@ -1,0 +1,264 @@
+---
+id: 22
+title: "Item17. 변경 가능성을 최소화하라"
+description: ""
+date: "2021-12-17 23:33:21"
+tags: ['Java', 'Effective Java 3/E']
+---
+불변 클래스란 객체 생성 후에 객체의 내부 값을 수정할 수 없는 클래스이다. 불변 객체에 간직된 정보는 고정되어 객체 소멸 시점까지 변경되면 안된다. 
+
+자바 String,primitive type boxing 클래스, BigInteger,BigDecimal 이 여기에 속한다. 
+
+불변 객체를 사용하는 이유는 다음과 같다. 
+
+
+- ### 가변 클래스보다 사용하기 쉬우며 , 안전하다.
+ex) 멀티쓰레드상황에서 여러 client가 동시에 객체를 사용하는 경우  (Thread-Safe)
+
+
+## 불변 객체 만드는 규칙 
+
+1. 객체의 상태를 변경하는 메소드 (ex) setter) 를 제공하지 않는다
+
+2. class를 확장할 수 없도록 한다. 대표적으로 class를 final로 선언하면 된다.
+
+3. 모든 필드를 final로 선언한다.
+   ( 어떤 method도 객체의 상태 중 외부에 비치는 값을 변경할 수 없다. )
+
+4. 모든 필드를 private로 선언한다. 불변 필드인 경우에는 public final로 선언하여도 불변 객체는 되지만, API를 수정하기 힘들어진다. 
+
+5. 자신 외에는 내부의 가변 컴포넌트에 접근할 수 없도록 한다. 클래스 내부에 가변 필드가 있다면, client에서 그 가변 필드의 참조값을 가지고 수정할수 있으므로  생성자/접근자/readObject method에서 모두 방어적 복사를 수행해야 한다. 
+
+
+```java
+
+public final class ImmutablePerson {
+
+    private final Integer age;
+    private final String name;
+    private final List<PhoneNumber> phoneNumber;
+
+    public Integer getAge() {
+        return age;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public List<PhoneNumber> getPhoneNumber() {
+        return List.copyOf(phoneNumber);
+    }
+
+    public static class Builder{
+
+        private Integer age;
+        private String name;
+        private List<PhoneNumber> phoneNumber;
+
+        public Builder age(Integer age) {
+            this.age = age;
+            return this;
+        }
+        public Builder name(String name) {
+            this.name = name;
+            return this;
+        }
+        public Builder phoneNumber(List<PhoneNumber> phoneNumber) {
+            this.phoneNumber = List.copyOf(phoneNumber);
+            return this;
+        }
+
+        public ImmutablePerson build(){
+           return new ImmutablePerson(this);
+        }
+    }
+
+    private ImmutablePerson(Builder builder){
+        this.age = builder.age;
+        this.name = builder.name;
+        this.phoneNumber = builder.phoneNumber;
+    }
+
+}
+
+```
+
+책의 예시를 보면 다음과 같다.
+
+```java
+
+public final class Complex {
+
+    private final double re;
+
+    private final double im;
+
+    public Complex(double re, double im){
+        this.re = re;
+        this.im = im;
+    }
+
+    public double realPart(){
+        return re;
+    }
+
+    public double imaginaryPart(){
+        return im;
+    }
+    
+    public Complex plus(Complex c){
+        return new Complex(re+c.re , im + c.im);
+    }
+
+    public Complex minus(Complex c){
+        return new Complex(re - c.re , im - c.im);
+    }
+    public Complex times(Complex c){
+        return new Complex(re*c.re - im * c.im,
+                           re * c.im - im * c.re);
+    }
+
+    public Complex dividedBy(Complex c){
+        double tmp = c.re * c.re + c.im * c.im;
+        return new Complex(
+                (re*c.re + im * c.im)/tmp,
+                (im*c.re - re * c.im)/tmp
+                );
+    }
+
+    @Override
+    public boolean equals(Object o){
+        if(o == this){
+            return true;
+        }
+        if(!(o instanceof Complex)){
+            return false;
+        }
+        Complex c = (Complex) o;
+        return Double.compare(c.re,re)==0 && Double.compare(c.im,im) == 0;
+    }
+
+    @Override
+    public int hashCode(){
+        return 31*Double.hashCode(re) + Double.hashCode(im);
+    }
+
+    @Override
+    public String toString(){
+        return "(" + re + " + " + im + "i)";
+    }
+}
+
+```
+
+위 method들은 불변객체를 수정하는게 아니라 새로운 객체를 만들어서 반환한다. <strong> 이처럼 피연산자에 함수를 적용해 그 결과를 반환하지만, 피연산자 자체는 그대로인 프로그래밍 패턴을 함수형 프로그래밍이라고 한다. </strong> 
+
+<strong>  이와 달리 절차형 프로그래밍은 피연산자인 자신을 수정해 자신의 상태가 변하게 된다.  </strong> 
+
+불변 객체는 생성된 시점의 상태를 파괴될떄까지 그대로 간직함으로, 멀티 쓰레드 상황일때도 별도로 동기화 작업이 필요가 없으며, 객체는 한번 만든 인스턴스를 최대한 재활용하는 것이 좋다. 
+
+```java
+public static final Complex ZERO = new Complex(0,0);
+public static final Complex ONE = new Complex(1,0);
+public static final Complex I = new Complex(0,1);    
+```
+
+불변 객체는 자주 사용되는 인스턴스를 caching하여 같은 인스턴스를 중복 생성하지 않게 해주는 정적 팩터리 메소드를 제공할 수 있다.
+
+```java
+public final class ImmutablePerson {
+
+    private final Integer age;
+    private final String name;
+    private final List<PhoneNumber> phoneNumber;
+    private static ImmutablePerson cachedTeacher;
+
+    public static ImmutablePerson getTeacher(){
+        if(cachedTeacher == null) {
+            cachedTeacher = new Builder()
+                    .name("선생님")
+                    .age(30)
+                    .phoneNumber(List.of(new PhoneNumber("010","1234","5678")))
+                    .build();
+            } 
+        return cachedTeacher;
+    }
+
+    //...
+}
+```
+
+이렇게 정적 팩터리를 사용해서 자주쓰는 불변객체는 cache해놔서 객체를 계속 생성하는 것보다 메모리를 아낄수 있다. 
+
+불변 객체는 자유롭게 공유할 수 있고, client측에서 불변 객체의 상태 변경이 불가능함으로 당연히 복사해서 사용하는 것도 의미가 없다. 따라서 불필요하게 clone 이나 복사 생성자를 제공할 필요가 없다. 
+
+
+- ### 불변 객체는 자유롭게 공유할수 있음은 물론, 불변 객체끼리는 내부 데이터를 공유 할 수 있다. 
+
+BigInteger class는 내부에서 값의 부호와 크기를 따로 표현하는데 부호는 int 필드, 크기는 int[] 을 사용한다, 
+
+BigInteger의 negate method 는 크기는 동일하고 부호만 반대인 새로운 BigInteger 객체를 생성하는데 이떄 두 불변객체는 가변 타입인 배열을 복사해서 사용하지 않고, 원본 객체와 공유해서 사용한다. 
+
+
+- ### 객체를 만들떄 다른 불변 객체들을 구성요소로 사용하면 이점이 많다. 
+
+값이 변경되지 않는 구성요소로 이루어진 객체는 불변식을 유지하기 쉽다. 예를 들어 Map,Set 의 경우에 key 또는 원소로 불변 객체를 사용할 경우 안에 담긴 값이 바뀌면 불변식이 허물어지는데 불변 객체를 사용하면 그런 걱정이 필요 없다. 
+
+
+- ### 불변 객체는 그 자체로 실패 원자성을 제공한다. 
+
+값이 변경 되지 않으므로, 잠깐이라도 불일치 상태에 빠질 가능성이 없다. 
+
+## 불변 객체의 단점
+
+1. 값이 다르면 반드시 독립된 객체로 만들어야 한다. 
+
+원하는 객체를 완성하기 까지의 중간 단계가 많고, 객체의 필드를 하나만 바꾸더라도 객체를 새로 생성해야 한다. (객체 생성 비용 )
+
+- 해결방안
+
+1. 다단계연산을 예측하여 기본기능으로 제공하는 방법 
+2. package-private 의 가변 동반 클래스 사용 ex) String의 String Builder 
+
+
+## 상속 제한 방법
+
+클래스가 불변임을 보장하려면 자신을 상속하지 못하게 해야 한다. 
+
+1. final 클래스 선언
+2. 모든 생성자를 private 혹은 package-private로 만들고, 정적 팩토리 메소드 사용 
+    
+    
+2번 방식은 자식 클래스 생성자에서 부모 클래스 생성자 호출이 불가능함으로 당연히 상속이 불가능해진다. 
+예시는 다음과 같다.
+
+```java
+// private로 외부 호출을막고, 정적팩토리로만 인스턴스를 생성하게 한다. 
+private Complex(double re, double im){
+    this.re = re;
+    this.im = im;
+}
+
+public static Complex valueOf(double re, double im){
+    return new Complex(re,im);
+}
+```
+
+추가로 BigInteger , BigDecimal의 경우는 final 이 아니고, 상속이 가능하다. 즉 보안상 BigInteger 인지 
+
+overriding하여 사용한 가짜 BigInteger인지 확인해야 한다.
+
+```java
+
+public static BigInteger isSafeInstance(BigInteger val){
+    return val.getClass() == BigInteger.class ? val : new BigInteger(val.toByteArray());   
+}
+```
+
+
+## 정리 
+
+class는 꼭 필요한 경우가 아니면 불변이여야 하며, 불변 클래스의 장점은 Thread-Safe하다는 점과,  복사를 할 필요도 없고, 프로그래밍시에 가변 클래스보다 안전하다는 장점을 가지고 있다. 반면 객체의 상태가 많고 특정 상태만 조금씩만 변경하고자 할떄는 객체 생성 비용 측면에서 단점을 가지고 있다. 
+
+만약 불변으로 만들 수 없는 상황이라면 변경할 수 있는 부분을 최소한으로 줄임으로서, 객체를 예측하고 디버깅하기 쉬워진다.

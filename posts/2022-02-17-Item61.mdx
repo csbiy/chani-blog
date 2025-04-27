@@ -1,0 +1,68 @@
+---
+id: 16
+title: "Item61. 박싱된 기본 타입보다는 기본 타입을 사용하라"
+description: ""
+date: "2022-02-17 22:27:30"
+tags: ['Java', 'Effective Java 3/E']
+---
+- java data type은 primitive type과 reference type 이 있으며, primitive type 에는 각각에 대응되는 reference type이 존재하는데 이를 boxing 된 primitive type이라고 한다.
+( ex) int - Integer , long - Long ) 
+
+## primitive 타입과 boxing된 primitive type간의 차이점
+
+1. 기본 타입의 값은 언제나 유효하나 (기본값이 존재) , reference type은 null을 가질 수 있다.
+2. 메모리측면에서 기본타입이 더 가볍다
+3. 기본 타입에 비해 reference type은 값에 더해 식별성(identity)라는 속성을 갖는다. 즉 값이 같아도 서로 다르다고 식별될 수 있다. 
+
+
+
+## primitive 타입과 boxing 타입간의 차이로 인해 발생할 수 있는 문제점 
+
+기본 타입과 참조타입의 차이점을 인지하지 못하고 활용하면 문제가 발생할 수 있다. 아래와 같이 Integer 타입의 순서를 비교해주는 method가 존재한다고 가정하자
+
+```java
+public static void main(String[] args) {
+    Comparator<Integer> naturalOrder = (i,j)->(i < j )? -1 : (i == j ? 0 :1);
+    int result1 = naturalOrder.compare(42, 42);
+    int result2 = naturalOrder.compare(new Integer(42), new Integer(42));
+    System.out.println(result1 == result2); // false
+}
+```
+참조타입은 값이 같더라도 다른 메모리주소에 올라가기 때문에 == 연산자로 메모리 주소를 비교했을떄 false가 나온다. 
+
+이를 정상적으로 작동하게 수정하려면 기본타입으로 다시 언박싱해주어야 한다
+```java
+Comparator<Integer> naturalOrder = (iBoxed,jBoxed)-> {
+    // unboxing 
+    int i = iBoxed, j = jBoxed;
+    return (i < j) ? -1 : (i == j ? 0 : 1);
+};
+```
+
+또한 참조타입은 기본값으로 null을 가지기 떄문에 다음과 같이 int 타입과 비교하였을떄 언박싱되면서 NullPointerException이 터진다
+
+```java
+static Integer i;
+public static void main(String[] args) {
+    if(i == 42){
+       // NullPointerException
+    }
+}
+```
+
+오토박싱을 수행하면서 성능적 이슈가 생길 수도 있다. 
+
+```java
+long startTime = System.currentTimeMillis();
+long sum = 0L;
+for(long i = 0; i<=Integer.MAX_VALUE; i++){
+    sum+=i;
+}
+System.out.println(" 수행시간 :  " +( System.currentTimeMillis() - startTime));
+//  autoboxing : 3286 ,  primitive type 으로만 선언한 경우 : 628
+```
+
+## boxing 된 기본 타입의 용도
+
+1. collection의 타입매개변수로 사용 (java 언어 자체가 primtive type을 타입매개변수로 받지 않기 떄문임 )
+2. Reflection을 통한 method 호출

@@ -1,0 +1,195 @@
+---
+id: 35
+title: "Item24. 멤버 class 는 되도록 static 으로 만들라"
+description: ""
+date: "2021-12-25 20:22:39"
+tags: ['Java', 'Effective Java 3/E']
+---
+## 중첩 class 
+
+중첩 class (nested class) 란 다른 class 안에 정의된 class를 말한다. 중첩 class는 자신을 감싼 바깥 class에서만 쓰여야 한다. 
+
+## 중첩 class의 종류 
+
+1. 정적 멤버 class 
+
+2. 멤버 class 
+
+3. 지역 class
+
+4. 익명 class
+
+
+
+## 각 중첩 class의 용도
+
+1. 정적 멤버 class 
+
+정적 멤버 class는 흔히 바깥 class와 함께 쓰일떄만 유용한 public 도우미 class로 쓰인다. 
+
+예를 들어, Operation 열거 타입은 Calcuator class의 정적 member class가 되어, 부가적인 기능을 제공해줄 수 있을 것이다. 
+
+```java
+public class Calculator {
+
+    boolean isSupport(String operation){
+        String s = operation.toUpperCase();
+        return Arrays.stream(Operation.values()).filter((element) -> element.toString().equals(s))
+                 .findFirst()
+                 .isPresent();
+    }
+
+    // static member class
+    enum Operation{
+        PLUS,MINUS,DIVIDE;
+    }
+}
+```
+
+private 정적 멤버 class는 바깥 class가 표현하는 객체의 한 구성요소를 나타낼떄 사용한다.  ex) Map 구현체의 Entry class
+
+
+2. 멤버 class ( = 비정적 멤버 class )
+
+멤버 class의 instance는 바깥 class의 인스턴스와 암묵적으로 연결된다. 
+
+따라서 중첩 class의 instance가 바깥 instance 와 독립적으로 존재가능하다면 static 으로, 그게 아니라면 그냥 멤버 class로 선언해야 한다. 멤버 class의 경우 바깥 instance로의 숨은 외부 참조를 갖기 때문에, 멤버 class가 GC되지 못하면 바깥 instance도 GC되지 못하는 메모리 누수가 생길 수도 있다. 
+
+때문에 Map의 Entry class도 static으로 선언되어 있다.   
+
+- 정규화된 this : 멤버 class의 instance는 바깥 class.this 형태로 바깥 class의 instance 참조값을 가져올 수 있다. 
+
+멤버 class instance와 바깥 class instance간에 관계는 멤버 class가 instance화될떄 확립되며, 더이상 변경될 수 없다. 이 관계는 보통 바깥 class의 method에서 멤버 class의 생성자를 호출할떄 자동으로 만들어진다. 
+
+```java
+public class Outer {
+
+    Inner inner;
+
+    public Outer() {
+        this.inner = new Inner();
+    }
+
+    void doSomething(){
+        System.out.println(" outer class" );
+    }
+
+    class Inner {
+
+        void doSomething(){
+            System.out.println("inner class");
+            // 정규화된 this
+            Outer.this.doSomething(); // outer class
+        }
+    }
+
+}
+```
+
+```java
+Outer.Inner inner = new Outer().new Inner(); // 드물게는 다음과 같이 수동으로 생성시키기도 한다. 
+```
+
+이 관계 정보는 멤버 class의 instance 안에 만들어져 , 메모리 공간을 차지하며, 생성시간도 더 걸린다. 
+
+멤버 class의 주 용도는 <strong> 어댑터  </strong> 에 사용된다고 한다. 
+
+(Q: 어댑터를 만들떄 내부 멤버 class 를 사용하는 지)
+
+<!-- <blockquote>
+Adapter pattern : 한 class의 interface를 client에서 사용하고자 하는 다른 interface로 변환합니다. 
+</blockquote> -->
+
+
+즉 어떤 class의 instance를 감싸 마치 다른 class의 instance처럼 보이게 하는 view로 사용하는 것이다. 
+```java
+public class MySet<E> extends AbstractSet {
+    //... 
+    @Override
+    public Iterator iterator() {
+        return new MyIterator();
+    }
+
+    private class MyIterator implements Iterator<E>{
+        //...
+    }
+}
+```
+
+3. 익명 class 
+
+쓰이는 시점에 선언과 동시에 인스턴스가 만들어지며, 코드의 어디서든 만들 수 있다. 
+비정적인 문맥에서 사용될떄만 바깥 class의 instance를 참조할 수 있고, 정적 문맥에서라도 상수 변수 이외의 정적 멤버는 가질 수 없다. 
+
+```java
+public class Outer {
+
+    Integer outerIntNum = 10;
+    
+    static final int staticOuterIntNum = 10;
+    
+    Inner createInnerClass(){
+        return new Inner() {
+            // 비정적 문맥에서는 바깥 instance 참조가 가능하다.
+             final int innerIntNum = outerIntNum;
+             
+             // 정적 문맥에서는  상수 변수와 같은 정적 멤버만 가질 수 있다. 
+             static final int staticInnerNum = staticOuterIntNum;
+
+            @Override
+            public void doSomething() {
+            }
+        };
+    }
+}
+
+
+```
+익명 class는 제약이 많다. 
+
+1. 선언한 지점에서만 instance 만들수 있음 
+2. instanceof 검사나, 클래스 이름이 필요한 작업은 수행 불가 
+3. 여러 인터페이스 구현 불가, 다른 class 상속 불가 
+4. 익명 class를 사용한 client는 그 익명 class가 상위 타입에서 상속한 멤버외에는 호출 불가 
+
+현재는 람다가 익명 class를 대체해 주로 사용되고 있으나, 정적 팩토리 method 구현시에 익명 class가 활용 될 수 있다. 
+
+```java
+static List<Integer> intArrayAsList(int[] a){
+
+    Objects.requireNonNull(a);
+
+    return new AbstractList<Integer>() {
+        @Override
+        public Integer get(int index) {
+            return a[index];
+        }
+        
+        @Override
+        public Integer set(int index, Integer val){
+            int oldVal = index;
+            a[index] =val;
+            return oldVal;
+        }
+
+        @Override
+        public int size() {
+            return a.length;
+        }
+    };
+}
+```
+
+4. 지역 class
+
+지역 변수를 선언하는 곳이면 선언 가능하며, 유효 변수도 지역변수와 동일하다, 
+
+멤버 class 처럼 이름이 있고, 반복적으로 사용가능하다.
+익명 class 처럼 비정적 문맥에서 사용될떄만 바깥 instance를 참조할 수 있으며, 정적 멤버는 가질 수 없으며 가독성을 위해 짧게 작성되야 한다. 
+
+
+## 정리 
+
+바깥 인스턴스를 참조하면 비정적 내부 class. 그렇지 않는다면 정적 내부 class로 만들고, 
+한 method 안에서만 쓰이면서 , 그 인스턴스를 생성하는 시점이 단 한곳이라면 지역 내부 class 또는 익명 내부 class를 사용한다. 
+이미 적합한 class나 인터페이스가 있다면 익명 내부 class로 사용하고 그렇지 않다면 지역 내부 class를 사용하면 된다.

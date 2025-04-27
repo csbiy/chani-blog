@@ -1,0 +1,278 @@
+---
+id: 55
+title: "코루틴(Coroutines)"
+description: ""
+date: "2022-08-03 21:53:12"
+tags: ['kotlin']
+---
+## 코루틴이란?
+
+- 비선점형 (협력형) 멀티 태스킹 (non-preemptive multitasking)으로 실행을 일시 중단(suspend) 하고 재개(resume) 할 수 있는 여러 진입 지점을 허용한다.
+
+- 서로 협력해서 실행을 주고받으면서 작동하는 여러 서브루틴을 말한다.
+
+- 일반적인 서브루틴은 오직 한 가지 진입 지점만을 가진다. 함수를 호출하는 부분이며, 그때마다 활성 레코드 (activation record)가 스택에 할당되면서 서브루틴 내부의 로컬 변수등이 초기화 된다. 또한 서브루틴에서 반환되고 나면 활성 레코드가 스택에서 사라지기 떄문에 모든 상태를 잃어버린다. 
+
+
+```java
+fun main() {
+    //main routine
+    val extension = getFileExtension("cs.txt")
+}
+
+fun getFileExtension(fileName:String) :String{
+    // subroutine
+    return fileName.substringAfter(".")
+}
+```
+
+- 반면 코루틴은 실행을 일시 중단하고 진입 지점을 허용한다.
+  
+
+
+```java
+fun log(msg:String , self : Any?) = println("Current Thread : ${Thread.currentThread().name} / this : $self :$msg")
+
+
+fun main() {
+    log("main routine started",null)
+    yieldExample()
+    log("main routine ended",null)
+}
+
+
+fun yieldExample(){
+    runBlocking{ //내부 코루틴이 모두 끝난뒤 반환 
+        launch {
+            log("1",this)
+            yield() // 
+            log("3",this)
+            yield()
+            log("5",this)
+        }
+        log("after first launch",this)
+        launch {
+            log("2",this)
+            yield()
+            log("4",this)
+            yield()
+            log("6",this)
+        }
+        log("after second launch",this)
+    }
+
+}
+```
+실행로그
+```txt
+Current Thread : main / this : null :main routine started
+Current Thread : main / this : BlockingCoroutine{Active}@33e5ccce :after first launch
+Current Thread : main / this : BlockingCoroutine{Active}@33e5ccce :after second launch
+Current Thread : main / this : StandaloneCoroutine{Active}@2ac1fdc4 :1
+Current Thread : main / this : StandaloneCoroutine{Active}@3ecf72fd :2
+Current Thread : main / this : StandaloneCoroutine{Active}@2ac1fdc4 :3
+Current Thread : main / this : StandaloneCoroutine{Active}@3ecf72fd :4
+Current Thread : main / this : StandaloneCoroutine{Active}@2ac1fdc4 :5
+Current Thread : main / this : StandaloneCoroutine{Active}@3ecf72fd :6
+Current Thread : main / this : null :main routine ended
+```
+
+위 코드를 분석하기 전에 각각 함수가 하는 역할을 정리하면 다음과 같다.
+
+- runBlocking : coroutine builder 로서 내부 코르틴이 모두 끝난 다음에 반환된다. 
+- launch : coroutine builder로서 , 넘겨받은 코드 블록으로 새로운 코르틴을 생성하고 실행시켜준다.
+- yield : 해당 코르틴이 실행권을 양보하고, 실행 위치를 기억하고, 다음 호출때는 해당 위치부터 다시 실행한다. 
+  
+위 코르틴에서 1,3,5를 출력하는 코르틴과 2,4,6를 출력하는 코르틴이 서로 실행권을 양보해가면서 실행된다. 한가지 유의할점은 마치 병렬적으로 실행되는 것처럼 보이지만 다른 쓰레드가 아니라 하나의 쓰레드에서 수행된다는 점이다. 따라서 Context Switching 도 발생하지 않는다.  
+
+- Launch coroutine Builder는 Job 객체를 반환한다. Job은 N개 이상의 coroutines의 동작을 제어할 수도 있으며, 하나의 coroutines 동작을 제어할수도 있다. 
+
+```java
+suspend fun main()  = coroutineScope {
+    // Job 객체는 하나이상의 Coroutine 의 동작을 제어할 수 있다. 
+    val job : Job = launch {
+        delay(1000L)
+        println("World!")
+    }
+    println("Hello,")
+    job.join()
+    println("Done.")
+}
+```
+
+## Job
+
+코루틴의 Job 객체는 코루틴의 상태를 가지고 있다. 
+
+```
+                                          wait children
+    +-----+ start  +--------+ complete   +-------------+  finish  +-----------+
+    | New | -----> | Active | ---------> | Completing  | -------> | Completed |
+    +-----+        +--------+            +-------------+          +-----------+
+                     |  cancel / fail       |
+                     |     +----------------+
+                     |     |
+                     V     V
+                 +------------+                           finish  +-----------+
+                 | Cancelling | --------------------------------> | Cancelled |
+                 +------------+                                   +-----------+
+```
+
+- start : job을 실행하고,  호출시 코루틴이 동작중이면 true, 준비 및 완료 상태면 false를 반환된다. 
+- join : job을 실행하고, Job의 동작이 완료될떄까지 job을 호출한 코루틴을 일시중단한다. 
+- cancel : 현재 코루틴에 종료를 유도하고, 대기하지 않는다.
+- cancelAndJoin : 현재 코루틴을 즉시 종료하라는 신호를 보낸후 대기한다. 
+- cancelChildren : 하위 자식 코루틴을 종료시킨다. 
+
+
+## Async 
+
+- Async는 사실상 Launch와 같은일을 수행하는데, 차이점은 Launch는 Job객체를 반환하는 반면 , Async는 Deffered를 반환한다.
+```java
+public interface Deferred<out T> : Job {
+
+    public suspend fun await(): T
+
+    public val onAwait: SelectClause1<T>
+
+    @ExperimentalCoroutinesApi
+    public fun getCompleted(): T
+
+    @ExperimentalCoroutinesApi
+    public fun getCompletionExceptionOrNull(): Throwable?
+}
+
+```
+
+- Deffered는 Job을 상속한 클래스로서, 타입 파라미터가 있는 제너릭 타입이며, Job과 다르게 await 함수가 정의되어 있다.
+
+- Deffered의 타입 파라미터는 Deffered 코루틴이 계산 후 돌려주는 값의 타입이다. 즉 Job은 Deffered\<Unit>라고 생각할수도 있다. 
+
+정리하면 async는 코드 블록을 비동기로 실행 할 수 있고, async가 반환하는 Deffered의 await를 사용해서 코루틴이 결과 값을 내놓을떄까지 기다렸다가 결과값을 받아올 수 있다. 
+
+이떄 비동기로 실행할떄 제공되는 코루틴 컨텍스트에 따라 하나의 Thread안에서 제어만 왔다 갔다 할수도 있고, 여러 Thread를 사용할 수도 있다. 
+
+```java
+fun sumAll(){
+    runBlocking {
+        val d1 = async { delay(1000L); 1 }
+        println("after d1")
+        val d2 = async { delay(2000L); 2 }
+        println("after d2")
+        val d3 = async { delay(3000L); 3 }
+        println("after d3")
+        println("1+2+3 = ${d1.await()+d2.await()+d3.await()}")
+    }
+}
+```
+실행로그를 보면 다음과 같다. 
+```txt
+after d1
+after d2
+after d3
+1+2+3 = 6 // 코루틴이 결과값을 내놓을떄까지 기다렸다가 결과값을 받아온다. 
+```
+
+만약 위 코드를 직렬화해서 실행하면 최소 6초의 시간이 걸리겠지만, async로 비동기적으로 실행하면 3초가량이 걸리며 더군다나 위 코드는 별개의 thread가 아니라 main thread 단일 thread로 실행되어 이와 같은 성능상 이점을 얻을수 있다. 
+
+특히 이와 같은 상황에서 코루틴이 장점을 가지는 부분은 ```I/O로 인한 장시간 대기``` , ```CPU 코어수가 작아 동시에 병렬적으로 실행 가능한 쓰레드 개수 한정된 상황``` 이다. 
+
+## 코루틴 컨텍스트
+
+- Launch , Async 등은 모두 CoroutineScope의 확장함수로 실제로 CoroutineScope는 CoroutineContext 필드를 이런 확장함수 내부에서 사용하기 위한 매개체 역할을 수행한다. 원한다면 launch,aync 확장함수에 CoroutineContext를 넘길수도 있다. 
+
+```java
+
+// --------------- launch ---------------
+
+/**
+ * Launches a new coroutine without blocking the current thread and returns a reference to the coroutine as a [Job].
+ * The coroutine is cancelled when the resulting job is [cancelled][Job.cancel].
+ *
+ * The coroutine context is inherited from a [CoroutineScope]. Additional context elements can be specified with [context] argument.
+ * If the context does not have any dispatcher nor any other [ContinuationInterceptor], then [Dispatchers.Default] is used.
+ * The parent job is inherited from a [CoroutineScope] as well, but it can also be overridden
+ * with a corresponding [context] element.
+ *
+ * By default, the coroutine is immediately scheduled for execution.
+ * Other start options can be specified via `start` parameter. See [CoroutineStart] for details.
+ **/
+public fun CoroutineScope.launch(
+    context: CoroutineContext = EmptyCoroutineContext,
+    start: CoroutineStart = CoroutineStart.DEFAULT,
+    block: suspend CoroutineScope.() -> Unit
+): Job {
+    //...
+}
+
+// --------------- async ---------------
+
+/**
+ * Creates a coroutine and returns its future result as an implementation of [Deferred].
+ * The running coroutine is cancelled when the resulting deferred is [cancelled][Job.cancel].
+ * The resulting coroutine has a key difference compared with similar primitives in other languages
+ * and frameworks: it cancels the parent job (or outer scope) on failure to enforce *structured concurrency* paradigm.
+ * To change that behaviour, supervising parent ([SupervisorJob] or [supervisorScope]) can be used.
+ *
+ * Coroutine context is inherited from a [CoroutineScope], additional context elements can be specified with [context] argument.
+ * If the context does not have any dispatcher nor any other [ContinuationInterceptor], then [Dispatchers.Default] is used.
+ * The parent job is inherited from a [CoroutineScope] as well, but it can also be overridden
+ * with corresponding [context] element.
+ *
+ * By default, the coroutine is immediately scheduled for execution.
+ * Other options can be specified via `start` parameter. See [CoroutineStart] for details.
+ *
+
+ */
+public fun <T> CoroutineScope.async(
+    context: CoroutineContext = EmptyCoroutineContext,
+    start: CoroutineStart = CoroutineStart.DEFAULT,
+    block: suspend CoroutineScope.() -> T
+): Deferred<T> {
+    //...
+}
+```
+
+그렇다면 CoroutineContext가 하는 역할은 무엇일까?
+
+- 코루틴이 실행중인 여러 작업과 디스패처를 저장하는 일종의 맵으로 이 CoroutineContext를 사용해 다음에 실행할 작업을 선정하고, 어떻게 Thread에 배정할지에 대한 방법을 결정한다. 
+
+```java
+fun context(){
+    runBlocking {
+        launch {
+            // 부모 컨텍스트를 사용
+            println("use parent context :${getThreadName()}")
+        }
+        launch(Dispatchers.Unconfined) {
+            // 특정 Thread에 종속되지 않고, Main Thread 를 사용
+            println("use main thread :${getThreadName()}")
+        }
+        launch(Dispatchers.Default){
+            println("use default dispatcher :${getThreadName()}")
+        }
+        launch(newSingleThreadContext("MyOwnThread")){
+            // 직접 만든 새로운 Thread 사용
+            println("use thread that i created : ${getThreadName()}")
+        }
+    }
+}
+
+```
+실행로그를 보면 같은 launch 확장함수를 사용한다고 하더라도 실행되는 CoroutineContext에 따라 다른 Thread상에서 코루틴이 실행됨을 확인할 수 있다. 
+```txt
+use main thread :main
+use default dispatcher :DefaultDispatcher-worker-1
+use parent context :main
+use thread that i created : MyOwnThread
+```
+## Coroutine Builder 와 Suspending Function 
+
+- 앞선 Launch , Async , runBlocking , CoroutineScope모두 코루틴 빌더라고 , 새로운 코루틴을 만들어주는 함수이다. 
+- delay , yield 함수는 일시중단 함수로 이외에도 다른 일시중단 함수들이 존재한다.
+
+  - withContext: 다른 컨텍스트로 코루틴 전환
+  - withTimeOut : 일정 시간내 코루틴이 실행되지 않으면 예외 발생
+  - withTimeOutOrNull : 일정 시간내 코루틴이 실행되지 않으면 null 반환
+  - awaitAll : 모든 작업의 성공을 대기 , 만약 하나라도 예외 발생시 실패처리
+  - joinAll : 모든 작업이 종료될떄까지 현재 작업 대기    

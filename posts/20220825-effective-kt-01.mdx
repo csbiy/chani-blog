@@ -1,0 +1,195 @@
+---
+id: 38
+title: "Effective Kotlin - Item01.가변성을 제한하라"
+description: ""
+date: "2022-08-25 19:20:25"
+tags: ['kotlin']
+---
+- 클래스,프로퍼티와 같은 요소가 var 또는 mutable 객체를 사용하면 상태를 가질 수 있다. 
+
+```java
+class BankAccount{
+    // 가변 상태 
+    var balance = 0.0
+        private set
+    fun deposit(depositAmount :Double){
+        balance += depositAmount
+    }
+    @Throws(InsufficientFunds::class)
+    fun withdraw(widthdrawAmount : Double){
+        if (balance < widthdrawAmount){
+            throw InsufficientFunds()
+        }
+        balance -= widthdrawAmount
+    }
+}
+
+class InsufficientFunds :Exception()
+```
+위처럼 BankAccount 클래스는 잔액을 나타내는 변화할 수 있는 상태가 있다, 변화할 수 있는 상태를 가지는 요소는 다음과 같은 단점을 가진다. 
+
+- 프로그램을 이해하고 디버깅하기 힘들어진다. 오류시 상태 변경을 추적해야 한다. 
+- 멀티쓰레드 환경에서 동기화가 필요하다 
+- 테스트가 어렵다. 모든 상태에 대해서 테스트를 염두해두어야 한다.
+- 상태변경에 따른 추가적인 조치가 필요할수도 있다. 예를 들면 항상 정렬된 경우로 유지되야할경우 값이 추가되었을떄 정렬작업이 필요하다. 
+
+반면 불변성을 유지하였을때 갖는 장점은 다음과 같다.
+
+- 한번 객체의 상태가 정의되고 나서 변경되지 않으므로, 코드 이해가 쉽다. 
+- 병렬 처리에 안전 
+- 방어적 복사본을 만들지 않아도 된다. 
+- Set,Map의 Key로 사용이 가능하다. 요소의 값이 변경되지 않기 때문이다. 
+
+
+멀티쓰레드환경에서 쓰레드간 공유되는 변수의 값을 변경할때 가변상태를 가지는 경우 값이 부정확하게 나올 수도 있다.
+```java
+fun main() {
+    var num = 0
+    for (i in 1..1000){
+        thread {
+            Thread.sleep(10)
+            num+=1
+        }
+    }
+    Thread.sleep(5000)
+    println(num)
+}
+```
+위 연산은 매번 실행할떄마다 공유변수에 값을 여러 쓰레드에서 변경함으로 , 연산이 덮어씌워지는 경우가 생겨 다른 값이 나온다. 
+이를 동기화하려면 아래와 같이 공유변수에 Lock을 걸어서, 접근을 제한하고 순차적으로 값을 증가시켜야 한다. 
+
+```java
+fun main() {
+    var lock = Any()
+    var num = 0
+    for (i in 1..1000){
+        thread {
+            Thread.sleep(10)
+            synchronized(lock){
+                /*Lock을 획득하고 공유변수에 접근가능하도록 동기화*/
+                num+=1
+            }
+        }
+    }
+    Thread.sleep(5000)
+    println(num)
+}
+```
+
+## Kotlin에서 가변성을 제한하는 방법
+
+- Kotlin은 언어차원에서 가변성을 제한할수 있는 방법을 설계하였다. 
+
+## val 
+
+- Kotlin은 읽기 전용 프로퍼티 (val)을 사용하여, 변수에 재할당이 불가능하도록 만들 수 있다 (java의 final과 유사) 사실 ```val을 사용한다고 해서 불변성이 보장되는 것은 절대 아니고```, 단지 재할당이 불가능하게 setter를 금지한다.
+
+```java
+val x = mutableListOf(1,2,3)\
+x.add(4) // 가변
+```
+
+- 부가적인 내용인데, val는 var로 overriding 이 가능하다. 
+
+```java
+interface Element{
+    val active : Boolean
+}
+
+class ActualElement : Element{
+    override var active: Boolean = false
+}
+```
+
+## 가변 Collection과 읽기 전용 Collection (read-only)
+
+- Kotlin은 Collection을 MutableCollection과 읽기 전용인 Collection으로 구분한다. 
+
+![](/images/effective-kt-item-01.png)
+
+- Kotlin은 Collection , Set ,List를 기본적으로는 읽기 전용으로 내부의 상태를 변경하기 위한 method를 제공하지 않는다. MutableCollection , MutableSet , MutableList 인터페이스는 읽기 전용 인터페이스를 상속받아서, 추가적으로 변경을 위한 method를 붙였다. 
+
+- 주의해야할점은 읽기 전용 Collection 을 가변 Collection으로 downcasting하면 안된다는 점이다. 
+
+```java
+    val list = listOf(1,2,3)
+    if (list is MutableList){
+        list.add(4) // java.lang.UnsupportedOperationException 예외 발생
+    }
+```
+
+- Jvm에서 listOf는 Java의 List 인터페이스를 구현한 Array.ArrayList 객체를 반환하는데 이는 add,set 을 모두 가지고 있기에 MutableList로 다운캐스팅이 된다. 하지만 Arrays.ArrayList 객체는 이러한 연산을 구현하고 있지 않기 떄문에 위와 같이 UnsupportedOperationException이 터진다. 
+
+읽기 전용 Collection에서  MutableCollection으로 꼭 변경해야 한다면 , copy를 사용해서 변경해야 한다. 
+
+```java
+fun main() {
+    val list = listOf(1,2,3)
+    list.toMutableList(); // 새로운 객체 반환 
+}
+```
+
+이렇게 구현하면 기존 객체는 새로 반환된 객체에 영향받지 않고 수정이 가능하다. 
+
+
+
+## Data Class의 Copy 
+
+- immutable 객체는 자기 자신의 상태가 일부 다른 경우에도 새로운 객체를 만들어야 되기 때문에, 자신의 일부를 수정해서 새로운 객체를 만들어 줄 수 있는 method를 가져야 한다. 
+
+- 이떄 data 한정자를 붙이면 자동으로 copy method를 만들어주는데, copy method는 모든 기본생성자 프로퍼티가 동일한 새로운 객체를 만들어 낼 수 있다. 따라서 원래의 불변객체가 존재하는데, 특정 상태만 바꾼 새로운 객체를 만들어내고 싶다면 copy method를 활용하면 된다. 
+
+```java
+data class Account(val money:Int,val owner:String)
+
+fun main() {
+    val myPoorAccount = Account(10000,"김찬수")
+    val myHappyAccount = myPoorAccount.copy(money = 1000_000_000);
+    println(myHappyAccount)
+}
+```
+
+## 변경 가능 지점 노출하지 않기 
+
+- 상태를 가지고 있는 가변객체를 외부에 노출하는 방식은 위험하다. 
+
+```java
+
+class AccountRepository{
+    private var storedAccount:MutableMap<Int,String> = mutableMapOf()
+    
+    fun loadAll() : MutableMap<Int,String>{
+        return storedAccount;
+    }
+}
+
+fun main() {
+    var repository = AccountRepository()
+    var storedAccount = repository.loadAll();
+    storedAccount[4] = "tester" // 객체의 상태가 변경되고, 공유된다. 
+}
+```
+이를 해결하기 위한 방법은 1. 방어적 복사 (defensive copy) 2. 읽기 전용 부모타입으로 업캐스팅 방법이 있다. 
+
+아래와 같이 방어적 복사를 수행하여 새로운 객체를 반환하여 원본객체에는 영향이 없게하는 방법이고,
+```java
+class UserHolder {
+    private val user : MutableUser() // 가변 상태
+
+    fun get():MutableUser = user.copy() // 복사하여 새로운 객체를 반환하는 방법 (방어적 복사)
+}
+```
+
+두번째 방법은 아래와 같이 읽기 전용 Collection으로 반환해서 내부 상태를 변경할 수 있는 method를 제공하지 않는 방식이다. 
+```java
+    fun loadAll() : Map<Int,String>{ // 읽기 전용 Collection으로 반환
+        return storedAccount;
+    }
+```
+
+## 정리
+
+- var보다는 val를 권장 , mutable 보다는 immutable 객체를 권장 
+- 변경이 필요하다면 data class로 만들고 copy method로 일부 상태를 변경한 새로운 객체를 반환하자 
+- mutable 객체는 외부에 노출하지 말자 
+- 성능적인 측면에서 mutable 객체를 의도적으로 사용하고자 할때는 멀티 쓰레드 상황에 유의하자

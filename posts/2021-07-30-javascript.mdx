@@ -1,0 +1,101 @@
+---
+id: 149
+title: "javascript 메모리 할당 방식 (primitive vs reference)"
+description: ""
+date: "2021-07-30 01:38:37"
+tags: ['Javascript']
+---
+####  javascript에서  primitive type 과 reference type의 memory 할당 방식 차이 
+
+```javascript
+var a;
+```
+다음과 같이 primitive type 변수를 선언하면 메모리 공간이 미리 할당되고, 변수에 값을 저장하면  
+
+```javascript
+a = "abcdefg";
+```
+다른 메모리 공간에 abcdefg string값이 저장이 되고, 그 메모리 주소가  a가 참조하는 메모리 공간에 저장된다. 
+
+ex) 메모리주소 100번지에 abcdefg 값이 우선 저장이 되고, a가 참조하는 메모리 공간 200번지에 100번지 주소가 저장된다. 
+
+반면 reference type의 경우 primitve type과 메모리 할당방식이 조금 다르다.
+
+```javascript
+var a = {
+    property_1 : '1',
+    property_2 : '2',
+    // 
+}
+```
+위 코드를 실행하면 실제 내부적으로 메모리 할당방식은 다음과 같다.
+1. 참조타입인 a변수의 메모리 공간이 선언된다. 
+2. a변수의 property들을 담을 연속된 메모리 공간의 시작주소를 가르킬 메모리 공간이 할당된다.
+3. a변수의 property들의 value 값이 다른 메모리 공간에 저장이 되고, 그 메모리 주소가 해당 property의 메모리 공간(Heap area)에 저장된다.
+4. a변수가 참조하는 메모리 공간에 a변수의 property들을 담는 연속된 메모리 공간의 시작주소를 가르키는 메모리 공간의 주소가 저장된다.
+
+정리하면 참조형 타입을 선언하면 그 참조형 타입의 속성들을 저장할 연속된 메모리 공간의 시작주소를  참조형 타입의 참조변수가 가지고, 그 이후부터는 primitive type과 동일하게 속성들의 값이 다른 메모리 공간에 할당되고 그 주소가 속성이 저장되는 메모리 주소의 값으로 할당된다. 
+
+즉 primitve type에 비해 한단계를 거쳐서 메모리 공간이 할당되는 형태이다. 참조형 객체 안에서 참조형 객체가 선언되는 경우도 동일하다 
+
+ex) 
+```javascript
+var a = {
+    x:3,
+    arr :[10,11] //참조형 데이터 
+}
+```
+
+```javascript
+a.property_1 = "new_1";
+```
+그렇다면 위 코드는 메모리상에서 어떻게 동작할까?
+a는 property가 연속해서 저장될 메모리 공간의 시작주소를 가르키는 건 변하지 않고, 
+new_1이라는 값이 메모리 공간에 저장된 후, 그 메모리 공간의 주소값이 property_1이 참조하는 메모리공간의 값을 덮어씌운다. 
+
+#### 참조형, 기본형 데이터의 값 복사 차이 
+
+```javascript
+var a = 10; // 10이 100번지에 할당 (예시입니다.) 되고 변수 a의 메모리공간에 100번지 저장 
+var b = a; // 100번지가 변수 b의 메모리공간에도 저장
+a = 11; // b가 a를 가르키는 것이 아니기떄문에 a와는 무관 
+console.log(a != b) // true;
+```
+
+```javascript
+var obj1 = {c:10,d:'ddd'};
+var obj2 = obj1; // property들의 시작주소를 가르키는 메모리공간이 
+                 //obj1이 참조하는  메모리공간에 저장됨 
+obj2.c = "change!"; // 다른 메모리공간에 값이 저장되고, 
+                    // 그 주소를 property의 메모리공간이 저장한다. 
+                    // 즉 객체형 참조변수는 property의 시작주소를 가르키는 
+                    // 메모리공간의 주소를 저장하고 있기때문에, 
+                    // property값을 저장하는 메모리 공간은 계속 공유된다.  
+console.log(obj2.c == obj1.c)// true
+```
+
+추가로 javascript data type에 대해 간략하게 정리하였다. 
+
+<hr>
+
+1. Primitive Type(원시타입)
+   - Number
+   - String
+   - Boolean
+   - null
+   - undefined
+   - Symbol(ES6 추가)
+  
+<hr> 
+
+1. Reference Type(객체타입)
+   - Object
+     - Array
+     - Function
+     - RegExp
+     - ...
+
+<hr>
+
+Reference 
+  - 정재남 - 코어 자바스크립트 (http://www.yes24.com/Product/Goods/78586788)

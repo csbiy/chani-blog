@@ -1,0 +1,317 @@
+---
+id: 161
+title: "Item39. 명명패턴보다는 annotation을 사용하라"
+description: ""
+date: "2022-01-13 20:28:56"
+tags: ['Java', 'Effective Java 3/E']
+---
+도구나 프레임워크가 특별히 다뤄야 할 프로그램 요소에는 구분되는 명명 패턴을 적용해왔다 예를 들면 JUnit 은 버전 3까지 테스트 method 이름을 test로 시작하게끔 하였다. 
+
+## 명명패턴의 단점
+명명 패턴의 단점은 다음과 같다. 
+1. 오타시 runtime 예외가 발생
+2. 올바른 프로그램 요소에 사용됨을 보장하지 못함
+
+예를 들면 클래스 이름에 TestSafetyMechanism이라고 명명한다고 하여도 해당 class에 있는 method들은 실행되지 않는다. 
+3. 매개변수 전달 방법이 없음
+
+특정 예외가 터져야 성공하는 test가 있을때 매개변수로 예외 class type을 전달해줄수 없다. 
+
+## Annotaion 
+ 
+Junit 4부터는 annotation을 명명패턴 대신에 도입하였다. 
+
+annotation에 관한 기본내용은 다음과 같다. 
+- Meta-annotation  : @Retention, @Target과 같은 annotation 선언에 다는 annotation 
+- @Retention 
+  - SOURCE : 소스코드까지만 annotation이 남아있고, compiler에 의해 .class file에는 제거된다.
+  - CLASS : class file 까지 남아있고, run time 시에는 사라진다. (reflection 불가) , default값 
+  - RUNTIME : run time까지도 남아있는다. 
+```java
+package java.lang.annotation;
+public enum RetentionPolicy {
+    /**
+     * Annotations are to be discarded by the compiler.
+     */
+    SOURCE,
+    /**
+     * Annotations are to be recorded in the class file by the compiler
+     * but need not be retained by the VM at run time.  This is the default
+     * behavior.
+     */
+    CLASS,
+
+    /**
+     * Annotations are to be recorded in the class file by the compiler and
+     * retained by the VM at run time, so they may be read reflectively.
+     *
+     * /
+    RUNTIME
+}
+```
+
+- @Target : annotation이 적용될 target 요소를 설정해준다. (The constants ANNOTATION_TYPE, CONSTRUCTOR, FIELD, LOCAL_VARIABLE, METHOD, PACKAGE, MODULE, PARAMETER, TYPE, and TYPE_PARAMETER correspond to the declaration contexts in JLS 9.6.4.1.)
+- @Documented : 해당 annotation을 Javadoc에 포함시킨다. 
+- @Inherited : 자식 class가 해당 annotation을 가지는 부모 class로부터 annotation을 상속받도록 한다. 
+- Marker annotation : 아무런 데이터도 가지지 않는 annotation 
+
+## Test Framework 에서 annotation 활용
+```java
+/***
+ * Test method임을 선언하는 annotation으로 매개변수없는 정적 method 전용이다. 
+ */
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.METHOD)
+public @interface Test {
+}
+```
+@Test annotation을 테스트하고자 하는 method에 추가하였다. 
+```java
+public class Sample {
+
+    @Test public static void m1(){}
+    public static void m2(){}
+    @Test public static void m3(){
+        throw new RuntimeException("fail");
+    }
+    public static void m4(){}
+    @Test public void m5(){} // not static method
+    public static void m6(){}
+    @Test public static void m7(){
+        throw new RuntimeException("fail");
+    }
+    public static void m8(){}
+}
+```
+@Test를 붙은 method를 테스트하는 프로그램은 다음과 같이 작성될 수 있다.
+
+```java
+public class RunTests{
+    public static void main(String[] args) throws ClassNotFoundException {
+        int tests = 0;
+        int passed = 0;
+        Class<?> testClass = Class.forName("study.effectivejv.ch03.item39.Sample");
+        for (Method m : testClass.getDeclaredMethods()) {
+            // annotation이 붙어있는지 확인
+            if(m.isAnnotationPresent(Test.class)){
+                tests++;
+                try{
+                    m.invoke(null);
+                    // 예외가 터지지 않으면 정상적으로  pass++ 
+                    passed++;
+                } catch (InvocationTargetException e) {
+                    Throwable exc = e.getCause();
+                    System.out.println( m + " 실패:" + exc);
+                } catch (Exception e) {
+                    System.out.println("잘못 사용한 @Test: " + m );
+                }
+            }
+        }
+        System.out.printf("성공 : %d . 실패: %d \n",passed,tests-passed);
+    }
+}
+```
+
+만약 특정 예외를 던지는 경우 성공한것으로 간주하려면 Throwable을 확장한 클래스 객체를 매개변수로 받는 새로운 annotation이 필요하다 
+
+
+```java
+//예외를 매개변수로 받는 annotation type 
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.METHOD)
+public @interface ExceptionTest {
+    Class<? extends Throwable> value();
+}
+```
+
+```java
+//Test 대상  class
+public class Sample2 {
+
+    @ExceptionTest(ArithmeticException.class)
+    public static void m1(){
+        int i = 0;
+        i = i/ i; //success
+    }
+    @ExceptionTest(ArithmeticException.class)
+    public static void m2(){
+        int[] a= new int[0];
+        int i = a[1]; // fail
+    }
+    @ExceptionTest(ArithmeticException.class)
+    public static void m3(){
+        // fail
+    }
+}
+
+```
+아래 코드에서는 Exception annotation의 매개변수값 (예외 class 객체) 를 가져와서, 실제로 발생한 예외와 일치하는 지 확인하는 로직이 추가로 들어가 있다. 
+
+```java
+Class<?> testClass = Class.forName("study.effectivejv.ch03.item39.Sample2");
+for (Method m : testClass.getDeclaredMethods()) {
+    if(m.isAnnotationPresent(ExceptionTest.class)){
+        tests++;
+        try{
+            m.invoke(null);
+            System.out.printf("테스트 %s 실패 : 예외를 던지지 않음. \n" , m);
+        } catch (InvocationTargetException e) {
+            Throwable exc = e.getCause();
+            Class<? extends Throwable> excType = m.getAnnotation(ExceptionTest.class).value();
+            if(excType.isInstance(exc)){
+                passed++;
+            }else{
+                System.out.printf("테스트 %s 실패 : 기대한 예외 %s , 발생한 예외 %s \n" , m ,excType.getName() , exc);
+
+            }
+        } catch (Exception e) {
+            System.out.println("잘못 사용한 @ExceptionTest: " + m );
+        }
+    }
+}
+System.out.printf("성공 : %d . 실패: %d \n",passed,tests-passed); 
+```
+
+조금 더 응용해 하나의 예외가 아니라 배열로 매개변수를 받아서, 여러개의 예외 class 객체중 하나만 일치하여도 성공할 수 있게 만들 수 있다. 
+
+```java
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.METHOD)
+public @interface ExceptionTest {
+
+    Class<? extends Throwable>[] value();
+}
+```
+
+```java
+public class Sample3 {
+
+    @ExceptionTest({IndexOutOfBoundsException.class,NullPointerException.class})
+    public static void doublyBad(){
+        List<String> list = new ArrayList<>();
+        list.addAll(5,null); 
+    }
+}
+
+```
+list.addAll(5,null) methods는 IndexOutOfBoundsException 또는 NullPointerException을 던질 수 있다. 
+```java
+Class<?> testClass = Class.forName("study.effectivejv.ch03.item39.Sample3");
+for (Method m : testClass.getDeclaredMethods()) {
+    if (m.isAnnotationPresent(ExceptionTest.class)) {
+        tests++;
+        try {
+            m.invoke(null);
+            System.out.printf("테스트 %s 실패 : 예외를 던지지 않음. \n", m);
+        } catch (Throwable e) {
+            Throwable exc = e.getCause();
+            int oldPassed = passed;
+            Class<? extends Throwable>[] excTypes = m.getAnnotation(ExceptionTest.class).value();
+            for (Class<? extends Throwable> excType : excTypes) {
+                if (excType.isInstance(exc)) {
+                    passed++;
+                    break;
+                }
+            }
+            if (passed == oldPassed) {
+                System.out.printf("테스트 %s 실패 : %s \n", m, exc);
+            }
+        }
+    }
+    System.out.printf("성공 : %d . 실패: %d \n", passed, tests - passed);
+}
+```
+
+## @Repeatable 
+
+Java 8부터는 배열 값을 받는 annotation 를  @Repeatable meta annotation을 활용해 구현할수도 있다. 
+@Repeatable meta annotation은 하나의 프로그램 요소에 여러 번 달 수 있다. 
+
+## @Repeatable annotation 사용방법
+
+- @Repeatable 단 annotation 을 반환하는 container annotation을 하나 더 정의하고, @Repeatable의 매개변수로 container annotation의 class 객체를 매개변수로 넘겨야한다. 
+
+- container annotation은 내부 annotation type의 배열을 반환하는 value method를 정의해야 한다.
+
+- container annotation 에는 @Retention , @Target meta annotation을 달아야 한다. 
+  
+
+```java
+// repeatable annotation 
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.METHOD)
+@Repeatable(ExceptionTestContainer.class)
+public @interface ExceptionTest{
+    Class<? extends Throwable> value();
+}
+
+// container annotation 
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.METHOD)
+public @interface ExceptionTestContainer {
+    ExceptionTest[] value();
+}
+```
+
+@Repeatable 을 단 annotation은 다음과 같이 동일한 프로그램 요소에 여러 번 사용할 수 있다.
+
+```java
+@ExceptionTest(IndexOutOfBoundsException.class)
+@ExceptionTest(NullPointerException.class)
+public static void doublyBad(){
+    List<String> list = new ArrayList<>();
+    list.addAll(5,null);
+}
+```
+
+## @Repeatable annotation 사용주의점 
+
+- 두 개 이상의 @Repeatable annotation을 받았을떄는 container annotation type이 적용된다. 
+
+```java
+    // container annotation type
+    @ExceptionTest(NullPointerException.class)
+    @ExceptionTest(ArithmeticException.class)
+     void testMethod() {}
+
+    @Test
+    @DisplayName("Repeatable annotaion 2개이상부터는 Container type을 반환합니다.")
+    public void shouldReturnContainerAnnotation() throws NoSuchMethodException {
+        Method testMethod = this.getClass().getDeclaredMethod("testMethod");
+        Assertions.assertThat(testMethod.getAnnotation(ExceptionTest.class)).isNull();
+        Assertions.assertThat(testMethod.getAnnotation(ExceptionTestContainer.class)).isNotNull();
+        // pass
+    }
+```
+
+getAnnotationsByType method는 이 둘(container annotation type과 repeatable annotation type)을 구분하진 않지만, isAnnotationPresent method는 이 둘을 구분한다. 
+
+따라서 위 방법을 적용했을떄는 다음과 같이 로직이 변경된다. 
+
+```java
+Class<?> testClass = Class.forName("study.effectivejv.ch03.item39.Sample3");
+for (Method m : testClass.getDeclaredMethods()) {
+    if (m.getAnnotationsByType(ExceptionTestContainer.class)) {
+        tests++;
+        try {
+            m.invoke(null);
+            System.out.printf("테z스트 %s 실패 : 예외를 던지지 않음. \n", m);
+        } catch (Throwable e) {
+            Throwable exc = e.getCause();
+            int oldPassed = passed;
+            // getAnnotationByType method
+            ExceptionTest[] excTests = m.getAnnotationsByType(ExceptionTest.class);
+            for (ExceptionTest excTest : excTests) {
+                if (excTest.value().isInstance(exc)) {
+                    passed++;
+                    break;
+                }
+            }
+            if (passed == oldPassed) {
+                System.out.printf("테스트 %s 실패 : %s \n", m, exc);
+            }
+        }
+    }
+    System.out.printf("성공 : %d . 실패: %d \n", passed, tests - passed);
+}
+```

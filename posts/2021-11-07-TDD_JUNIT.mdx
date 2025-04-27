@@ -1,0 +1,249 @@
+---
+id: 31
+title: "TDD (테스트 주도 개발, Test Driven Development) 와 JUnit"
+description: ""
+date: "2021-11-07 14:35:06"
+tags: ['spring', '토비의 spring']
+---
+TDD란? 
+
+- 테스트 코드를 먼저 만들고, 테스트를 성공하게 해주는 코드를 작성하는 방식의 개발 방법 
+- 테스트 코드가 기능 정의서처럼 기능함 
+- 테스트를 먼저 만들고, 테스트가 성공하도록 하는 코드를 만드는 식으로 진행하기 때문에, Test coverage 영역이 높아진다. 
+- 테스트를 작성하는 시간과, application 코드를 작성하는 시간의 간격이 짧아진다. 
+
+
+
+TDD 예시) 
+
+1. userDao 객체가 DB에 데이터가 비어있는 경우, EmptyResultDataAccessException 예외를 발생시켜야 한다. (기능을 먼저 정의하고, 이에따라 테스트 코드를 작성한다. )
+
+```java
+        @Test
+        public void getUserFailure() throws SQLException, ClassNotFoundException {
+
+            ApplicationContext context = new AnnotationConfigApplicationContext(DaoFactory.class);
+
+            UserDao dao = context.getBean("userDao", UserDao.class);
+            dao.deleteAll();
+            assertEquals(dao.getCount(),0);
+
+            assertThrows(EmptyResultDataAccessException.class,()->dao.get("unknown_id"));
+
+        }
+```
+
+2. 위의 test코드는 당연히 fail하며, 테스트가 성공하도록 userDao getMethod를 수정한다.
+
+```java
+    public User get(String id) throws  SQLException {
+        Connection c = dataSource.getConnection();
+        User user = null;
+        PreparedStatement ps = c.prepareStatement(
+                "select * from users where id = ?"
+        );
+        ps.setString(1,id);
+        ResultSet rs = ps.executeQuery();
+
+        if(rs.next()){
+            user = new User();
+            user.setId(rs.getString("id"));
+            user.setName(rs.getString("name"));
+            user.setPassword(rs.getString("password"));
+        }
+        rs.close();
+        ps.close();
+        c.close();
+        // user가 null일대는 db에 데이터가 없으므로 EmptyResultDataAccessException 반환 
+        if (user == null){
+            throw new EmptyResultDataAccessException(1);
+        }
+        return user;
+    }
+```
+
+3. 테스트 재실행시, 테스트가 성공하며 단위 테스트와 코드 구현이라는 작업이 동시에 끝나게된다. 
+
+
+<h2> JUNIT </h2>
+  
+  - JUnuit framework는 테스트 메소드를 실행할떄 부가적으로 해주는 작업을 지원해준다. 
+
+1. @BeforeEach : Junit이 제공하는 annotation인 @Test 메소드가 각각 실행되기전에 먼저 실행돼야 하는 메소드를 정의한다. (이외에도 AfterEach , AfterAll, BeforeAll이 있다. )
+
+```java
+public class UserDaoTest {
+
+    // 멤버 변수로 추출 
+    private UserDao dao;
+
+    @BeforeEach
+    private void setUp() {
+        System.out.println("### BeforeEach executed ###");
+        ApplicationContext context = new AnnotationConfigApplicationContext(DaoFactory.class);
+        this.dao = context.getBean("userDao", UserDao.class);
+
+    }
+
+    @Test
+    public void count(){...}
+    @Test
+    public void addAndGet(){...}
+    @Test
+    public void getUserFailure(){...}
+```
+
+* JUnit이 하나의 테스트 클래스를 가져와 테스트를 수행하는 방식 
+  (JUnit은 framework임으로, 개발자가 만든 코드를 주도적으로 실행한다. => 실행흐름을 framework가 가지고 있다. )
+
+![Junit_test_execution_flow](/images/Junit_test_execution_flow.jpg)
+
+1. Test 클래스에서 다음과 같은 조건을 가진 method를 모두 찾는다.
+- @Test annotation 
+- public 
+- void
+- parameter 가 없음 
+
+2. Test class object 를 하나 만든다. 
+3. @BeforeEach가 붙은 method 가 있으면, 실행한다.
+4. @Test 가 붙은 method를 하나 호출하고, 테스트 결과를 저장해둔다. 
+5. @AfterEach가 붙은 method가 있으면, 실행한다. 
+6. 나머지 test method에 대해서 2~5번 과정을 반복한다. 
+   (<strong>즉 하나의 test method당 하나의 test object를 만들어준다.</strong>)
+7. 모든 테스트 결과를 종합해서 돌려준다.
+
+
+* test method당 test object를 생성하는 이유 
+  
+
+    테스트가 서로 영향을 끼치지 않고 독립적으로 실행됨을 확실히 보장해주기 위함.
+    예를 들면 , 다음과 같이 멤버 변수를 사용한다하더라도, 결국에는 test method간에 공유가 되지 않음으로, 독립적으로 실행가능하다. 
+
+```java
+public class Test {
+
+    int value = 0;
+
+    @org.junit.jupiter.api.Test
+    public void addOne(){
+        this.value+=1;
+        System.out.println("value = " + value);
+    }
+
+    @org.junit.jupiter.api.Test
+    public void addTwo(){
+        this.value+=2;
+        System.out.println("value = " + value);
+    }
+    /***
+      실행결과 
+      value = 1
+      value = 2
+      멤버변수가 공유가 된다면 실행결과가 1+2, 2+1이든 3이 나와야 한다. 
+    ***/
+}
+```
+
+<h3> Fixture </h3> 
+
+  - 테스트를 수행하는데 필요한 정보나 object
+  - 여러 테스트에서 반복적으로 사용됨으로 @Before 로 생성해두면 편리 
+  
+
+```java
+
+public class UserDaoTest {
+
+    // Fixture : dao , users
+    private UserDao dao;
+    private User user;
+    private User user1;
+    private User user2;
+
+
+    @BeforeEach
+    private void setUp() {
+        ApplicationContext context = new AnnotationConfigApplicationContext(DaoFactory.class);
+        this.dao = context.getBean("userDao", UserDao.class);
+        this.user = new User("kcs1", "kcs1", "spring1");
+        this.user1 = new User("kcs2", "kcs2", "spring2");
+        this.user2 = new User("kcs3", "kcs3", "spring3");
+
+    }
+
+```
+
+
+<h3> 테스트간 context 공유 </h3>
+
+- application context는 생성에 많은 리소스가 소모됨으로, 한번만 생성해서 테스트간 공유하면 된다. 
+- JUnit은 매번 test class 의 object를 새로 만들기 떄문에 멤버변수로 application context를 만든다하더라도, 매번 새롭게 생성된다.  
+
+```java
+public class Test {
+
+    ApplicationContext context =  new AnnotationConfigApplicationContext(DaoFactory.class);
+
+    @BeforeEach
+    public void setUp(){
+        System.out.println("this.context = " + this.context);
+        System.out.println("this = " + this);
+    }
+    @org.junit.jupiter.api.Test
+    public void test1(){
+        System.out.println(" test1 " );
+    }
+
+    @org.junit.jupiter.api.Test
+    public void test2(){
+        System.out.println(" test2 " );
+    }
+    /*** 실행결과 : 멤버변수에 선언해도 JUnit 프레임워크 작동방식에 의해 매번 새로운 컨텍스트가 만들어진다. 
+     this.context = org.springframework.context.annotation.AnnotationConfigApplicationContext@5230aae3
+     this = com.springstudy.ioc.Test@550de339
+     this.context = org.springframework.context.annotation.AnnotationConfigApplicationContext@4c0bf5d7
+     this = com.springstudy.ioc.Test@254e54b1
+    ***/
+}
+
+```
+
+이와 같은 문제가 있기 떄문에, Junit은 test context를 지원해준다. test 실행이전에 딱 한번만 application context를 만들어준다. (test class간에도 context configuration이 같다면 공유된다.)
+
+
+```java
+
+@SpringBootTest
+// test application context 사용
+@ContextConfiguration(locations = "/applicationContext.xml")
+// test context가 자동으로 만들어줄 application context의 위치 지정
+public class UserDaoTest {
+
+    @Autowired
+    private ApplicationContext context;
+    private UserDao dao;
+    private User user;
+    private User user1;
+    private User user2;
+
+    @BeforeEach
+    public void setUp() {
+        System.out.println("this.context = " + this.context);
+        System.out.println(" this " + this );
+        this.dao = context.getBean(UserDao.class,"userDao");
+        this.user = new User("kcs1", "kcs1", "spring1");
+        this.user1 = new User("kcs2", "kcs2", "spring2");
+        this.user2 = new User("kcs3", "kcs3", "spring3");
+
+    }
+
+    /***
+    실행결과 : 같은 test application context가 공유된다. 
+    this.context = org.springframework.web.context.support.GenericWebApplicationContext@65dc110,
+    this com.springstudy.ioc.UserDaoTest@6648d51b
+    this.context = org.springframework.web.context.support.GenericWebApplicationContext@65dc110,
+    this com.springstudy.ioc.UserDaoTest@4a79b3f9
+    this.context = org.springframework.web.context.support.GenericWebApplicationContext@65dc110,
+    this com.springstudy.ioc.UserDaoTest@7afc1a1e
+    ***/
+```

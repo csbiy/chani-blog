@@ -1,0 +1,168 @@
+---
+id: 10
+title: "PLSQL - Record"
+description: ""
+date: "2022-05-17 21:17:59"
+tags: ['database', 'oracle']
+---
+## Record
+
+- PL/SQL에서 제공하는 복합형 데이터 타입 
+
+## 사용자 정의형 레코드 
+
+- 레코드에서는 레코드를 이루고 있는 각 칼럼을 필드라고 부른다. 테이블과 유사하게 생겼지만 , 하나의 row만을 가질 수 있다. 
+```
+TYPE 레코드명 IS RECORD (
+    필드명 필드타입  [NOTNULL] [:= 디폴트값],
+    필드명 필드타입  [NOTNULL] [:= 디폴트값],
+)
+```
+
+- 실제 Record 타입을 선언하는 예시를 보면 다음과 같다. 이때 필드타입으로 %TYPE 문법을 사용할 수도 있다. 
+```sql
+DECLARE 
+    -- 특정 레코드 타입 선언
+    TYPE depart_rect IS RECORD (
+        department_id  NUMBER(6), --department_id departments.department_id%TYPE 
+        department_name VARCHAR2(80),
+        parent_id       NUMBER(6),
+        manager_id      NUMBER(6)
+    );
+    -- 레코드 타입의 변수 선언
+    vr_dep depart_rect; 
+BEGIN 
+END;
+```
+- Record 타입 변수의 필드에 접근할때는 레코드타입변수.필드명으로 접근할 수 있다.
+
+```sql
+DECLARE 
+    -- 특정 레코드 타입 선언
+    TYPE depart_rect IS RECORD (
+        department_id   departments.department_id%TYPE,
+        department_name departments.department_name%TYPE,
+        parent_id       departments.parent_id%TYPE,
+        manager_id      departments.manager_id%TYPE
+    );
+    -- 레코드 타입의 변수 선언
+    vr_dep depart_rect; 
+    vr_dep2 depart_rect;
+BEGIN 
+    -- 레코드 타입의 필드에 접근할때는 레코드타입변수.필드명으로 접근한다. 
+    vr_dep.department_id   := 999;
+    vr_dep.department_name := 'test department';
+    vr_dep.parent_id       := 100;
+    vr_dep.manager_id      := NULL;
+    -- 레코드 타입 변수는 동일한 타입이면 다른 변수에 할당이 가능하다.
+    vr_dep2                := vr_dep;
+
+END;
+```
+
+- Record 타입 변수를 활용해 테이블에 INSERT 또는 UPDATE할 수 있다. 이떄 전제조건은 당연히 테이블의 칼럼 개수 , 타입과 레코드의 필드의 칼럼 개수, 타입이 동일해야한다.
+
+```sql
+CREATE TABLE dep AS 
+    SELECT 
+        department_id ,
+        department_name ,
+        parent_id , 
+        manager_id 
+    FROM 
+        DEPARTMENTS;
+
+DECLARE 
+    -- 특정 레코드 타입 선언
+    TYPE depart_rect IS RECORD (
+        department_id   departments.department_id%TYPE,
+        department_name departments.department_name%TYPE,
+        parent_id       departments.parent_id%TYPE,
+        manager_id      departments.manager_id%TYPE
+    );
+    -- 레코드 타입의 변수 선언
+    vr_dep depart_rect; 
+BEGIN 
+    -- 레코드 필드 값 초기화 
+    -- 테이블에 레코드 타입으로 값 insert 
+    INSERT INTO dep values vr_dep;
+END;
+```
+
+## 테이블형 레코드 
+
+- 레코드를 선언할때 특정 테이블의 모든 칼럼을 받아서 사용하는 레코드를 정의할 수도 있다
+
+```
+레코드변수명 테이블명%ROWTYPE
+```
+
+- 실제 사용예시를 보면 다음과 같다. 테이블을 선언한뒤에 그 테이블의 하나 tuple을 record라고 생각하면 이해가 빠를 것 같다. 
+
+```sql
+CREATE TABLE dep AS 
+    SELECT 
+        department_id ,
+        department_name ,
+        parent_id , 
+        manager_id 
+    FROM 
+        departments;
+
+DECLARE 
+    vr_dep dep%ROWTYPE;
+BEGIN 
+    vr_dep.department_id   := 999;
+    vr_dep.department_name := 'test department';
+    vr_dep.parent_id       := 100;
+    vr_dep.manager_id      := NULL;
+
+    INSERT INTO dep values vr_dep;
+
+
+    UPDATE dep
+    -- ROW 키워드를 사용하면 해당 레코드로 특정 테이블의 tuple의 전체 칼럼을 갱신할 수 있다.
+    SET ROW = vr_dep
+    WHERE department_id = vr_dep.department_id;
+END;
+```
+
+## 커서형 레코드 
+- 말그대로 커서를 레코드 변수로 받는 것을 말한다. 테이블형 레코드와 동일한 문법이나, 단지 테이블 자리에 커서명이 온다.
+```
+레코드변수명 커서명%ROWTYPE
+```
+
+```sql
+DECLARE 
+    cursor test_cur IS
+    SELECT department_id , department_name , parent_id , manager_id
+    FROM departments;
+    -- 커서형 레코드 변수 선언 
+    vr_dep test_cur%ROWTYPE;
+BEGIN 
+...
+```
+
+## 중첩 레코드 
+
+- 하나의 레코드 필드의 타입으로 또 다른 레코드를 사용할 수 있다. 이런 형태를 중첩 레코드라고 부른다. 
+
+```sql
+DECLARE 
+    TYPE dep_rec IS RECORD (
+        dep_id   departments.department_id%TYPE , 
+        dep_name departments.department_name%TYPE
+    );
+    -- 중첩 레코드
+    TYPE emp_rec IS RECORD (
+        emp_id   employees.employee_id%TYPE,
+        emp_name employees.emp_name%TYPE,
+        -- dep_rec 레코드를 필드로 가진다. 
+        dep      dep_rec
+    );
+    vr_emp_rec emp_rec;
+BEGIN
+...
+END;
+```
