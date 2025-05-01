@@ -3,7 +3,7 @@ id: 114
 title: "Spring Batch Job의 구성"
 description: ""
 date: "2023-10-26 18:01:33"
-tags: ['spring', 'Batch']
+tags: ["spring", "Batch"]
 ---
 ## Spring Batch Job
 
@@ -143,7 +143,7 @@ JobParameters parameters = new JobParametersBuilder()
         <figcaption>Job Runner에 의해 Job 실행시 BATCH_JOB_EXECUTION_PARAMS 테이블</figcaption>
 </figure>
 
-- 값을 주지 않으면 DATE_VAL의 경우는 기본값으로 ```1970-01-01 09:00:00```, STRING_VAL의 경우 빈 문자열(```''```) , LONG & DOUBLE_VAL의 경우는 ```0```이 들어갑니다. 
+- 값을 주지 않으면 DATE_VAL의 경우는 기본값으로 1970-01-01 09:00:00, STRING_VAL의 경우 빈 문자열 , LONG & DOUBLE_VAL의 경우는 0이 들어갑니다.
 
 3. SpEL 문법을 통해 생성하는 방법 
 

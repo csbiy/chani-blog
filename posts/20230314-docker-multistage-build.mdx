@@ -3,7 +3,7 @@ id: 51
 title: "Docker Multi-Stage Build"
 description: ""
 date: "2023-03-14 20:09:18"
-tags: ['Docker']
+tags: ["Docker"]
 ---
 ## 멀티 스테이지 빌드
 
@@ -13,11 +13,11 @@ tags: ['Docker']
 - 예를 들면 아래와 같이 ```--from``` 인자를 사용해서 해당 파일이 호스트 컴퓨터의 파일 시스템이 아니라 , 앞선 빌드 단계의 파일 시스템에 파일을 복사할 것임을 명시할 수 있다. 
 ```dockerfile
 FROM diamol/base AS build-stage 
-RUN echo 'Building...' > /build.txt
+RUN echo "Building..." > /build.txt
 
 FROM diamol/base AS test-stage
 COPY --from=build-stage /build.txt /build.txt
-RUN echo 'Testing...' >> /build.txt
+RUN echo "Testing..." >> /build.txt
 
 FROM diamol/base
 COPY --from=test-stage /build.txt /build.txt

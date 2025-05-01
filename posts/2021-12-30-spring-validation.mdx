@@ -50,8 +50,7 @@ public class MemberController {
 
 getMember method 로 사람의 정보를 등록할 수 있는 member page가 호출된다. 
 
-```html 
-<!-- member.html -->
+```html
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="eg">
 <head>
@@ -140,20 +139,17 @@ public String addMember(@ModelAttribute Member member , BindingResult bindingRes
 
 ```html
 <form action="/member" method="POST" th:object="${member}" >
-    <!-- objectError -->
   <div th:if="${#fields.hasGlobalErrors()}">
       <p th:each="err : ${#fields.globalErrors()}" th:text="${err}"></p>
   </div>
   <div>
     <label th:for="name">Enter your name: </label>
     <input type="text" th:field="*{name}">
-    <!-- fieldError -->
     <div th:errors="*{name}"></div>
   </div>
   <div>
     <label th:for="age">Enter your age: </label>
     <input type="text" th:field="*{age}">
-    <!-- fieldError -->
     <div th:errors="*{age}"></div>
   </div>
   <button>submit</button>

@@ -3,7 +3,7 @@ id: 132
 title: "Entity 기본 키 매핑 전략 - SEQUENCE/TABLE/IDENTITY"
 description: ""
 date: "2022-01-05 00:47:45"
-tags: ['Java', 'Jpa']
+tags: ["Java", "Jpa"]
 ---
 ## Entity - DB table mapping 
 
@@ -262,7 +262,7 @@ ddl-auto : create 로 설정하면 application 실행시 다음과 같은 query�
         primary key (seq)
     ) engine=InnoDB
 
-    insert into member_seq(seq, next_val) values ('member',0)
+    insert into member_seq(seq, next_val) values ("member",0)
 ```
 
 @TableGenerator option에 대한 설명은 공식 레퍼런스에더 자세히 적혀있지만 https://docs.oracle.com/javaee/5/api/javax/persistence/TableGenerator.html 정리하면 다음과같다 .

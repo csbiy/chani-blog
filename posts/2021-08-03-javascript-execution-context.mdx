@@ -3,7 +3,7 @@ id: 33
 title: "Execution Context ( ⊃ Hoisting 개념 )"
 description: ""
 date: "2021-08-03 00:01:30"
-tags: ['Javascript']
+tags: ["Javascript"]
 ---
 <strong>Execution Context(실행 컨텍스트)</strong>는 <strong>코드를 실행할떄 필요한 환경 정보들을 담은 객체</strong>이다. 
 
@@ -51,7 +51,7 @@ console.log(a); //
 ![](/images/execution-context01.jpg)
 
 
-<hr> 
+<hr/>
 
 ### Variable Environment 
 
@@ -59,7 +59,7 @@ console.log(a); //
 VariableEnvironment는 <strong>최초 실행 시의 snapshot을 유지</strong>한다. 이후에 값이 변경되는 것은 LexicalEnvironment 에서 follow-up한다. 
 
 
-<hr>
+<hr/>
 
 ### Lexical Environment 
 
@@ -77,13 +77,13 @@ console.log(b());
 console.log(c());
 
 function a(){
-    return 'a';
+    return "a";
 }
 var b = function bb(){
-    return 'bb';
+    return "bb";
 }
 var c = function(){
-    return 'c';
+    return "c";
 }
 ```
 
@@ -91,7 +91,7 @@ var c = function(){
 // after hoisting (예시 코드) 
 // -------------- environmentRecord ---------------------
 function a(){
-    return 'a';
+    return "a";
 }
 // 함수는 한꺼번에 끌어올려진다.
 var b;
@@ -102,16 +102,16 @@ console.log(b());
 console.log(c());
 
 b = function bb(){
-    return 'bb';
+    return "bb";
 }
 c = function(){
-    return 'c';
+    return "c";
 }
 ```
 
 처음 실행 context가 생성되는 순간에, environmentRecord의 정보가 수집된다. ( 정확히는 hoisting 과는 다르겠지만, hoisting 으로 이해하여도 결과는 동일하다. ) 
 
-<hr>
+<hr/>
 
 ###  outerEnvironmentReference
 

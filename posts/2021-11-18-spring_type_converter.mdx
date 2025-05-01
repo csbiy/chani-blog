@@ -3,7 +3,7 @@ id: 25
 title: "spring type converter"
 description: ""
 date: "2021-11-18 23:30:30"
-tags: ['spring']
+tags: ["spring"]
 ---
 spring 은 converter 인터페이스를 제공하여, 개발자가 spring에 추가적인 type 변환이 필요하면 이를 구현해서 등록할 수 있도록 지원해준다. 
 
@@ -139,9 +139,7 @@ controller에서 model 객체에 converting 할 객체를 담아서 보내면, t
 이떄 converter를 사용하려면 &#123; &#123; converting 대상 &#125; &#125; 을입력한다. 또는 th:field로도 꺼내 사용할 수 있다. 
 
 ```html
-<!-- converter 사용  전-->
     <li>${ipPort}: <span th:text="${ipPort}" ></span></li>
-<!-- converter 사용  후  -->
     <li>${{ipPort}}: <span th:text="${{ipPort}}" ></span></li>
 ```
 

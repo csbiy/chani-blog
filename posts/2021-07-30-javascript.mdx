@@ -3,7 +3,7 @@ id: 149
 title: "javascript 메모리 할당 방식 (primitive vs reference)"
 description: ""
 date: "2021-07-30 01:38:37"
-tags: ['Javascript']
+tags: ["Javascript"]
 ---
 ####  javascript에서  primitive type 과 reference type의 memory 할당 방식 차이 
 
@@ -23,8 +23,8 @@ ex) 메모리주소 100번지에 abcdefg 값이 우선 저장이 되고, a가 �
 
 ```javascript
 var a = {
-    property_1 : '1',
-    property_2 : '2',
+    property_1 : "1",
+    property_2 : "2",
     // 
 }
 ```
@@ -63,7 +63,7 @@ console.log(a != b) // true;
 ```
 
 ```javascript
-var obj1 = {c:10,d:'ddd'};
+var obj1 = {c:10,d:"ddd"};
 var obj2 = obj1; // property들의 시작주소를 가르키는 메모리공간이 
                  //obj1이 참조하는  메모리공간에 저장됨 
 obj2.c = "change!"; // 다른 메모리공간에 값이 저장되고, 
@@ -76,7 +76,7 @@ console.log(obj2.c == obj1.c)// true
 
 추가로 javascript data type에 대해 간략하게 정리하였다. 
 
-<hr>
+<hr/>
 
 1. Primitive Type(원시타입)
    - Number
@@ -86,7 +86,7 @@ console.log(obj2.c == obj1.c)// true
    - undefined
    - Symbol(ES6 추가)
   
-<hr> 
+<hr/>
 
 1. Reference Type(객체타입)
    - Object
@@ -95,7 +95,7 @@ console.log(obj2.c == obj1.c)// true
      - RegExp
      - ...
 
-<hr>
+<hr/>
 
 Reference 
   - 정재남 - 코어 자바스크립트 (http://www.yes24.com/Product/Goods/78586788)

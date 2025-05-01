@@ -3,7 +3,7 @@ id: 172
 title: "spring filter vs interceptor"
 description: ""
 date: "2021-11-08 21:16:37"
-tags: ['spring']
+tags: ["spring"]
 ---
 - application 여러 로직에서 공통으로 포함되어 있는 로직을 공통 관심사 (cross-cutting concern)이라고 한다. 
 
@@ -78,7 +78,7 @@ The FilterChain passed in to this method allows the Filter to pass on the reques
   3. 사용자 filter 등록 
      - FilterRegistrationBean을 spring bean 객체로 등록하는 방법, filter chain 내 filter 적용 순서 설정 가능 
      - @ServletComponentScan
-     - @Webfilter(filterName = '' , urlPatterns = "/*")
+     - @Webfilter(filterName = "" , urlPatterns = "/*")
 
 ```java
 // Filter 생성 

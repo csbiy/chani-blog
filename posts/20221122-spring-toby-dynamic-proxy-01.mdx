@@ -3,7 +3,7 @@ id: 12
 title: "Dynamic Proxy"
 description: ""
 date: "2022-11-22 00:26:27"
-tags: ['spring']
+tags: ["spring"]
 ---
 ## Dynamic Proxy
 
@@ -258,8 +258,7 @@ public class MessageFactoryBean implements FactoryBean<Message> {
 - 일반 Bean과 다르게 Factory Bean의 경우 bean class property는 FactoryBean 이지만 , 실제로 반환되는 타입은 getObjectType method에 명시된 타입이다. 즉 위 예제에서는 Message 타입이 반환된다.
 
 ```xml
-<bean id="message" class="MessageFactoryBean"> 
-<!-- FactoryBean 타입으로 빈 클래스 프로퍼티 설정 -->
+<bean id="message" class="MessageFactoryBean">
     <constructor-arg name="text" value="Factory Bean"></constructor-arg>
 </bean>
 ```

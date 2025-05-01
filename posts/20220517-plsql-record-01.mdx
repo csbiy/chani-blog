@@ -3,7 +3,7 @@ id: 10
 title: "PLSQL - Record"
 description: ""
 date: "2022-05-17 21:17:59"
-tags: ['database', 'oracle']
+tags: ["database", "oracle"]
 ---
 ## Record
 
@@ -51,7 +51,7 @@ DECLARE
 BEGIN 
     -- 레코드 타입의 필드에 접근할때는 레코드타입변수.필드명으로 접근한다. 
     vr_dep.department_id   := 999;
-    vr_dep.department_name := 'test department';
+    vr_dep.department_name := "test department";
     vr_dep.parent_id       := 100;
     vr_dep.manager_id      := NULL;
     -- 레코드 타입 변수는 동일한 타입이면 다른 변수에 할당이 가능하다.
@@ -113,7 +113,7 @@ DECLARE
     vr_dep dep%ROWTYPE;
 BEGIN 
     vr_dep.department_id   := 999;
-    vr_dep.department_name := 'test department';
+    vr_dep.department_name := "test department";
     vr_dep.parent_id       := 100;
     vr_dep.manager_id      := NULL;
 

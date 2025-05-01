@@ -3,7 +3,7 @@ id: 8
 title: "Item54. null이 아닌 빈 collection 이나 배열을 반환하라"
 description: ""
 date: "2022-02-05 12:21:00"
-tags: ['Java', 'Effective Java 3/E']
+tags: ["Java", "Effective Java 3/E"]
 ---
 다음은 주변에서 흔히 볼 수 있는 method이다.
 
@@ -36,7 +36,7 @@ public List<Cheese> getCheese(){
     return new ArrayList<>(cheeseInStock);
 }
 ```
-가능성은 작지만 , 사용패턴에 따라 빈 collection 할당이 성능을 떨어트리는 경우도 있다. 이에 대한 해결 방법은 자유롭게 공유해도 안전한 비어있는 '불변' collection을 반환하는 것이다. 
+가능성은 작지만 , 사용패턴에 따라 빈 collection 할당이 성능을 떨어트리는 경우도 있다. 이에 대한 해결 방법은 자유롭게 공유해도 안전한 비어있는 "불변" collection을 반환하는 것이다.
 
 ```java                                                                                                                                           
 public List<Cheese> getCheese(){

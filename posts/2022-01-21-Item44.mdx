@@ -3,7 +3,7 @@ id: 24
 title: "Item44. 표준 함수형 인터페이스를 사용하라"
 description: ""
 date: "2022-01-21 21:57:43"
-tags: ['Java', 'Effective Java 3/E']
+tags: ["Java", "Effective Java 3/E"]
 ---
 ## 표준 함수형 인터페이스 
 
@@ -36,7 +36,7 @@ public interface EldestEntryRemovalFunction<K,V> {
 - 대표적인 표준 함수형 인터페이스들은 다음과 같다. 
 
 
-<hr>
+<hr/>
 
 - Operator\<T> 
 
@@ -63,7 +63,7 @@ void testBinaryOperator(Integer x , Integer y  , Integer expectResult){
     assertThat(function.apply(x,y)).isEqualTo(expectResult);
 }
 ```
-<hr>
+<hr/>
 
 - Predicate\<T>
 
@@ -90,7 +90,7 @@ void testPredicate(){
 }
 ```
 
-<hr>
+<hr/>
 
 - Supplier\<T> 
 
@@ -114,7 +114,7 @@ void testSupplier(){
 }
 private static class Food{}
 ```
-<hr>
+<hr/>
 
 - Consumer\<T>
 
@@ -144,7 +144,7 @@ void testConsumer(){
 }
 ```
 
-<hr>
+<hr/>
 
 - Function \<T.R>
   
@@ -171,7 +171,7 @@ void main(String upperCase , String lowerCase) {
 }
 ```
 
-<hr>
+<hr/>
 
 위의 Java.util.Function의 표준 함수형 인터페이스들은 primitive type인 int,long,double 별로 각각 3개씩의 변형이 생겨난다. 
 

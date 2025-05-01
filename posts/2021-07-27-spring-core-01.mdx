@@ -3,7 +3,7 @@ id: 53
 title: "spring Core Technology - IoC"
 description: ""
 date: "2021-07-27 11:45:49"
-tags: ['spring', 'Core Concept']
+tags: ["spring", "Core Concept"]
 ---
 ### 1.1. Introduction to the Spring IoC Container and Beans
 
@@ -47,13 +47,10 @@ org.springframework.context.ApplicationContext
     xsi:schemaLocation="http://www.springframework.org/schema/beans
         https://www.springframework.org/schema/beans/spring-beans.xsd">
 
-    <bean id="beanId" class="bean.class">  
-        <!-- collaborators and configuration for this bean go here -->
+    <bean id="beanId" class="bean.class">
     </bean>
     <bean id="..." class="...">
-        <!-- collaborators and configuration for this bean go here -->
     </bean>
-    <!-- more bean definitions go here -->
 </beans>
 ```
 위와 같이 beans tag 안에 등록할 bean을 정의한다. id attribute에는 bean Name , class attribute에는 bean classpath를 기입한다. 
@@ -79,13 +76,10 @@ property로는 accountDato, itemDao 을 가지고 있고 해당 property의 bean
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://www.springframework.org/schema/beans
         https://www.springframework.org/schema/beans/spring-beans.xsd">
-    <!-- services -->
     <bean id="petStore" class="org.springframework.samples.jpetstore.services.PetStoreServiceImpl">
         <property name="accountDao" ref="accountDao"/>
         <property name="itemDao" ref="itemDao"/>
-        <!-- additional collaborators and configuration for this bean go here -->
     </bean>
-    <!-- more bean definitions for services go here -->
 </beans>
 ```
 
@@ -98,14 +92,11 @@ property로는 accountDato, itemDao 을 가지고 있고 해당 property의 bean
 
     <bean id="accountDao"
         class="org.springframework.samples.jpetstore.dao.jpa.JpaAccountDao">
-        <!-- additional collaborators and configuration for this bean go here -->
     </bean>
 
     <bean id="itemDao" class="org.springframework.samples.jpetstore.dao.jpa.JpaItemDao">
-        <!-- additional collaborators and configuration for this bean go here -->
     </bean>
 
-    <!-- more bean definitions for data access objects go here -->
 
 </beans>
 ```

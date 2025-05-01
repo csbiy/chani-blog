@@ -3,7 +3,7 @@ id: 175
 title: "PL/SQL - 동적 SQL"
 description: ""
 date: "2022-06-08 00:13:59"
-tags: ['database', 'oracle']
+tags: ["database", "oracle"]
 ---
 ## 동적 SQL이란?
 
@@ -23,7 +23,7 @@ tags: ['database', 'oracle']
 - 구문은 다음과 같이 사용한다. INTO 다음에 결과값을 매핑할 OUT변수 , 동적으로 Binding 될 매개변수를 USING 절에 명시한다. 
 
 ```SQL
-EXECUTE IMMEDIATE 'SQL문자열'
+EXECUTE IMMEDIATE "SQL문자열"
 INTO  OUT변수 ...
 USING 매개변수 ...
 ```
@@ -40,17 +40,17 @@ DECLARE
     vs_sql VARCHAR2(1000);
     
     /*Bind 변수 설정*/
-    vs_job employees.job_id%TYPE         :='SA_REP';
+    vs_job employees.job_id%TYPE         :="SA_REP";
     vn_sal employees.salary%TYPE         := 7000;
     vn_manager employees.manager_id%TYPE := 148;
 BEGIN 
-    vs_sql := '
+    vs_sql := "
                 SELECT employee_id , emp_name , job_id 
                  FROM employees 
                 WHERE job_id = :a
                   AND salary < :b
                   AND manager_id = :c
-               ';
+               ";
                          
     EXECUTE IMMEDIATE vs_sql 
     /*출력값을 매핑할 매개변수*/
@@ -58,9 +58,9 @@ BEGIN
     /*조건전에 Binding 될 Bind 변수*/
     USING vs_job , vn_sal , vn_manager;
 
-    DBMS_OUTPUT.PUT_LINE('emp_id : ' || vn_emp_id);
-    DBMS_OUTPUT.PUT_LINE('emp_name: ' || vs_emp_name);
-    DBMS_OUTPUT.PUT_LINE('job_id : ' || vs_job_id);
+    DBMS_OUTPUT.PUT_LINE("emp_id : " || vn_emp_id);
+    DBMS_OUTPUT.PUT_LINE("emp_name: " || vs_emp_name);
+    DBMS_OUTPUT.PUT_LINE("job_id : " || vs_job_id);
 END;
 ```
 
@@ -103,7 +103,7 @@ DECLARE
     query_test_row TEST%ROWTYPE;
     vs_sql VARCHAR2(1000);
 BEGIN
-    vs_sql := 'SELECT * FROM test';
+    vs_sql := "SELECT * FROM test";
     -- 반환값을 커서에 매핑
     OPEN cursor_var FOR vs_sql;
     -- cursor 를 순회하며, 레코드에 매핑 
@@ -118,7 +118,7 @@ END;
 
 만약 bind 변수를 사용하고자 할때는 ```OPEN 커서변수 FOR 동적SQL USING BIND 변수``` 형태로 사용 가능하다. 
 ```SQL
-vs_sql := 'SELECT * FROM test WHERE ID > :a AND NAME LIKE :b';
+vs_sql := "SELECT * FROM test WHERE ID > :a AND NAME LIKE :b";
 -- 반환값을 커서에 매핑
 OPEN cursor_var FOR vs_sql USING bind_var1,bind_var2x;
 ```

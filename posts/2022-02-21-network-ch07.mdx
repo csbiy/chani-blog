@@ -3,7 +3,7 @@ id: 92
 title: "통신을 도와주는 네트워크 주요 기술"
 description: ""
 date: "2022-02-21 23:10:36"
-tags: ['Computer Science', 'Network', 'IT 엔지니어를 위한 네트워크 입문']
+tags: ["Computer Science", "Network", "IT 엔지니어를 위한 네트워크 입문"]
 ---
 ## NAT (Network Address Translation,NAPT,PAT)
 
@@ -192,8 +192,6 @@ NAT 기술을 사용하면 내부 사설 IP체계를 유지하면서 공인 IP�
 ## GSLB 동작 방식 
 
 
-<!-- ![](/images/network-ch07-03.jpg) -->
-
 1. client가 특정 사이트에 접속하기 위해 도메인명으로 DNS에 질의 
 2. Local DNS는 해당 도메인명을 관리하는 DNS 서버를 찾기 위해 상위 계층의 DNS 서버(root)부터 순차적으로 반복질의  
 3. 찾은 DNS 서버는 GSLB로 도메인 위임을 하였음으로, GSLB 서버가 DNS 서버라고 Local DNS 서버에게 응답 
@@ -220,7 +218,6 @@ GLSB를 사용한 도메인 설정 방법은 다음과 같다
 ### 별칭을 이용해 GLSB에게 질의하는 방식  
 
 
-<!-- ![](/images/network-ch07-04.jpg) -->
 
 - 별칭을 이용한 방식은 실제 도메인과 다른 별도의 도메인 레코드를 GLSB 서버에 등록한다. 
   
@@ -231,8 +228,6 @@ GLSB를 사용한 도메인 설정 방법은 다음과 같다
 ## 위임을 통해 GSLB에게 질의하는 방식 
 
 
-
-<!-- ![](/images/network-ch07-05.jpg) -->
 
 - DNS서버에서 NS 레코드로 FQDN(Fully Qualifed Domain Name)에 대한 값으로 GLSB서버를 등록하면, Local DNS 서버는 해당 GSLB 서버로 재질의한다.  
 
@@ -265,7 +260,6 @@ IP 지리 정보는 서비스 제공이 가능한 각 사이트의 IP주소에 �
 - DHCP에서 IP 할당은 DHCP server가 가진 IP Pool에서 client에게 정해진 시간 동안 IP를 사용할 수 있도록 할당하는 것이므로, 임대(Lease)과정이라고 부른다. 
 
 
-<!-- ![](/images/network-ch07-01.jpg) -->
 
 1. DHCP Discover
 
@@ -290,7 +284,6 @@ DHCP client로부터 IP주소를 사용하겠다는 DHCP 요청 메시지를 받
 
   
 
-<!-- ![](/images/network-ch07-02.jpg) -->
                                                                                                                                                                
 - 갱신과정에서는 DHCP Discover, DHCP Offer과정이 생략되고 바로 <strong> DHCP Request 단계부터 unicast </strong> 로 수행한다. 
 
@@ -307,9 +300,6 @@ DHCP client로부터 IP주소를 사용하겠다는 DHCP 요청 메시지를 받
 
 - DHCP Relay agent가 broadcast로 전달되는 패킷을 받아서 다른 네트워크에 위치한 DHCP server를 목적지로 unicast 방식으로 변환해주는 역할을 수행한다. 
 
-
-
-<!-- ![](/images/network-ch07-06.jpg)fxd -->
 
 
 1. DHCP Discover (Client -> Relay Agent  -> DHCP server 흐름)

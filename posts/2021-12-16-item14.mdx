@@ -3,7 +3,7 @@ id: 20
 title: "Item14. Comparable을 구현할지 고려하라."
 description: ""
 date: "2021-12-16 00:45:31"
-tags: ['Java', 'Effective Java 3/E']
+tags: ["Java", "Effective Java 3/E"]
 ---
 compareTo는 단순 동치성 비교에 더해 순서까지 비교할 수 있으며, generic하다.
 
@@ -45,7 +45,6 @@ compareTo규약을 지키지 못하면 비교를 활용하는 TreeSet, TreeMap, 
 
 equals와 마찬가지로 기존 클래스를 확장한 구체 클래스에서 새로운 값 타입을 추가했다면, compareTo규약을 지킬 방법이 없으므로, item10에서 설명했던 것처럼 상속 대신에 독립된 class를 만들고, 이 클래스에 원래 클래스의 인스턴스를 가르키는 필드를 두고, 해당 인스턴스를 가르키는 view method 를 만들어주면 된다.
  
-<!-- <img src="/images/2021-12-16/student.png" width="700px" height="700px" style="border:none !important">  -->
 
 예를 들어, 아래와 같은 학생 class가 있고, 키를 기준으로 정렬한다고하면 comparable은 다음과 같이 overriding할 수 있을 것이다. 
 

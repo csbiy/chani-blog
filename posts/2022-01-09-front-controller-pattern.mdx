@@ -3,7 +3,7 @@ id: 120
 title: "Front Controller Pattern"
 description: ""
 date: "2022-01-09 23:57:12"
-tags: ['spring', 'Design Pattern']
+tags: ["spring", "Design Pattern"]
 ---
 ## Front controller pattern
 
@@ -167,8 +167,8 @@ protected void doDispatch(HttpServletRequest request, HttpServletResponse respon
         // We need to resolve the view name.
         view = resolveViewName(viewName, mv.getModelInternal(), locale, request);
         if (view == null) {
-            throw new ServletException("Could not resolve view with name '" + mv.getViewName() +
-                    "' in servlet with name '" + getServletName() + "'");
+            throw new ServletException("Could not resolve view with name "" + mv.getViewName() +
+                    "" in servlet with name "" + getServletName() + """);
         }
     }
 ```

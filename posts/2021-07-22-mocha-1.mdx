@@ -3,7 +3,7 @@ id: 74
 title: "brower javascript test하기(Mocha,NodeJs)"
 description: ""
 date: "2021-07-22 19:30:02"
-tags: ['Javascript']
+tags: ["Javascript"]
 ---
 ##
 
@@ -12,7 +12,7 @@ Nodejs의 express framework를 사용하여 Backend개발을 하면서 단위 �
 
 기본 템플릿은 다음과 같다 유의할점은 command line interfcae를 지원해주지 않고, html 을 통해서 테스트 결과를 확인할 수 있다. 
 
-mocha.setup('{mocha interface style}') ex) mocha.setup('bdd'),mocha.setup('tdd') 
+mocha.setup("{mocha interface style}") ex) mocha.setup("bdd"),mocha.setup("tdd")
 를 통해 테스트 인터페이스 스타일을 지정하고,
 
 test할 client javascript file을 import한다. 이떄, javsacript module 시스템을 브라우저에서 하려면
@@ -22,26 +22,26 @@ type="module"을 명시해야 한다.
 
 javascript에서 module loading 방식은 여러개가 있다. 아래에 간략하게 정리하였다. 
 
-<hr>
+<hr/>
 1. AMD(Asynchronous module definition) module loader
    
    - AMD는 네트워크를 통해서 모듈을 받아야하는 브라우저 환경에서 javascript 환경에 유연하다.
    - 비동기적으로 모듈을 import 할 수 있다. 
    - define syntax를 사용한다. 
 
-<hr>
+<hr/>
 2. CommonJs module loader 
 
    - module.export , require syntax 로 모듈을 export, import 한다.
    - 필요한 모든 파일이 로컬 디스크에 있다는 전제로 한다. 즉 serverside javascript 환경을 전제로 한다.
 
-<hr>
+<hr/>
 3. ECMAScript 6 (ES6)
    
    - ES6부터 javascript module을 기본적으로 지원한다. 
    - export, import ~ from "path.js" syntax로 모듈을 export,import한다. 
    - Typescript에서는 ES6방식의 syntax를 지원한다. 
-<hr>
+<hr/>
 
 (Reference to CommonJS vs AMD : https://d2.naver.com/helloworld/12864)
 
@@ -53,8 +53,7 @@ javascript에서 module loading 방식은 여러개가 있다. 아래에 간략�
 (Reference to browserify module bundler : https://github.com/browserify/browserify )
 
 
-```html 
-<!-- test.html -->
+```html
 <!DOCTYPE html>
 <html lang="en">
     <head>
@@ -71,7 +70,7 @@ javascript에서 module loading 방식은 여러개가 있다. 아래에 간략�
     <script src="https://unpkg.com/mocha/mocha.js"></script>
 
     <script class="mocha-init">
-      mocha.setup('bdd');
+      mocha.setup("bdd");
       mocha.checkLeaks();
     </script>
     <script type="module" src="./bundle_testCalculator.js"></script>

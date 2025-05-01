@@ -3,7 +3,6 @@ import { getAllPosts, getPostById } from "@/app/lib/posts";
 import GiscusComment from "@/app/components/GiscusComment";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faGithub, faLinkedin } from "@fortawesome/free-brands-svg-icons";
-import { MDXRemote } from "next-mdx-remote/rsc";
 
 
 export default async function PostDetail({ params }: {params: Promise<{ id: string }>}) {
@@ -36,9 +35,7 @@ export default async function PostDetail({ params }: {params: Promise<{ id: stri
         </div>
 
         <div className="prose mb-10">
-          <MDXRemote
-              source={post.content}
-          />
+          {post.mdxSource}
         </div>
 
         <div className="border-t border-gray-200 py-6 flex justify-between text-sm text-gray-600">

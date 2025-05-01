@@ -3,7 +3,7 @@ id: 42
 title: "Item81. wait와 notify보다는 동시성 유틸리티를 애용하라"
 description: ""
 date: "2022-03-27 17:37:43"
-tags: ['Java', 'Effective Java 3/E']
+tags: ["Java", "Effective Java 3/E"]
 ---
 wait 와 notify 에 대한 개념을 정리하기 앞서,  java의 Monitor라는 동시성 이슈를 해결하기 위한 동기화 mechanism 이 있다고 한다.
 
@@ -35,7 +35,7 @@ java.util.concurrent 의 고수준 utility는 세 범주로 나눌 수 있는데
 
 - collection 내부적으로 동기화를 수행한다. 따라서 동기화를 무력화할수없으며, 외부에서 lock을 사용하게 되면 오히려 성능이 느려진다.
 
-- 동시성 collection에서 동기화를 무력화하지 못하므로 여러 method를 원자적으로 묶어 호출하는 일 역시 불가능하다. 따라서 여러 기본 동작을 하나의 원자적 동작으로 묶는 '상태 의존적 수정' method들이 추가됬다. 
+- 동시성 collection에서 동기화를 무력화하지 못하므로 여러 method를 원자적으로 묶어 호출하는 일 역시 불가능하다. 따라서 여러 기본 동작을 하나의 원자적 동작으로 묶는 "상태 의존적 수정" method들이 추가됬다.
 
 상태 의존적 수정 method의 예를 들면 Map의 putIfAbsent(key,value) method는 주어진 키에 매핑된 값이 없을떄만 새 값을 집어넣고 기존값이 있었다면 그 값을 반환하고 없었다면 null을 반환한다.  이 method를 사용해서 thread safe한 map을 쉽게 구현할 수 있다. 
 

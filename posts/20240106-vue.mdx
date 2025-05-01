@@ -3,7 +3,7 @@ id: 19
 title: "Vue3 Data Method와 Rendering Directives"
 description: ""
 date: "2024-01-01 13:12:06"
-tags: ['Vue3']
+tags: ["Vue3"]
 ---
 ## Vue의 data() method
 
@@ -15,9 +15,6 @@ Vue.createApp({
     data() {
         return {
             contracts : [
-                {'unique_value': 1,'name' : 'cs', 'age' : 29},
-                {'unique_value': 2,'name' : 'khkim', 'age' : 23},
-                {'unique_value': 3,'name' : 'jylim', 'age' : 21}
             ] // ES6 Proxy 객체로 Wrapping됨.
         };
     },
@@ -64,7 +61,7 @@ const model = {
             imgPath : "https://cdn.pixabay.com/photo/2016/03/02/13/59/bird-1232416_1280.png",
         };
 const vm = Vue.createApp({
-    name : 'App',
+    name : "App",
     data(){
         return model;
     }
@@ -202,7 +199,6 @@ const vm = Vue.createApp({
 </style>
 
 <div id="app" v-cloak>
-    <!-- Vue 인스턴스의 초기 로딩이 완료될 때까지 화면을 감춤 -->
     {{ message }}
 </div>
 ```

@@ -3,7 +3,7 @@ id: 105
 title: "PL/SQL - Package"
 description: ""
 date: "2022-05-31 00:41:54"
-tags: ['database', 'oracle']
+tags: ["database", "oracle"]
 ---
 ## 패키지 
 
@@ -88,14 +88,14 @@ BEGIN
     SELECT emp_name INTO vs_emp_name 
     FROM employees
     WHERE employee_id = pn_employee_id;
-    RETURN NVL(vs_emp_name , '해당사원 없음');
+    RETURN NVL(vs_emp_name , "해당사원 없음");
 END fn_get_emp_name;
 
 PROCEDURE new_emp_proc (ps_emp_name IN VARCHAR2 , 
                         pd_hire_date IN VARCHAR2 )
 IS
     vn_emp_id employees.employee_id%TYPE;
-    vd_hire_date DATE := TO_DATE(pd_hire_date , 'YYYY-MM-DD');
+    vd_hire_date DATE := TO_DATE(pd_hire_date , "YYYY-MM-DD");
 BEGIN 
     SELECT NVL(max(employee_id),0) + 1
       INTO vn_emp_id
@@ -115,11 +115,11 @@ END new_emp_proc;
 END hr_pkg;
 ```
 
-작성한 프로시저는 '패키지명.서브프로그램명' 으로 호출이 가능하다. 
+작성한 프로시저는 "패키지명.서브프로그램명" 으로 호출이 가능하다.
 
 ```sql
 SELECT hr_pkg.fn_get_emp_name(171) FROM DUAL;
-EXEC hr_pkg.new_emp_proc('chansoo Kim','2022-05-31');
+EXEC hr_pkg.new_emp_proc("chansoo Kim","2022-05-31");
 ```
 
 ## 패키지 데이터 
@@ -128,7 +128,7 @@ EXEC hr_pkg.new_emp_proc('chansoo Kim','2022-05-31');
 
 - 패키지 데이터의 생존 주기는 세션 단위이다. 즉 세션이 살아있는 동안 그 값이 메모리 상에 유지된다. 
 
-- 패키지 데이터는 '선언부(스펙)' 와 '본문(바디)' 에 모두 선언이 가능한데, 선언부에 선언할 경우 패키지외부에서 접근이 가능한 반면 바디에 선언한 경우 패키지 내부에서만 접근이 가능하다.
+- 패키지 데이터는 "선언부(스펙)" 와 "본문(바디)" 에 모두 선언이 가능한데, 선언부에 선언할 경우 패키지외부에서 접근이 가능한 반면 바디에 선언한 경우 패키지 내부에서만 접근이 가능하다.
 
 - 패키지 선언부에 위치한 데이터를 Public Item , 바디부에 위치한 데이터를 Private Item이라고 부른다. 
 
@@ -137,26 +137,26 @@ EXEC hr_pkg.new_emp_proc('chansoo Kim','2022-05-31');
 ```SQL 
 CREATE OR REPLACE PACKAGE ch12_var IS
     /*상수 선언*/
-    c_test CONSTANT VARCHAR2(10) := 'TEST';
+    c_test CONSTANT VARCHAR2(10) := "TEST";
     /*변수 선언*/
     v_test VARCHAR2(10);
 END ch12_var;
 
 CREATE OR REPLACE PACKAGE BODY ch12_var IS 
     /*외부에서 접근 불가능한 변수를 선언하고자할떄는 바디에 데이터를 선언한다. */
-    c_test_body CONSTANT VARCHAR2(10):= 'CONSTANT_BODY';
+    c_test_body CONSTANT VARCHAR2(10):= "CONSTANT_BODY";
     v_test_body VARCHAR2(10);
 END ch12_var;
 ```
 
-- 마찬가지로 선언한 상수나 변수도 서브프로그램 처럼 '패키지명.변수명' , '패키지명.상수명' 형태로 참조한다.
+- 마찬가지로 선언한 상수나 변수도 서브프로그램 처럼 "패키지명.변수명" , "패키지명.상수명" 형태로 참조한다.
 
 ```SQL 
 DECLARE
 BEGIN 
-    DBMS_OUTPUT.PUT_LINE('상수 ch12_var.c_test = ' || ch12_var.c_test);
-    ch12_var.v_test := 'hello';
-    DBMS_OUTPUT.PUT_LINE('변수 ch12_var.c_test = ' || ch12_var.v_test);
+    DBMS_OUTPUT.PUT_LINE("상수 ch12_var.c_test = " || ch12_var.c_test);
+    ch12_var.v_test := "hello";
+    DBMS_OUTPUT.PUT_LINE("변수 ch12_var.c_test = " || ch12_var.v_test);
 END;
 ```
 - 위와 같이 패키지 선언부에 선언한 변수는 외부에서 접근 및 수정이 가능하다. 단 값은 세션이 유지되는 동안만 메모리에서 존재한다. 
@@ -169,14 +169,14 @@ END;
 ```sql
 CREATE OR REPLACE PACKAGE BODY ch12_var IS 
 
-    c_test_body CONSTANT VARCHAR2(10):= 'CONSTANT_BODY';
+    c_test_body CONSTANT VARCHAR2(10):= "CONSTANT_BODY";
     v_test_body VARCHAR2(10);
     
     /*Getter Function*/
     FUNCTION fn_get_value RETURN VARCHAR2 
     IS 
     BEGIN 
-        RETURN NVL(v_test_body , 'NULL이다.');
+        RETURN NVL(v_test_body , "NULL이다.");
     END fn_get_value;
     
     /*Setter Procedure*/
@@ -191,7 +191,7 @@ END ch12_var;
 
 ## 커서 
 
-- 변수나 상수와 마찬가지로 패키지내에 선언된 커서도 세션이 살아있는 동안 유지된다. 패키지 선언부(헤더)에 커서 구현부까지 선언한 경우와 헤더에는 커서 타입만 명시하고 , 바디에는 커서 구현부까지 명시하는 방법 2가지가 존재한다.   두 방법 모두 외부에서 접근 가능하며 , '패키지명.커서명' 형태로 참조할 수 있다.
+- 변수나 상수와 마찬가지로 패키지내에 선언된 커서도 세션이 살아있는 동안 유지된다. 패키지 선언부(헤더)에 커서 구현부까지 선언한 경우와 헤더에는 커서 타입만 명시하고 , 바디에는 커서 구현부까지 명시하는 방법 2가지가 존재한다.   두 방법 모두 외부에서 접근 가능하며 , "패키지명.커서명" 형태로 참조할 수 있다.
 
 ```SQL
 /*패키지 헤더에 커서 구현부까지 선언 */
@@ -207,7 +207,7 @@ END ch12_cur_pkg;
 BEGIN 
     FOR rec IN ch12_cur_pkg.pc_empdep_cur(30)
     LOOP
-        DBMS_OUTPUT.PUT_LINE(rec.emp_name || '-' || rec.department_name);
+        DBMS_OUTPUT.PUT_LINE(rec.emp_name || "-" || rec.department_name);
     END LOOP;
 END;
 ```

@@ -1,6 +1,6 @@
 ---
 id: 4
-title: "Flutter 빠르게 파헤치기"
+title: "er 빠르게 파헤치기"
 description: ""
 date: "2024-09-09 22:19:47"
 tags: []
@@ -43,7 +43,7 @@ Flutter는 기본적으로 Type-Safe한 언어지만 `dynamic`변수를 쓰면 j
 
 ```dart
 dynamic x = 1;
-x = 'abc';
+x = "abc";
 ```
 
 또한 Kotlin처럼 기본적으로 타입은 Not Nullable 타입이며, Nullable인 경우는 `?`키워드를 붙여야 합니다. 
@@ -57,7 +57,7 @@ var언어를 사용하면 처음 할당되는 변수가 그 변수의 타입이 
 
 tuple 자료형입니다. record 타입은 불변입니다. 즉 크기와 변수 타입을 생성 후에는 변경할 수 없습니다. 또한 record type은 하나의 변수에 여러 타입의 값을 할당 할 수 있습니다. 
 ```dart
-(String, bool, {int a, int b}) record = ('first', a: 2, b: 2, true);
+(String, bool, {int a, int b}) record = ("first", a: 2, b: 2, true);
 
 print(record.$1); // first
 print(record.a); // 2

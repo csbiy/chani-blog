@@ -1,6 +1,9 @@
 import fs from "fs";
 import path from "path";
 import matter from "gray-matter";
+import rehypeHighlight from 'rehype-highlight';
+import remarkGfm from 'remark-gfm';
+import {compileMDX} from "next-mdx-remote/rsc";
 
 const postsDirectory = path.join(process.cwd(), "posts");
 
@@ -38,8 +41,16 @@ export async function getPostById(id: number) {
     const { data, content } = matter(fileContents);
 
     if (data.id === id) {
-      // MDX 컨텐츠 직렬화
-      // console.log(content)
+      const { content: mdxContent } = await compileMDX({
+        source: content,
+        options: {
+          mdxOptions: {
+            remarkPlugins: [remarkGfm],
+            rehypePlugins: [rehypeHighlight],
+          },
+        },
+      });
+
       return {
         id: data.id,
         title: data.title,
@@ -47,7 +58,7 @@ export async function getPostById(id: number) {
         date: data.date,
         tags: data.tags,
         discussionId: data.discussionId,
-        content: content,
+        mdxSource: mdxContent
       };
     }
   }

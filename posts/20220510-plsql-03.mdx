@@ -3,7 +3,7 @@ id: 80
 title: "PL/SQL의 사용자 정의 함수와 프로시저"
 description: ""
 date: "2022-05-10 00:22:32"
-tags: ['database', 'oracle']
+tags: ["database", "oracle"]
 ---
 ## 사용자 정의 함수 생성
 
@@ -90,13 +90,13 @@ END;
 - 프로시저 실행은 반환값이 없으므로 select 절에는 사용이 불가능하며 다음과 같이 호출할 수 있다.
 
 ```sql
-EXEC my_new_job_proc('job_id_1','test_job',1000,50000); -- EXEC 키워드 대신 EXECUTE 프로시저명(매개변수리스트) 도 사용 가능하다. 
+EXEC my_new_job_proc("job_id_1","test_job",1000,50000); -- EXEC 키워드 대신 EXECUTE 프로시저명(매개변수리스트) 도 사용 가능하다.
 ```
 
 - 프로시저 실행은 매개변수와 입력 값을 매핑해 실행할 수 있다. 예를 들면 다음과 같다. 매개변수 개수가 많아지면 다음과 같이 매핑해서 사용하는게 가독성이 더 높을 수 있다. 
 
 ```SQL
-EXECUTE my_new_job_proc( p_job_id => 'job_id_2', p_job_title=>'test_job', p_min_sal => 1000,p_max_sal => 50000);
+EXECUTE my_new_job_proc( p_job_id => "job_id_2", p_job_title=>"test_job", p_min_sal => 1000,p_max_sal => 50000);
 ```
 
 - 매개변수에 default값을 주어, 해당 매개변수를 전달하지 않아도 되게 만들 수도 있다. 
@@ -113,7 +113,7 @@ BEGIN
     -- 실행로직
 END;
 
-EXECUTE my_new_job_proc( p_job_id => 'job_id_3', p_job_title=>'test_job');
+EXECUTE my_new_job_proc( p_job_id => "job_id_3", p_job_title=>"test_job");
 ```
 
 - 한가지 주의할점은 매개변수에 default값 할당은 IN 매개변수에만 적용이 가능하다는 점이다.
@@ -168,7 +168,7 @@ END;
 DECLARE 
     vd_cur_date JOBS.UPDATE_DATE%TYPE;
 BEGIN 
-    my_new_job_proc('test_job_1','test job title',10,100,vd_cur_date);
+    my_new_job_proc("test_job_1","test job title",10,100,vd_cur_date);
     DBMS_OUTPUT.PUT_LINE(vd_cur_date); -- OUT 매개변수에 binding된 값 출력 
 END;
 ```
@@ -189,23 +189,23 @@ CREATE OR REPLACE PROCEDURE my_parameter_test_proc (
     p_var3 IN OUT VARCHAR2 ) 
 IS 
 BEGIN 
-    DBMS_OUTPUT.PUT_LINE('p_var1 value = ' || p_var1);
-    DBMS_OUTPUT.PUT_LINE('p_var2 value = ' || p_var2); -- 항상 빈 값 
-    DBMS_OUTPUT.PUT_LINE('p_var3 value = ' || p_var3); -- IN OUT 매개변수임으로 매개변수의 값을 받아와서 출력할 수 있다. 
-    p_var2 := 'B2';
-    p_var3 := 'C2';
+    DBMS_OUTPUT.PUT_LINE("p_var1 value = " || p_var1);
+    DBMS_OUTPUT.PUT_LINE("p_var2 value = " || p_var2); -- 항상 빈 값
+    DBMS_OUTPUT.PUT_LINE("p_var3 value = " || p_var3); -- IN OUT 매개변수임으로 매개변수의 값을 받아와서 출력할 수 있다.
+    p_var2 := "B2";
+    p_var3 := "C2";
 END;
 ```
 
 ```sql
 DECLARE
-    v_var1 VARCHAR2(10) := 'A';
-    v_var2 VARCHAR2(10) := 'B';
-    v_var3 VARCHAR2(10) := 'C';
+    v_var1 VARCHAR2(10) := "A";
+    v_var2 VARCHAR2(10) := "B";
+    v_var3 VARCHAR2(10) := "C";
 BEGIN
     my_parameter_test_proc(v_var1,v_var2,v_var3);
-    DBMS_OUTPUT.PUT_LINE('v_var2 value= ' || v_var2);
-    DBMS_OUTPUT.PUT_LINE('v_var3 value= ' || v_var3);
+    DBMS_OUTPUT.PUT_LINE("v_var2 value= " || v_var2);
+    DBMS_OUTPUT.PUT_LINE("v_var3 value= " || v_var3);
 END;
 
 -- 출력 결과 
@@ -231,7 +231,7 @@ IS
 -- 변수선언
 BEGIN
     IF p_min_sal < 1000 THEN 
-        DBMS_OUTPUT.PUT_LINE('최소 급여값은 `1000이상이어야 합니다');
+        DBMS_OUTPUT.PUT_LINE("최소 급여값은 `1000이상이어야 합니다");
         RETURN;
     END IF;
 -- 실행로직

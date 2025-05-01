@@ -3,7 +3,7 @@ id: 35
 title: "Item24. 멤버 class 는 되도록 static 으로 만들라"
 description: ""
 date: "2021-12-25 20:22:39"
-tags: ['Java', 'Effective Java 3/E']
+tags: ["Java", "Effective Java 3/E"]
 ---
 ## 중첩 class 
 
@@ -95,10 +95,6 @@ Outer.Inner inner = new Outer().new Inner(); // 드물게는 다음과 같이 �
 멤버 class의 주 용도는 <strong> 어댑터  </strong> 에 사용된다고 한다. 
 
 (Q: 어댑터를 만들떄 내부 멤버 class 를 사용하는 지)
-
-<!-- <blockquote>
-Adapter pattern : 한 class의 interface를 client에서 사용하고자 하는 다른 interface로 변환합니다. 
-</blockquote> -->
 
 
 즉 어떤 class의 instance를 감싸 마치 다른 class의 instance처럼 보이게 하는 view로 사용하는 것이다. 

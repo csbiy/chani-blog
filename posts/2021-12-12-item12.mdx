@@ -3,12 +3,12 @@ id: 88
 title: "Item12. toString은 항상 overriding하자"
 description: ""
 date: "2021-12-12 14:17:22"
-tags: ['Java', 'Effective Java 3/E']
+tags: ["Java", "Effective Java 3/E"]
 ---
 Object toString 은 별도로 overrriding 하지 않는 경우에는 class명@16진수_해시코드 를 반환한다. 
 
 ```java
- getClass().getName() + '@' + Integer.toHexString(hashCode())
+ getClass().getName() + "@" + Integer.toHexString(hashCode())
 ```
 
 Object 명세에 보면 toString은 간결하며, 사람이 읽기 쉬운 형태의 정보를 반환해야 하며, 

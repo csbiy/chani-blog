@@ -3,7 +3,7 @@ id: 90
 title: "PLSQL - Collection"
 description: ""
 date: "2022-05-18 19:24:54"
-tags: ['database', 'oracle']
+tags: ["database", "oracle"]
 ---
 ## Collection 
 
@@ -42,8 +42,8 @@ DECLARE
     vav_test av_type;
 BEGIN 
     -- 연관 배열에 값 할당
-    vav_test(10) := 'value of key 10';
-    vav_test(20) := 'value of key 20';
+    vav_test(10) := "value of key 10";
+    vav_test(20) := "value of key 20";
     
     -- 연관 배열의 값 조회
     DBMS_OUTPUT.PUT_LINE(vav_test(10));
@@ -91,7 +91,7 @@ DECLARE
     
 BEGIN 
     -- 생성자를 통해 VARRAY 가변 배열 초기화 
-    vva_test := va_type('FIRST' , 'SECOND' , 'THIRD' ,'' ,''); -- 나머지 4,5번째 INDEX값은 NULL값이 된다. 
+    vva_test := va_type("FIRST" , "SECOND" , "THIRD" ,"" ,""); -- 나머지 4,5번째 INDEX값은 NULL값이 된다.
     
     LOOP
         vn_cnt := vn_cnt+1;
@@ -101,7 +101,7 @@ BEGIN
         -- VARRAY 요소에 접근할때는 VARRAY변수명(인덱스) 로 가능하다.
         DBMS_OUTPUT.PUT_LINE(vva_test(vn_cnt));
     END LOOP;
-    vva_test(1) := 'FIRST VALUE CHANGED';
+    vva_test(1) := "FIRST VALUE CHANGED";
     DBMS_OUTPUT.PUT_LINE(vva_test(1));
 END;
 ```
@@ -126,7 +126,7 @@ DECLARE
     vnt_test nt_type;
 BEGIN
     -- 중첩 테이블 생성자 사용
-    vnt_test := nt_type('FIRST','SECOND','THIRD','ETC');
+    vnt_test := nt_type("FIRST","SECOND","THIRD","ETC");
     DBMS_OUTPUT.PUT_LINE(vnt_test(4));
 END;
 ```
@@ -149,14 +149,14 @@ DECLARE
     vn_cnt NUMBER :=0;
     
 BEGIN
-    vav_test('A') := '10';
-    vav_test('B') := '20';
-    vav_test('C') := '30';
+    vav_test("A") := "10";
+    vav_test("B") := "20";
+    vav_test("C") := "30";
     vn_cnt := vav_test.COUNT;
-    DBMS_OUTPUT.PUT_LINE('삭제 전 요소 개수: ' || vn_cnt );
-    vav_test.DELETE('A','B');
+    DBMS_OUTPUT.PUT_LINE("삭제 전 요소 개수: " || vn_cnt );
+    vav_test.DELETE("A","B");
     vn_cnt := vav_test.COUNT;
-    DBMS_OUTPUT.PUT_LINE('삭제 후 요소 개수: ' || vn_cnt );
+    DBMS_OUTPUT.PUT_LINE("삭제 후 요소 개수: " || vn_cnt );
 END;
 ```
 
@@ -169,14 +169,14 @@ DECLARE
     TYPE nt_typ IS TABLE OF VARCHAR2(10);
     vnt_test nt_typ;
 BEGIN 
-    vnt_test := nt_typ('FIRST','SECOND');
+    vnt_test := nt_typ("FIRST","SECOND");
     vnt_test.TRIM(1); --맨끝에서부터 하나의 요소 삭제
     
     DBMS_OUTPUT.PUT_LINE(vnt_test(2));
     
     EXCEPTION WHEN OTHERS THEN 
         DBMS_OUTPUT.PUT_LINE(SQLERRM);
-        DBMS_OUTPUT.PUT_LINE('맨 끝 요소가 삭제되어 접근할 수 없습니다.');
+        DBMS_OUTPUT.PUT_LINE("맨 끝 요소가 삭제되어 접근할 수 없습니다.");
 END;   
 ```
 
@@ -192,10 +192,10 @@ DECLARE
     TYPE nt_typ IS TABLE OF VARCHAR2(10);
     vnt_test nt_typ;
 BEGIN 
-    vnt_test := nt_typ('FIRST','SECOND');
+    vnt_test := nt_typ("FIRST","SECOND");
     -- collection 맨 끝에 NULL 요소 추가 
     vnt_test.EXTEND;
-    vnt_test(3) := 'THIRD';
+    vnt_test(3) := "THIRD";
     -- collection의 1번쨰 원소를 collection의 맨 끝에 2개 추가 
     vnt_test.EXTEND(2,1);
     DBMS_OUTPUT.PUT_LINE(vnt_test(5));
@@ -218,12 +218,12 @@ DECLARE
 
 BEGIN
     -- 생성자를 사용해 값 할당
-    vnt_test := nt_typ('FIRST','SECOND','THIRD');
+    vnt_test := nt_typ("FIRST","SECOND","THIRD");
     
     -- FIRST와 LAST method를 활용해 컬렉션값 iteration 
     FOR i IN vnt_test.FIRST..vnt_test.LAST
     LOOP
-        DBMS_OUTPUT.PUT_LINE(i || '번째 요소 값:' || vnt_test(i));
+        DBMS_OUTPUT.PUT_LINE(i || "번째 요소 값:" || vnt_test(i));
     END LOOP;
 END;
 ```
@@ -241,12 +241,12 @@ DECLARE
     vnt_test nt_typ;
     vva_test  va_type;
 BEGIN 
-    vnt_test := nt_typ('FIRST','SECOND','THIRD','FOURTH');
-    vva_test := va_type('FIRST','SECOND','THIRD','FOURTH');
-    DBMS_OUTPUT.PUT_LINE('VARRAY COUNT : ' || vva_test.COUNT); --4
-    DBMS_OUTPUT.PUT_LINE('중첩테이블 COUNT : ' || vva_test.COUNT); --4
-    DBMS_OUTPUT.PUT_LINE('VARRAY LIMIT : ' || vnt_test.LIMIT); -- NULL
-    DBMS_OUTPUT.PUT_LINE('중첩테이블 LIMIT : ' || vva_test.LIMIT); --5
+    vnt_test := nt_typ("FIRST","SECOND","THIRD","FOURTH");
+    vva_test := va_type("FIRST","SECOND","THIRD","FOURTH");
+    DBMS_OUTPUT.PUT_LINE("VARRAY COUNT : " || vva_test.COUNT); --4
+    DBMS_OUTPUT.PUT_LINE("중첩테이블 COUNT : " || vva_test.COUNT); --4
+    DBMS_OUTPUT.PUT_LINE("VARRAY LIMIT : " || vnt_test.LIMIT); -- NULL
+    DBMS_OUTPUT.PUT_LINE("중첩테이블 LIMIT : " || vva_test.LIMIT); --5
 END;
     
 ```
@@ -260,9 +260,9 @@ DECLARE
     TYPE nt_typ IS TABLE OF VARCHAR2(10); -- 중첩 테이블 선언 
     vnt_test nt_typ;
 BEGIN 
-    vnt_test := nt_typ('FIRST','SECOND','THIRD','FOURTH');
-    DBMS_OUTPUT.PUT_LINE('인덱스 2의 NEXT : ' || vnt_test.NEXT(2)); -- 3
-    DBMS_OUTPUT.PUT_LINE('인덱스 2의 PRIOR : ' || vnt_test.PRIOR(2)); -- 1
+    vnt_test := nt_typ("FIRST","SECOND","THIRD","FOURTH");
+    DBMS_OUTPUT.PUT_LINE("인덱스 2의 NEXT : " || vnt_test.NEXT(2)); -- 3
+    DBMS_OUTPUT.PUT_LINE("인덱스 2의 PRIOR : " || vnt_test.PRIOR(2)); -- 1
 END;
     
 ```

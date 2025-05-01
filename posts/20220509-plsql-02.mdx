@@ -3,7 +3,7 @@ id: 87
 title: "PL/SQL 제어문"
 description: ""
 date: "2022-05-09 20:37:58"
-tags: ['database', 'oracle']
+tags: ["database", "oracle"]
 ---
 - PL/SQL은 프로그래밍 언어에서 제공하는 다양한 처리문을 제공한다 (조건문,반복문 등)
 
@@ -42,13 +42,13 @@ BEGIN
     DBMS_OUTPUT.PUT_LINE(vn_salary);
 
     IF vn_salary BETWEEN 1 AND 3000 THEN 
-        DBMS_OUTPUT.PUT_LINE('low value');
+        DBMS_OUTPUT.PUT_LINE("low value");
     ELSIF vn_salary BETWEEN 3001 AND 6000 THEN 
-        DBMS_OUTPUT.PUT_LINE('mid value');
+        DBMS_OUTPUT.PUT_LINE("mid value");
     ELSIF vn_salary BETWEEN 6001 AND 10000 THEN 
-        DBMS_OUTPUT.PUT_LINE('high value');
+        DBMS_OUTPUT.PUT_LINE("high value");
     ELSE 
-        DBMS_OUTPUT.PUT_LINE('highest');
+        DBMS_OUTPUT.PUT_LINE("highest");
     END IF;
 END;
 ```
@@ -75,13 +75,13 @@ END CASE;
 ```sql
 /***/
 CASE WHEN vn_salary BETWEEN 1 AND 3000 THEN 
-        DBMS_OUTPUT.PUT_LINE('low value');
+        DBMS_OUTPUT.PUT_LINE("low value");
     WHEN vn_salary BETWEEN 3001 AND 6000 THEN 
-        DBMS_OUTPUT.PUT_LINE('mid value');
+        DBMS_OUTPUT.PUT_LINE("mid value");
     WHEN vn_salary BETWEEN 6001 AND 10000 THEN 
-        DBMS_OUTPUT.PUT_LINE('high value');
+        DBMS_OUTPUT.PUT_LINE("high value");
     ELSE 
-        DBMS_OUTPUT.PUT_LINE('highest');
+        DBMS_OUTPUT.PUT_LINE("highest");
 END CASE;
 /***/
 ```
@@ -90,11 +90,11 @@ END CASE;
 
 ```SQL 
 CASE WHEN vn_salary BETWEEN 1 AND 3000 THEN 
-        DBMS_OUTPUT.PUT_LINE('low value');
+        DBMS_OUTPUT.PUT_LINE("low value");
     WHEN vn_salary BETWEEN 3001 AND 6000 THEN 
-        DBMS_OUTPUT.PUT_LINE('mid value');
+        DBMS_OUTPUT.PUT_LINE("mid value");
     WHEN vn_salary BETWEEN 6001 AND 10000 THEN 
-        DBMS_OUTPUT.PUT_LINE('high value');
+        DBMS_OUTPUT.PUT_LINE("high value");
     ELSE NULL; -- 아무것도 수행하지 않음
 END CASE;
 ```
@@ -118,7 +118,7 @@ DECLARE
     vn_cnt      NUMBER := 1;
 BEGIN 
     LOOP
-        DBMS_OUTPUT.PUT_LINE(vn_base_num || '*' || vn_cnt || '= ' 
+        DBMS_OUTPUT.PUT_LINE(vn_base_num || "*" || vn_cnt || "= "
                              || vn_base_num * vn_cnt );
         vn_cnt:= vn_cnt+1;
         EXIT WHEN vn_cnt > 9;
@@ -140,7 +140,7 @@ END LOOP;
 ```SQL
 WHILE vn_cnt <10
 LOOP
-    DBMS_OUTPUT.PUT_LINE(vn_base_num || '*' || vn_cnt || '= ' 
+    DBMS_OUTPUT.PUT_LINE(vn_base_num || "*" || vn_cnt || "= "
                             || vn_base_num * vn_cnt );
     vn_cnt:= vn_cnt+1;
 END LOOP;
@@ -164,7 +164,7 @@ DECLARE
 BEGIN 
     FOR i IN 1..9
     LOOP
-        DBMS_OUTPUT.PUT_LINE(vn_base_num || '*' || i || '= ' 
+        DBMS_OUTPUT.PUT_LINE(vn_base_num || "*" || i || "= "
                              || vn_base_num * i );
     END LOOP;
 END;
@@ -178,7 +178,7 @@ BEGIN
     FOR i IN 1..9
     LOOP
         CONTINUE WHEN i=5;
-        DBMS_OUTPUT.PUT_LINE(vn_base_num || '*' || i || '= ' 
+        DBMS_OUTPUT.PUT_LINE(vn_base_num || "*" || i || "= "
                              || vn_base_num * i );
     END LOOP;
 END;

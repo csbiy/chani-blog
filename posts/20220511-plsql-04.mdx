@@ -3,7 +3,7 @@ id: 43
 title: "PL/SQL 예외처리"
 description: ""
 date: "2022-05-11 22:34:31"
-tags: ['database', 'oracle']
+tags: ["database", "oracle"]
 ---
 ## 예외처리 구문 
 
@@ -27,7 +27,7 @@ DECLARE
 BEGIN 
     vi_num := 10 /0;
     -- ORA-01476: divisor is equal to zero 
-    DBMS_OUTPUT.PUT_LINE('Success!');
+    DBMS_OUTPUT.PUT_LINE("Success!");
 END;
 ```
 
@@ -38,16 +38,16 @@ DECLARE
     vi_num NUMBER := 0;
 BEGIN 
     vi_num := 10 /0;
-    DBMS_OUTPUT.PUT_LINE('Success!');
+    DBMS_OUTPUT.PUT_LINE("Success!");
 
 EXCEPTION WHEN OTHERS THEN  -- ORA-01476예외를 잡아서 처리 
-    DBMS_OUTPUT.PUT_LINE('오류가 발생했습니다.');
+    DBMS_OUTPUT.PUT_LINE("오류가 발생했습니다.");
 END;
 ```
 
 ## 예외정보 참조
 
-- 실제로는 '오류가 발생했습니다'와 같은 예외처리 문구는 예외를 해결하는데 아무런 도움도 주지 못할 것이다. 
+- 실제로는 "오류가 발생했습니다"와 같은 예외처리 문구는 예외를 해결하는데 아무런 도움도 주지 못할 것이다.
 - 발생한 예외에 대한 정보가 필요하면 Oraclem에서는 SQLCODE , SQLERRM 이라는 내장함수를 제공한다. 
 
 - SQLCODE : 실행부에서 발생한 예외에 해당되는 코드를 반환한다. 즉 ORA-예외코드에서 예외 코드를 반환한다는 뜻이다. 
@@ -55,8 +55,8 @@ END;
 
 ```sql
 EXCEPTION WHEN OTHERS THEN 
-    DBMS_OUTPUT.PUT_LINE('SQL ERROR CODE : ' || SQLCODE);
-    DBMS_OUTPUT.PUT_LINE('SQL ERROR MESSAGE : ' || SQLERRM);
+    DBMS_OUTPUT.PUT_LINE("SQL ERROR CODE : " || SQLCODE);
+    DBMS_OUTPUT.PUT_LINE("SQL ERROR MESSAGE : " || SQLERRM);
     DBMS_OUTPUT.PUT_LINE(SQLERRM(SQLCODE));
 END;
 ```
@@ -81,9 +81,9 @@ DBMS_OUTPUT.PUT_LINE(DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
 
 ```SQL
 EXCEPTION WHEN ZERO_DIVIDE THEN 
-    DBMS_OUTPUT.PUT_LINE('오류가 발생했습니다.');
-    DBMS_OUTPUT.PUT_LINE('SQL ERROR CODE : ' || SQLCODE);
-    DBMS_OUTPUT.PUT_LINE('SQL ERROR MESSAGE : ' || SQLERRM);
+    DBMS_OUTPUT.PUT_LINE("오류가 발생했습니다.");
+    DBMS_OUTPUT.PUT_LINE("SQL ERROR CODE : " || SQLCODE);
+    DBMS_OUTPUT.PUT_LINE("SQL ERROR MESSAGE : " || SQLERRM);
     DBMS_OUTPUT.PUT_LINE(SQLERRM(SQLCODE));
     DBMS_OUTPUT.PUT_LINE(DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
     DBMS_OUTPUT.PUT_LINE(DBMS_UTILITY.FORMAT_ERROR_STACK);
@@ -111,7 +111,7 @@ BEGIN
     WHERE JOB_ID = p_job_id;
 
     IF vn_cnt = 0 THEN
-        DBMS_OUTPUT.PUT_LINE('job_id가 없습니다.');
+        DBMS_OUTPUT.PUT_LINE("job_id가 없습니다.");
         RETURN;
     ELSE
         UPDATE employees
@@ -121,7 +121,7 @@ BEGIN
     COMMIT;
 END;
 
-EXEC upload_jobid_proc(200,'TEST_ID');
+EXEC upload_jobid_proc(200,"TEST_ID");
 
 ```
 
@@ -148,7 +148,7 @@ EXCEPTION
 WHEN NO_DATA_FOUND THEN 
     DBMS_OUTPUT.PUT_LINE(SQLERRM);
 WHEN OTHERS THEN 
-    DBMS_OUTPUT.PUT_LINE('기타 에러 : ' || SQLERRM);
+    DBMS_OUTPUT.PUT_LINE("기타 에러 : " || SQLERRM);
 END;
 ```
 
@@ -158,7 +158,7 @@ END;
 - 시스템 예외는 해당 예외가 자동으로 검출되지만, 사용자 정의 예외는 직접 예외를 발생시켜주어야 한다. 
 
 ```SQL
-RAISE '사용자정의예외명'
+RAISE "사용자정의예외명"
 ```
 
 사용예시를 보면 다음과 같다. 
@@ -187,11 +187,11 @@ BEGIN
     
 EXCEPTION 
 WHEN ex_invalid_depid THEN -- 사용자 정의 예외처리  
-    DBMS_OUTPUT.PUT_LINE('존재하지 않는 job_id 입니다.');
+    DBMS_OUTPUT.PUT_LINE("존재하지 않는 job_id 입니다.");
 WHEN NO_DATA_FOUND THEN 
     DBMS_OUTPUT.PUT_LINE(SQLERRM);
 WHEN OTHERS THEN 
-    DBMS_OUTPUT.PUT_LINE('기타 에러 : ' || SQLERRM);
+    DBMS_OUTPUT.PUT_LINE("기타 에러 : " || SQLERRM);
 END;
 ```
 
@@ -215,7 +215,7 @@ BEGIN
 - 선언부에 사용자 정의 예외를 명시할 수 없이 다음과 같이 사용하면 된다.
 
 ```
-RAISE_APPLICATION_ERROR(-20000, '양수만 입력받을 수 있습니다.');
+RAISE_APPLICATION_ERROR(-20000, "양수만 입력받을 수 있습니다.");
 ```
 
 ```SQL
@@ -225,7 +225,7 @@ IS
 BEGIN 
     v_num := p_num;
     IF v_num < 0 THEN
-        RAISE_APPLICATION_ERROR(-20000, '양수만 입력해주세요');
+        RAISE_APPLICATION_ERROR(-20000, "양수만 입력해주세요");
     END IF;
     
     EXCEPTION WHEN OTHERS THEN
@@ -233,6 +233,6 @@ BEGIN
 END;
 ```
 
-만약 입력값이 음수면 RAISE_APPLICATION_ERROR 를 통해 -20000 예외코드에 예외 메시지는 '양수만 입력해주세요' 로 사용자 정의 예외가 터지고, 이를 예외 처리부에서 잡아서 처리한다. 
+만약 입력값이 음수면 RAISE_APPLICATION_ERROR 를 통해 -20000 예외코드에 예외 메시지는 "양수만 입력해주세요" 로 사용자 정의 예외가 터지고, 이를 예외 처리부에서 잡아서 처리한다.
 
 - 예외코드는 -20000 ~ -20999 번까지만 사용 가능하며 , 이 이유는 이외의 코드들은 Oracle에서 시스템 예외들이 사용하지 않는 코드들이기 때문이라고 한다.

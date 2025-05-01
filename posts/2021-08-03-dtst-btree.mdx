@@ -3,7 +3,7 @@ id: 32
 title: "B Tree"
 description: ""
 date: "2021-08-03 22:10:46"
-tags: ['Computer Science', 'Data Structure']
+tags: ["Computer Science", "Data Structure"]
 ---
 B Tree는 <strong>다수의 키를 가진 Node로 구성되어 다방향 탐색이 가능한 균형 트리</strong>이다. 
 
@@ -49,9 +49,9 @@ B트리에서 삭제연산은 항상 Leef node에서 일어난다. 이진 탐색
  
 먼저 B tree의 정의를 다시보면 
 
-<hr>
+<hr/>
 <p style="inline-block"> 각 internal node의 자식수는 <strong>M/2</strong> 이상 , M 이하이다.<p>
-<hr>
+<hr/>
 
 
 즉, 삭제 후에 M/2이상의 노드가 남아있어야 하며, M/2이하의 노드가 남았을 경우에는 underflow가 발생했다고 하며, <strong>이동연산(Transfer)</strong> 을 통해 <strong>underflow가 발생한 좌우의 형제노드 중에서 key를 하나가져와도 B 트리의 정의에 위배되지 않는 형제노드로부터 1개의 key를 부모 노드를 통해 이동시키는 연산을 수행한다. </strong>
