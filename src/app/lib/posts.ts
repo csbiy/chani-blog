@@ -4,6 +4,7 @@ import matter from "gray-matter";
 import rehypeHighlight from 'rehype-highlight';
 import remarkGfm from 'remark-gfm';
 import {compileMDX} from "next-mdx-remote/rsc";
+import 'highlight.js/styles/atom-one-dark.css';
 
 const postsDirectory = path.join(process.cwd(), "posts");
 
@@ -46,7 +47,7 @@ export async function getPostById(id: number) {
         options: {
           mdxOptions: {
             remarkPlugins: [remarkGfm],
-            rehypePlugins: [rehypeHighlight],
+            rehypePlugins: [rehypeHighlight]
           },
         },
       });
