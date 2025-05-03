@@ -37,7 +37,7 @@ fun main(args: Array<String>) {
 즉 마치 코루틴을 쓰레드에 땟다가 붙이면서 쓰레드가 쉬는 시간을 갖지 않도록 열심히 채찍질하는거죠..
 
 
-## 그래서 코루틴의 정의란 ? 
+## 그래서 코루틴의 정의란
 
 일시 중단이 가능한 "작업"입니다. thread에 땟다가 붙일 수가 있기 때문에 경량 쓰레드라고도 불리고 있습니다.
 
@@ -215,7 +215,7 @@ val deletedCoroutineNameContext = coroutineContext.minusKey(coroutineName.key)
 ```
 
 
-## 구조화된 동시성 (Structured Concurrency)
+## 구조화된 동시성
 
 - 부모 코루틴의 실행환경은 기본적으로 자식 코루틴에게 상속됩니다.
 

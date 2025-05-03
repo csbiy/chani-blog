@@ -8,6 +8,8 @@ import 'highlight.js/styles/atom-one-dark.css';
 import { unified } from "unified";
 import remarkParse from "remark-parse";
 import { visit } from "unist-util-visit";
+import rehypeSlug from "rehype-slug";
+import rehypeAutolinkHeadings from "rehype-autolink-headings";
 
 const postsDirectory = path.join(process.cwd(), "posts");
 
@@ -50,7 +52,16 @@ export async function getPostById(id: number) {
         options: {
           mdxOptions: {
             remarkPlugins: [remarkGfm],
-            rehypePlugins: [rehypeHighlight]
+            rehypePlugins: [
+              rehypeHighlight,
+              rehypeSlug,
+              [
+                rehypeAutolinkHeadings,
+                {
+                  behavior: "wrap", // 링크 아이콘이 아니라 heading 전체가 링크됨
+                },
+              ],
+            ],
           },
         },
       });

@@ -4,6 +4,7 @@ import GiscusComment from "@/app/components/GiscusComment";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faGithub, faLinkedin } from "@fortawesome/free-brands-svg-icons";
 import TableOfContents from "@/app/components/TableOfContents";
+import ScrollProgress from "@/app/components/ScrollProgress";
 
 export default async function PostDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id: postId } = await params;
@@ -34,6 +35,7 @@ export default async function PostDetail({ params }: { params: Promise<{ id: str
             ))}
           </div>
 
+          <ScrollProgress />
           <div className="prose mb-10">{post.mdxSource}</div>
 
           <div className="border-t border-gray-200 py-6 flex justify-between text-sm text-gray-600">
