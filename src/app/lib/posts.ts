@@ -5,6 +5,9 @@ import rehypeHighlight from 'rehype-highlight';
 import remarkGfm from 'remark-gfm';
 import {compileMDX} from "next-mdx-remote/rsc";
 import 'highlight.js/styles/atom-one-dark.css';
+import { unified } from "unified";
+import remarkParse from "remark-parse";
+import { visit } from "unist-util-visit";
 
 const postsDirectory = path.join(process.cwd(), "posts");
 
@@ -59,10 +62,24 @@ export async function getPostById(id: number) {
         date: data.date,
         tags: data.tags,
         discussionId: data.discussionId,
+        content: content,
         mdxSource: mdxContent
       };
     }
   }
 
   return null;
+}
+
+
+export function extractHeadings(markdown: string) {
+  const tree = unified().use(remarkParse).parse(markdown);
+  const headings: { id: string; text: string; level: number }[] = [];
+
+  visit(tree, "heading", (node: any) => {
+    const text = node.children.map((n: any) => n.value).join('');
+    const id = text.toLowerCase().replace(/\s+/g, '-');
+    headings.push({ id, text, level: node.depth });
+  });
+  return headings;
 }
