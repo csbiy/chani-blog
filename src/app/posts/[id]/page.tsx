@@ -1,28 +1,36 @@
+import fs from "fs/promises";
+import path from "path";
 import Link from "next/link";
-import { extractHeadings, getAllPosts, getPostById } from "@/app/lib/posts";
 import GiscusComment from "@/app/components/GiscusComment";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faGithub, faLinkedin } from "@fortawesome/free-brands-svg-icons";
 import TableOfContents from "@/app/components/TableOfContents";
 import ScrollProgress from "@/app/components/ScrollProgress";
 
+async function getPostData(id: number) {
+  const jsonPath = path.join(process.cwd(), "public", "generated", `${id}.json`);
+  const json = await fs.readFile(jsonPath, "utf8");
+  return JSON.parse(json);
+}
+
+async function getAllPostsData() {
+  const jsonPath = path.join(process.cwd(), "public", "generated", "index.json");
+  const json = await fs.readFile(jsonPath, "utf8");
+  return JSON.parse(json);
+}
+
 export default async function PostDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id: postId } = await params;
   const currentPostId = Number(postId);
-  const post = await getPostById(currentPostId);
+  const post = await getPostData(currentPostId);
 
-  if (!post) {
-    return <div className="p-10">포스트를 찾을 수 없습니다.</div>;
-  }
-
-  const posts = await getAllPosts();
-  const currentPostIndex = posts.findIndex((p) => p.id === currentPostId);
+  const posts = await getAllPostsData();
+  const currentPostIndex = posts.findIndex((p: { id: number; }) => p.id === currentPostId);
   const previousPost = currentPostIndex > 0 ? posts[currentPostIndex - 1] : null;
   const nextPost = currentPostIndex < posts.length - 1 ? posts[currentPostIndex + 1] : null;
 
   return (
       <div className="flex justify-center px-4">
-        {/* 본문 */}
         <main className="w-full max-w-3xl py-10">
           <h1 className="text-4xl font-bold mb-4">{post.title}</h1>
           <p className="text-gray-500 text-sm mb-8">{post.date}</p>
@@ -36,7 +44,7 @@ export default async function PostDetail({ params }: { params: Promise<{ id: str
           </div>
 
           <ScrollProgress />
-          <div className="prose mb-10">{post.mdxSource}</div>
+          <div className="prose mb-10" dangerouslySetInnerHTML={{ __html: post.html }} />
 
           <div className="border-t border-gray-200 py-6 flex justify-between text-sm text-gray-600">
             {previousPost && (
@@ -54,7 +62,6 @@ export default async function PostDetail({ params }: { params: Promise<{ id: str
             )}
           </div>
 
-          {/* 프로필 */}
           <div className="mt-10 border-t border-gray-200 py-6 flex items-center gap-4">
             <div className="w-16 h-16 rounded-full bg-gray-200 overflow-hidden">
               <img src="/profile.jpeg" alt="프로필 이미지" className="w-full h-full object-cover" />
@@ -73,7 +80,6 @@ export default async function PostDetail({ params }: { params: Promise<{ id: str
             </div>
           </div>
 
-          {/* 댓글 */}
           <div className="mt-10 border-t border-gray-200 py-6">
             <h2 className="text-lg font-semibold mb-4">댓글</h2>
             <p className="text-gray-500 mb-4">이 게시글에 대한 의견을 공유해주세요!</p>
@@ -81,9 +87,8 @@ export default async function PostDetail({ params }: { params: Promise<{ id: str
           </div>
         </main>
 
-        {/* 목차 */}
         <aside className="hidden lg:block ml-10 w-64 shrink-0">
-          <TableOfContents headings={extractHeadings(post.content)} />
+          <TableOfContents headings={post.headings} />
         </aside>
       </div>
   );

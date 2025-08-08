@@ -12,33 +12,7 @@ import { visit } from "unist-util-visit";
 
 const postsDirectory = path.join(process.cwd(), "posts");
 
-// 메타데이터 캐시
-let cachedPostsMeta: Array<{
-  id: number;
-  title: string;
-  description: string;
-  date: string;
-  tags: string[];
-  discussionId?: string;
-}> | null = null;
-
-// 개별 포스트 캐시 (id → 컴파일된 결과)
-const postCache = new Map<
-    number,
-    {
-      id: number;
-      title: string;
-      description: string;
-      date: string;
-      tags: string[];
-      discussionId?: string;
-      content: string;
-      mdxSource: any;
-    }
->();
-
 export async function getAllPosts() {
-  if (cachedPostsMeta) return cachedPostsMeta;
 
   const fileNames = await fs.readdir(postsDirectory);
 
@@ -59,17 +33,12 @@ export async function getAllPosts() {
       })
   );
 
-  cachedPostsMeta = posts.sort(
+  return posts.sort(
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
   );
-
-  return cachedPostsMeta;
 }
 
 export async function getPostById(id: number) {
-  if (postCache.has(id)) {
-    return postCache.get(id)!;
-  }
 
   const fileNames = await fs.readdir(postsDirectory);
 
@@ -104,7 +73,6 @@ export async function getPostById(id: number) {
         mdxSource: MDXContent,
       };
 
-      postCache.set(id, post);
       return post;
     }
   }
