@@ -19,6 +19,19 @@ async function getAllPostsData() {
   return JSON.parse(json);
 }
 
+export async function getAllSortedPostsData() {
+  const jsonPath = path.join(process.cwd(), "public", "generated", "index.json");
+  const json = await fs.readFile(jsonPath, "utf8");
+  const posts = JSON.parse(json);
+
+  posts.sort((a: any, b: any) => {
+    const dateA = new Date(a.date).getTime();
+    const dateB = new Date(b.date).getTime();
+    return dateB - dateA;
+  });
+
+  return posts;
+}
 export default async function PostDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id: postId } = await params;
   const currentPostId = Number(postId);

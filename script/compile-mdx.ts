@@ -10,19 +10,34 @@ import rehypeSlug from "rehype-slug";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
 import rehypeStringify from "rehype-stringify";
 import { visit } from "unist-util-visit";
+import type { Root, Element } from "hast";
 
 const postsDir = path.join(process.cwd(), "posts");
 const outputDir = path.join(process.cwd(), "public/generated");
 
-function extractHeadingsFromHtmlAst(tree: any) {
+function extractHeadingsFromHtmlAst(tree: Root) {
   const headings: { id: string; text: string; level: number }[] = [];
-  visit(tree, "element", (node: any) => {
+
+  visit(tree, "element", (node: Element) => {
     if (/^h[1-6]$/.test(node.tagName)) {
-      const text = node.children.map((n: any) => n.value || "").join("");
-      const id = node.properties?.id || "";
-      headings.push({ id, text, level: Number(node.tagName.slice(1)) });
+      const level = Number(node.tagName.slice(1));
+      const id = (node.properties?.id as string) || "";
+
+      const text = node.children
+      .map((child: any) => {
+        if (child.type === "text") return child.value;
+        if (child.type === "element") {
+          return child.children?.map((c: any) => c.value || "").join("") || "";
+        }
+        return "";
+      })
+      .join("")
+      .trim();
+
+      headings.push({ id, text, level });
     }
   });
+
   return headings;
 }
 
@@ -35,18 +50,25 @@ async function generate() {
     const fileContents = await fs.readFile(fullPath, "utf8");
     const { data, content } = matter(fileContents);
 
-    const processor = unified()
+    const hastTree = await unified()
+    .use(remarkParse)
+    .use(remarkGfm)
+    .use(remarkRehype)
+    .use(rehypeSlug)
+    .use(rehypeAutolinkHeadings, { behavior: "wrap" })
+    .run(unified().use(remarkParse).use(remarkGfm).use(remarkRehype).parse(content));
+
+    const headings = extractHeadingsFromHtmlAst(hastTree as Root);
+
+    const fileProcessed = await unified()
     .use(remarkParse)
     .use(remarkGfm)
     .use(remarkRehype)
     .use(rehypeHighlight)
     .use(rehypeSlug)
     .use(rehypeAutolinkHeadings, { behavior: "wrap" })
-    .use(rehypeStringify);
-
-    const fileProcessed = await processor.process(content);
-    const ast = processor.parse(content);
-    const headings = extractHeadingsFromHtmlAst(ast);
+    .use(rehypeStringify)
+    .process(content);
 
     const html = fileProcessed.toString();
 
@@ -71,8 +93,14 @@ async function generate() {
     postsMeta.push(postMeta);
   }
 
-  await fs.writeFile(path.join(outputDir, `index.json`), JSON.stringify(postsMeta, null, 2));
-  console.log("✅ HTML 및 metadata 생성 완료");
+  await fs.writeFile(
+      path.join(outputDir, `index.json`),
+      JSON.stringify(postsMeta, null, 2),
+      "utf8"
+  );
+
 }
 
-generate();
+generate().catch((err) => {
+  console.error("오류 발생:", err);
+});
