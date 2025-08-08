@@ -12,7 +12,9 @@ Nodejs의 express framework를 사용하여 Backend개발을 하면서 단위 �
 
 기본 템플릿은 다음과 같다 유의할점은 command line interfcae를 지원해주지 않고, html 을 통해서 테스트 결과를 확인할 수 있다. 
 
+```javascript
 mocha.setup("{mocha interface style}") ex) mocha.setup("bdd"),mocha.setup("tdd")
+```
 를 통해 테스트 인터페이스 스타일을 지정하고,
 
 test할 client javascript file을 import한다. 이떄, javsacript module 시스템을 브라우저에서 하려면
@@ -128,13 +130,10 @@ describe("test Calculator on browser",()=>{
         assert.strictEqual(Calculator.divide(num1,num2),num1/num2);
     })
     it("실패할 테스트입니다.",()=>{
-        assert.strictEqual(Calculator.add(num1,num2),num1*num2);    
+        assert.strictEqual(Calculator.add(num1,num2),num1*num2);
     })
 })
 
 ```
-
-
-![](/images/browser-mocha-result.jpg)
 
 live server로 해당 html 을 열어보면 테스트 결과가 출력되는 것을 확인할 수 있다.

@@ -59,7 +59,7 @@ public Step helloStep2() {
 - JobParameter와 Job을 인자로 받아서 실행합니다. 
 
 <figure>
-        <img src="https://miro.medium.com/v2/resize:fit:750/1*M9Xu4ZK9JutkGSxdIn7K5A.jpeg">
+  <img src="https://miro.medium.com/v2/resize:fit:750/1*M9Xu4ZK9JutkGSxdIn7K5A.jpeg"></img>
         <figcaption>[1] Job Launder Sequence Diagram</figcaption>
 </figure>
 
@@ -99,7 +99,7 @@ public class JobRunner implements ApplicationRunner {
 - BATCH_JOB_INSTANCE 테이블에 매핑됩니다.
 
 <figure>
-        <img src="/images/BATCH_JOB_01.png">
+  <img src="/images/BATCH_JOB_01.png"></img>
         <figcaption>Job Runner에 의해 Job 실행시 BATCH_JOB_EXECUTION 테이블</figcaption>
 </figure>
 
@@ -139,7 +139,7 @@ JobParameters parameters = new JobParametersBuilder()
 ```
 
 <figure>
-        <img src="/images/BATCH_JOB_02.png">
+  <img src="/images/BATCH_JOB_02.png"></img>
         <figcaption>Job Runner에 의해 Job 실행시 BATCH_JOB_EXECUTION_PARAMS 테이블</figcaption>
 </figure>
 
@@ -173,7 +173,6 @@ public Step step1() {
 ```
 
 
-
 ## Job Execution
 
 - Job Instance에 대한 한번의 시도를 의미하는 객체로서 Job 실행 중에 발생한 정보들을 저장하고 있는 객체입니다
@@ -184,7 +183,7 @@ public Step step1() {
 - BATCH_JOB_EXECUTION 테이블과 매핑됩니다. 
 
 <figure>
-        <img src="/images/BATCH_JOB_03.png">
+  <img src="/images/BATCH_JOB_03.png"></img>
         <figcaption>BATCH JOB 실패시 BATCH_JOB_EXECUTION 테이블(하나의 Job Instance에 대해 여러개의 FAIL상태값을 가질 수 있습니다.)</figcaption>
 </figure>
 

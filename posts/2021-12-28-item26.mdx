@@ -13,7 +13,7 @@ tags: ["Java", "Effective Java 3/E"]
 public class GenericExample<T>{} // T : 타입 매개변수 
 ```
 
-각각의 generic type은 매개변수화 타입 (parameterized type)을 정의한다. 매개변수화타입은 <> 괄호 안에 실제 타입을 명시함으로서 정의가 가능하다. 
+각각의 generic type은 매개변수화 타입 (parameterized type)을 정의한다. 매개변수화타입은 `<>` 괄호 안에 실제 타입을 명시함으로서 정의가 가능하다.
 
 ```java
 GenericExample<String> stringGenericExample = new GenericExample<>();
@@ -56,7 +56,7 @@ public void doSomething(){
 
 List\<Object>는 모든 타입을 허용하겠다는 의사를 compiler에게 명확히 전달한 것으로 매개변수로 List 를 받는 method에 List\<String> 을 넘길수는 있지만 , 매개변수로 List\<Object>를 받는 method에 List\<String>을 넘길 수는 없다. 
 
-이유는 Generic의 하위 타입 규칙때문이다. List raw type은 List<String>,List<Object>를 하위타입으로 가지지만,List\<Object>는 List\<String>을 하위타입으로 가지지 않기 떄문이다.
+이유는 Generic의 하위 타입 규칙때문이다. List raw type은 `List<String>`,`List<Object>`를 하위타입으로 가지지만,List\<Object>는 List\<String>을 하위타입으로 가지지 않기 떄문이다.
 
 ```java
 // raw type을 매개변수로 받는 method

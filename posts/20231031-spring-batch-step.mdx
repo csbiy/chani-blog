@@ -16,7 +16,7 @@ public class SimpleJob extends AbstractJob {
 }
 ```
 <figure>
-        <img src="/images/BATCH_STEP_17.png">
+  <img src="/images/BATCH_STEP_17.png"></img>
         <figcaption>[2] Spring Batch Step</figcaption>
 </figure>
 
@@ -36,7 +36,7 @@ public class SimpleJob extends AbstractJob {
 JobInstance를 실행한 정보가 ```JobExecution```이고, Job이 실행되면서 Job을 구성하는 Step들의 실행정보가 ```StepExecution```입니다. 
 
 <figure>
-        <img src="/images/BATCH_STEP_16.png">
+  <img src="/images/BATCH_STEP_16.png"></img>
         <figcaption> [1] Spring Batch Job과 Step에 관련된 도메인 객체들</figcaption>
 </figure>
 
@@ -49,7 +49,7 @@ JobInstance를 실행한 정보가 ```JobExecution```이고, Job이 실행되면
 - ```JobExeuction``` 내 ```ExecutionContext```는 모든 Step안에서 공유됩니다. 
 
 <figure>
-        <img src="/images/BATCH_STEP_13.png">
+  <img src="/images/BATCH_STEP_13.png"></img>
         <figcaption>ExecutionContext</figcaption>
 </figure>
 
@@ -74,12 +74,12 @@ public class ExecutionContextTasklet1 implements Tasklet {
 }
 ```
 <figure>
-        <img src="/images/BATCH_STEP_14.png">
+  <img src="/images/BATCH_STEP_14.png"></img>
         <figcaption>BATCH_JOB_EXECUTION_CONTEXT 테이블</figcaption>
 </figure>
 
 <figure>
-        <img src="/images/BATCH_STEP_15.png">
+  <img src="/images/BATCH_STEP_15.png"></img>
         <figcaption>BATCH_STEP_EXECUTION_CONTEXT 테이블</figcaption>
 </figure>
 
@@ -96,7 +96,7 @@ public class ExecutionContextTasklet1 implements Tasklet {
 5. Decision Step
 
 <figure>
-        <img src="/images/BATCH_STEP_01.png">
+  <img src="/images/BATCH_STEP_01.png"></img>
         <figcaption>Spring Batch에서 제공하는 Step 구현체 종류</figcaption>
 </figure>
 
@@ -136,7 +136,7 @@ public class TaskletStep extends AbstractStep {
 
 - 자주 사용되는 tasklet 구현체는 Spring Batch에서 이미 구현해놓았습니다. 이 중 ```ChunkOrientedTasklet```구현체을 활용해 Chunk 단위로 배치 작업을 쪼개서 처리할 수 있습니다.
 <figure>
-        <img src="/images/BATCH_STEP_02.png">
+  <img src="/images/BATCH_STEP_02.png"></img>
         <figcaption>Spring Batch에서 제공하는 Step 구현체 종류</figcaption>
 </figure>
 
@@ -240,7 +240,7 @@ public Step step(){
 - tasklet 로직에서 의도적으로 RuntimeException을 던지고 Job을 여러번까지 재시작하면 3번까지는 ```BATCH_JOB_STEP_EXECUTION```테이블에 저장됩니다.
 
 <figure>
-        <img src="/images/BATCH_STEP_03.png">
+  <img src="/images/BATCH_STEP_03.png"></img>
         <figcaption>startLimit 3으로 설정하고 STEP 재시작시 BATCH_STEP_EXECUTION 테이블 상태</figcaption>
 </figure>
 
@@ -251,7 +251,7 @@ org.springframework.batch.core.StartLimitExceededException: Maximum start limit 
 - 주의해야할 부분은 해당 API와 설정과 무관하게 Job Execution은 계속해서 일어나게 됩니다. 즉 ```BATCH_JOB_EXECUTION``` 테이블의 행은 누적됩니다. 즉 Step 재시작이 안되는 것 뿐 입니다. 
   아래 예시를 확인해보면 설정된 ```startLimit```값 (3) 이후로는 ```StartLimitException```이 ```EXIT_MESSAGE```로 기록되고 있습니다. 
 <figure>
-        <img src="/images/BATCH_STEP_04.png">
+  <img src="/images/BATCH_STEP_04.png"></img>
         <figcaption>startLimit 3으로 설정하고 STEP 재시작시 BATCH_JOB_EXECUTION 테이블 상태</figcaption>
 </figure>
 
@@ -293,7 +293,7 @@ public Step alwaysFailStep(){
 - 5번 Job을 재시작해보면 ```allowStartIfComplete```을 ```true```로 준 첫번쨰 step은 이미 step이 완료되었음에도 불구하고 항상 재시작 되는 것을 확인할 수 있습니다.
 - 항상 실패하는 두번쨰 step은 ```startLimit``` 값을 초과하게 되면 재시작되지 않고, 첫번쨰 step만 계속해서 재시작됩니다.
 <figure>
-        <img src="/images/BATCH_STEP_05.png">
+  <img src="/images/BATCH_STEP_05.png"></img>
         <figcaption> allowStartIfComplete값을 true로 설정하고 STEP 재시작시 BATCH_STEP_EXECUTION 테이블 상태</figcaption>
 </figure>
 
@@ -367,19 +367,19 @@ private JobParametersExtractor jobParmetersExtractor() {
 - 우선 성공/실패 케이스와 별개로 ```BATCH_JOB_INSTANCE``` 테이블에는 부모 Job와 ```JobStep```의 Job 모두 데이터가 들어갑니다.
 
 <figure>
-        <img src="/images/BATCH_STEP_06.png">
+  <img src="/images/BATCH_STEP_06.png"></img>
         <figcaption> JobStep 구성한 Job의 BATCH_JOB_INSTANCE 테이블 상태</figcaption>
 </figure>
 
 - JobStep의 Job또한 별개의 Job Instance로 관리되기 때문에 ```BATCH_JOB_EXECUTION``` 테이블의 레코드도 2개가 생성됩니다. 
 
 <figure>
-        <img src="/images/BATCH_STEP_07.png">
+  <img src="/images/BATCH_STEP_07.png"></img>
         <figcaption> JobStep 구성한 Job의 BATCH_JOB_EXECUTION 테이블 상태</figcaption>
 </figure>
 
 <figure>
-        <img src="/images/BATCH_STEP_08.png">
+  <img src="/images/BATCH_STEP_08.png"></img>
         <figcaption> JobStep 구성한 Job의 BATCH_STEP_EXECUTION 테이블 상태</figcaption>
 </figure>
 
@@ -402,14 +402,14 @@ public Step childStep() {
 - job 실행 후 ```BATCH_JOB_EXECUTION```테이블을 확인해보면 부모 Job까지 모두 실패처리된것을 확인할 수 있고 부모 Job은 ```org.springframework.batch.core.UnexpectedJobExecutionException: Step failure: the delegate Job failed in JobStep.``` 예외가 던져집니다.
 
 <figure>
-        <img src="/images/BATCH_STEP_09.png">
+  <img src="/images/BATCH_STEP_09.png"></img>
         <figcaption> JobStep 구성한 Job의 BATCH_JOB_EXECUTION 테이블 상태</figcaption>
 </figure>
 
 - ```BATCH_STEP_EXECUTION```테이블을 확인해보면 부모 Job의 다음 step은 실행처리가 안되고, JobStep의 job의 step까지만 처리하다가 실패된것으로 기록됩니다. 
 
 <figure>
-        <img src="/images/BATCH_STEP_10.png">
+  <img src="/images/BATCH_STEP_10.png"></img>
         <figcaption> JobStep 구성한 Job의 BATCH_STEP_EXECUTION 테이블 상태</figcaption>
 </figure>
 
@@ -420,13 +420,13 @@ public Step childStep() {
 ```BATCH_JOB_EXECUTION``` 테이블을 확인해보면 JobStep의 job은 성공처리된것을 확인할 수 있습니다. 
 
 <figure>
-        <img src="/images/BATCH_STEP_11.png">
+  <img src="/images/BATCH_STEP_11.png"></img>
         <figcaption> JobStep 구성한 Job의 BATCH_JOB_EXECUTION 테이블 상태</figcaption>
 </figure>
 
 
 <figure>
-        <img src="/images/BATCH_STEP_12.png">
+  <img src="/images/BATCH_STEP_12.png"></img>
         <figcaption> JobStep 구성한 Job의 BATCH_STEP_EXECUTION 테이블 상태</figcaption>
 </figure>
 

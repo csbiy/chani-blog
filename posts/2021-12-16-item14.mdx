@@ -26,7 +26,7 @@ Arrays.sort(arrayOfInstance);
 compareTo method의 일반 규약은 다음과 같다.
 
 <strong>
-<pre style="font-size="12px" "> 
+<pre style="font-size='12px' ">
 compareTo method는 주어진 객체와 this 객체의 순서를 비교한다. 
 this 객체가 주어진 객체보다 작으면 음의 정수 , 같으면 0 , 크면 양의 정수를 반환하고
 이 객체와 비교할수 없는 타입의 객체가 주어지면 ClassCastException을 던진다. 
@@ -218,7 +218,7 @@ public final class CaseInsensitiveString  implements Comparable<CaseInsensitiveS
 
 - boxing된 primitive type들에 새로 정의된 정적 method인 compare를 이용해서 값을 비교하라 
 
-java 7이전 부터는 boxing된 primitive type들에 새로 정의된 정적 method인 compare가 없었기 떄문에 부등호(>,<>) 로 값을 비교하였는데, java7부터는 이를 지원해주기 때문에, 실수가 발생할 수 있는 부등호보다는 정적 메소드를 사용하는게 좋다.
+java 7이전 부터는 boxing된 primitive type들에 새로 정의된 정적 method인 compare가 없었기 떄문에 부등호(`>,<>`) 로 값을 비교하였는데, java7부터는 이를 지원해주기 때문에, 실수가 발생할 수 있는 부등호보다는 정적 메소드를 사용하는게 좋다.
 
 위 예제들도 모두 정적 메소드를 사용해서 구현하였다. 
 

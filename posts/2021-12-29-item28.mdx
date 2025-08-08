@@ -33,7 +33,7 @@ List<Object> ol = new ArrayList<Long>(); // compile Error
 
 위와 같은 차이점 떄문에 Generic 배열은 Java에서 허용되지 않는다. 
 
-예시로 아래와 같이 List<String> 를 원소로 갖는 제너릭 배열을 만든다고 가정하면, 배열은 공변이기 떄문에 Object[] 으로 배열을 받을 수 있고,Object[] 배열은 모든 타입의 원소를 받을 수 있으므로 값을꺼낼때 runtime error가 발생할수도 있다.
+예시로 아래와 같이 `List<String>` 를 원소로 갖는 제너릭 배열을 만든다고 가정하면, 배열은 공변이기 떄문에 Object[] 으로 배열을 받을 수 있고,Object[] 배열은 모든 타입의 원소를 받을 수 있으므로 값을꺼낼때 runtime error가 발생할수도 있다.
 
 ```java
 List<String>[] stringList = new List<String>[1];

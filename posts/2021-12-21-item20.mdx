@@ -80,9 +80,9 @@ public abstract class AbstractCollection<E> implements Collection<E> {
 
 java Collection 인터페이스의 추상 골격 클래스인 abstractCollection의 설명은 다음과 같이 적혀있다. 
 
-<blockquote>
- To implement an unmodifiable collection, the programmer needs only to extend this class and provide implementations for the {@code iterator} and {@code size} methods. 
-</blockquote>
+```text
+ To implement an unmodifiable collection, the programmer needs only to extend this class and provide implementations for the {@code iterator} and {@code size} methods.
+```
 
 이 API를 활용하는 개발자는 abstractCollection을 상속받아서, iterator, size에 관한 로직만 작성해주면 골격 구현 클래스가 나머지 method는 이미 구현을 해놓았기에, 구현을 할필요가 없다. 이를 template method pattern 이라고 한다. 
 
