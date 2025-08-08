@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "ts-node script/compile-mdx.ts && next build",
+    "compile": "ts-node script/compile-mdx.ts",
     "start": "next start",
     "lint": "next lint"
   },
