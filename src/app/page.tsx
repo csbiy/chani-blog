@@ -1,6 +1,6 @@
 import Header from "@/app/components/Header";
 import Main from "@/app/components/Main";
-import {getAllSortedPostsData} from "@/app/posts/[id]/page";
+import {getAllSortedPostsData} from "@/app/lib/posts";
 
 export default async function App() {
   const posts = await getAllSortedPostsData();
