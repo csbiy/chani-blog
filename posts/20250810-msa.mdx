@@ -1,0 +1,78 @@
+---
+id: 177
+title: "MSA"
+description: ""
+date: "2025-08-10 13:40:00"
+tags: ["architecture"]
+---
+## MSA란?
+
+과거 넷플릭스에 근무했던 개발자인 애드리안 콕크로프트는 MSA를 경계 컨텍스트가 있는 느슨하게 결합된 element로 구성된 서비스 지향 아키텍쳐라고 정의합니다.
+
+확장 큐브라는 application을 확장하는 3가지 방법을 정의하는 큐브를 기반으로도 MSA에 살펴볼 수 있습니다.
+
+![MSA 그림](/images/99CA60425C6DFB5805.png)
+*MSA 구조 예시 [1]*
+
+확장 큐브에서는 application을 X축,Y축,Z축 세 방향으로 확장시킬 수 있습니다.
+
+
+X축 확장은 Load Balencer 뒷단에 instance를 여러개 띄워놓고, Load Balancer를 통해 요청을 instance에 고루 분배하는 방식입니다.
+
+![MSA 그림](/images/msa_x.png)
+
+Z축 확장은 요청별로 라우팅 목적지를 다르게 하는 것입니다.
+
+![MSA 그림](/images/msa_z.png)
+
+Y축 확장은 application을 기능적으로 분해하는 것입니다. 이떄 기능적으로 쪼개진 각 서비스는 특정 기능을 담당하며 X축/Z축으로 확장될 수 있습니다.
+
+![MSA 그림](/images/msa_y.png)
+
+MSA는 확장 큐브에서 Y축 확장과 같이 하나의 application을 여러 서비스로 기능 분해하는 아키텍쳐 스타일로,
+
+서비스를 모듈성의 단위로 사용합니다. 각 서비스는 다른 서비스가 함부로 규칙을 어기고, 침투하지 못하게 API를 통해 통신합니다.
+
+또한 서비스를 빌딩 블록처럼 사용하여 독립적으로 배포/확장할 수 있는 부가적인 장점도 있습니다.
+
+이렇게 느슨하게 결합된 서비스는 각각 자체 DB를 갖고 있어 다른 서비스가 DB락을 획득하여 서비스를 blocking 하는 일이 발생되지 않습니다.
+
+
+## SOA와는 어떻게 다를까?
+
+SOA와 마이크로서비스 모두 시스템을 여러 서비스로 구성하는 아키텍쳐 스타일인데, 몇가지 차이점이 존재합니다.
+
+| 구분         | SOA (서비스 지향 아키텍처)                       | MSA (마이크로서비스 아키텍처)                        |
+| ---------- | --------------------------------------- | ----------------------------------------- |
+| **서비스 크기** | 비교적 큼 (비즈니스 기능 단위)                      | 작음 (하나의 독립적 기능 단위)                        |
+| **서비스 통신** | 주로 SOAP, ESB(Enterprise Service Bus) 기반 | 주로 REST, gRPC, 메시지 브로커(Kafka, RabbitMQ 등) |
+| **배포 방식**  | 서비스들이 중앙 플랫폼(ESB)에 의존                   | 각 서비스가 독립적으로 배포 가능                        |
+| **데이터** | 전역 데이터 모델 및 통합 DB                         | 서비스별 개별 데이터 모델 및 독립 DB |
+| **도입 시기**  | 2000년대 초반 주류                            | 2010년대 이후 클라우드 환경에서 급부상                   |
+| **적합 사례**  | 대규모 기업 내부 시스템 통합                        | 빠른 배포, 빈번한 업데이트가 필요한 서비스                  |
+
+(* SOAP와 REST의 차이점은 [https://aws.amazon.com/ko/compare/the-difference-between-soap-rest/](https://aws.amazon.com/ko/compare/the-difference-between-soap-rest/) 문서에 잘 요약되어 있습니다, SOAP는 프로토콜이고 REST는 아키텍쳐 스타일입니다.)
+
+## MSA의 장단점
+
+### 장점
+
+- 기능도메인으로 쪼개진 서비스는 모놀리식보다 비교적 규모가 작아서 관리하기 쉽다.
+
+- 서비스를 독립적으로 배포/확장이 가능하다.
+
+서비스별로 상이한 리소스 요건에 따라 적합한 하드웨어에 배포할 수 있습니다. 예를 들어 CPU intensive한 service, Memory intensive한 서비스별로 EC2 instance type을 다르게 지정해서 배포가 가능합니다.
+
+- 하나의 서비스의 장애가 전체 시스템의 장애로 이어지지 않는다.
+
+### 단점
+
+- 잘못 구축하면 분산 모놀리스(distributed monolith)로 모놀리식/MSA의 단점만 있는 시스템을 만들 수 있습니다...
+
+- 복잡성 : 서비스간 통신 실패에 따른 설계가 필요합니다 + DB가 별도로 있기 떄문에 데이터 일관성 문제도 존재합니다 + 데이터가 분산되어 있기 때문에 여러 API를 조합하는 경우가 빈번합니다.
+
+
+
+## 참고문헌
+[1] Abbott, Martin L., and Michael T. Fisher. *The Art of Scalability: Scalable Web Architecture, Processes, and Organizations for the Modern Enterprise*. 2nd ed., Addison-Wesley, 2015.
+https://www.amazon.com/Art-Scalability-Architecture-Organizations-Enterprise/dp/0134032802

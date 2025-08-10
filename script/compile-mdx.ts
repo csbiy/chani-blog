@@ -22,7 +22,6 @@ function extractHeadingsFromHtmlAst(tree: Root) {
     if (/^h[1-6]$/.test(node.tagName)) {
       const level = Number(node.tagName.slice(1));
       const id = (node.properties?.id as string) || "";
-
       const text = node.children
       .map((child: any) => {
         if (child.type === "text") return child.value;
@@ -33,7 +32,6 @@ function extractHeadingsFromHtmlAst(tree: Root) {
       })
       .join("")
       .trim();
-
       headings.push({ id, text, level });
     }
   });
@@ -47,31 +45,35 @@ async function generate() {
 
   for (const file of filenames) {
     const fullPath = path.join(postsDir, file);
+    const stat = await fs.stat(fullPath);
+    if (!stat.isFile()) continue;
+
     const fileContents = await fs.readFile(fullPath, "utf8");
     const { data, content } = matter(fileContents);
 
-    const hastTree = await unified()
+    const headingsProcessor = unified()
     .use(remarkParse)
     .use(remarkGfm)
     .use(remarkRehype)
+    .use(rehypeHighlight)
     .use(rehypeSlug)
-    .use(rehypeAutolinkHeadings, { behavior: "wrap" })
-    .run(unified().use(remarkParse).use(remarkGfm).use(remarkRehype).parse(content));
+    .use(rehypeAutolinkHeadings, { behavior: "wrap" });
 
+    const hastTree = await headingsProcessor.run(headingsProcessor.parse(content));
     const headings = extractHeadingsFromHtmlAst(hastTree as Root);
 
-    const fileProcessed = await unified()
+    const htmlProcessor = unified()
     .use(remarkParse)
     .use(remarkGfm)
     .use(remarkRehype)
     .use(rehypeHighlight)
     .use(rehypeSlug)
     .use(rehypeAutolinkHeadings, { behavior: "wrap" })
-    .use(rehypeStringify)
-    .process(content);
+    .use(rehypeStringify);
 
-    const html = fileProcessed.toString();
+    const html = String(await htmlProcessor.process(content));
 
+    // 3) 메타데이터 저장
     const postMeta = {
       id: data.id,
       title: data.title,
@@ -98,7 +100,6 @@ async function generate() {
       JSON.stringify(postsMeta, null, 2),
       "utf8"
   );
-
 }
 
 generate().catch((err) => {
