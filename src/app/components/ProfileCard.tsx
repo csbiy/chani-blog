@@ -22,9 +22,9 @@ export default function ProfileCard() {
         </div>
         <h3 className="text-xl font-semibold text-foreground mt-4">@Chani</h3>
         <p className="text-foreground-muted text-center mt-2 text-sm">
-          바둑 좋아하는 개발자의
+          바둑, 스타크래프트 등 고전 게임을 좋아하는
           <br />
-          의미있는 학습 기록을 위한 공간입니다.
+          내향인 개발자입니다
         </p>
         <div className="flex gap-4 mt-4">
           <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }}>

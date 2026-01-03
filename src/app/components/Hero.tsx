@@ -33,12 +33,12 @@ export default function Hero() {
             animate={{ scale: 1 }}
             transition={{ delay: 0.2 }}
           >
-            개발자의 학습 기록
+            Tech Blog
           </motion.span>
         </motion.div>
 
         <motion.h1
-          className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-foreground via-accent to-foreground bg-clip-text text-transparent bg-[length:200%_auto] animate-gradient"
+          className="text-5xl md:text-7xl font-bold mb-6 pb-3 bg-gradient-to-r from-foreground via-accent to-foreground bg-clip-text text-transparent bg-[length:200%_auto] animate-gradient"
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.1 }}

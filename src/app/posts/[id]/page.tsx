@@ -94,7 +94,7 @@ export default async function PostDetail({
             <div>
               <div className="text-lg font-semibold text-foreground">@chani</div>
               <div className="text-sm text-foreground-muted mb-2">
-                바둑 좋아하는 개발자의 의미있는 학습 기록을 위한 공간입니다.
+                바둑,스타크래프트 등 고전 게임을 좋아하는 내향인 개발자입니다
               </div>
               <div className="flex gap-3">
                 <Link
