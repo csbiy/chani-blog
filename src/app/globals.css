@@ -1,29 +1,62 @@
 @import "tailwindcss";
 
+/* 라이트 테마 */
 :root {
   --background: #ffffff;
+  --background-secondary: #f9fafb;
   --foreground: #171717;
+  --foreground-muted: #6b7280;
+  --card-bg: #ffffff;
+  --card-border: #e5e7eb;
+  --accent: #6366f1;
+  --accent-hover: #4f46e5;
+  --code-bg: #f3f4f6;
+}
+
+/* 다크 테마 */
+.dark {
+  --background: #0a0a0a;
+  --background-secondary: #111111;
+  --foreground: #ededed;
+  --foreground-muted: #a1a1aa;
+  --card-bg: #18181b;
+  --card-border: #27272a;
+  --accent: #818cf8;
+  --accent-hover: #a5b4fc;
+  --code-bg: #1e1e1e;
 }
 
 @theme inline {
   --color-background: var(--background);
+  --color-background-secondary: var(--background-secondary);
   --color-foreground: var(--foreground);
+  --color-foreground-muted: var(--foreground-muted);
+  --color-card-bg: var(--card-bg);
+  --color-card-border: var(--card-border);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-code-bg: var(--code-bg);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: white) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
-/* post css */
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* prose 스타일 - 다크 모드 대응 */
 .prose h2 {
   margin-top: 20px;
   font-size: 1.25rem;
   font-weight: 700;
+  color: var(--foreground);
 }
 
 .prose h3 {
@@ -32,6 +65,7 @@
   font-weight: 600;
   letter-spacing: 0.05em;
   margin-bottom: 0.5rem;
+  color: var(--foreground);
 }
 
 .prose h4 {
@@ -40,63 +74,82 @@
   font-weight: 500;
   letter-spacing: 0.05em;
   margin-bottom: 0.25rem;
+  color: var(--foreground);
 }
 
+.prose p {
+  line-height: 2;
+  color: var(--foreground);
+}
 
 .prose ol {
   list-style-type: disc;
-  padding-left: 1.5rem; /* or 24px */
+  padding-left: 1.5rem;
+}
+
+.prose ul {
+  @apply list-disc;
 }
 
 .prose li {
   margin-bottom: 0.5rem;
+  color: var(--foreground);
+}
+
+.prose li a {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.prose li a:hover {
+  color: var(--accent-hover);
 }
 
 .prose pre {
   padding: 2rem;
   border-radius: 0.5rem;
+  background-color: var(--code-bg);
 }
 
-.prose p {
-  line-height: 2;
+.prose code {
+  background-color: var(--code-bg);
+  padding: 0.2rem 0.4rem;
+  border-radius: 0.25rem;
 }
-
-.prose ul {
-  @apply list-disc
-}
-
-.prose li {
-  @apply mb-1;
-}
-
-.prose li a {
-  @apply text-blue-600 underline hover:text-blue-800;
-}
-
-
-
 
 .prose table {
   width: 100%;
   border-collapse: collapse;
   text-align: left;
 }
-.prose th, td {
-  border: 1px solid #ddd;
+
+.prose th,
+.prose td {
+  border: 1px solid var(--card-border);
   padding: 8px;
+  color: var(--foreground);
 }
 
 .prose thead {
-  background-color: #f0f0f0;
+  background-color: var(--background-secondary);
 }
 
-html {
-  scroll-behavior: smooth;
+.prose blockquote {
+  border-left: 4px solid var(--accent);
+  padding-left: 1rem;
+  color: var(--foreground-muted);
+  font-style: italic;
 }
 
-
-body {
-  background: var(--background);
+.prose strong {
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-weight: 700;
+}
+
+.prose a {
+  color: var(--accent);
+}
+
+.prose a:hover {
+  color: var(--accent-hover);
 }
