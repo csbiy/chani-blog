@@ -7,8 +7,8 @@ tags: ["Computer Science", "Database"]
 ---
 ## Transaction 
 
-Transaction은 작업의 논리적인 단위로서 , 예를 들면 은행에서 출금 후 입금을 한다고 가정하였을떄 실제로 DB query문은 여러 번 나가겠지만 하나의 논리적인 작업 단위로 볼 수 있다. 
-Transaction이 필요한 이유는 데이터베이스 연산 중간에 일관되지 않은 상태가 존재하기 떄문이다. 2개의 연산중에 하나만 수행되고 하나는 아직 수행되지 않은 상태가 존재할 수도 있다. 
+Transaction은 작업의 논리적인 단위로서 , 예를 들면 은행에서 출금 후 입금을 한다고 가정하였을 때 실제로 DB query문은 여러 번 나가겠지만 하나의 논리적인 작업 단위로 볼 수 있다. 
+Transaction이 필요한 이유는 데이터베이스 연산 중간에 일관되지 않은 상태가 존재하기 때문이다. 2개의 연산중에 하나만 수행되고 하나는 아직 수행되지 않은 상태가 존재할 수도 있다. 
 따라서 데이터베이스는 작업의 완전성을 보장해주기 위해서 , 일련의 연산들을 사용자 입장에서 마치 단일 연산인것처럼 보이게 해준다. 
 
 추가로 transaction은 다음과 같은 특징을 갖는다. 
@@ -40,7 +40,7 @@ transaction은 다음과 같은 상태를 가진다.
 
 ## transaction의 병행수행 제어 기법 (concurrency control mechanism )
 
-다른말로 동시성 제어인데, 여러가지 transaction 이 공유자원 (DB 데이터)를 동시에 접근할떄 여러가지 문제가 발생할 수 있다
+다른말로 동시성 제어인데, 여러가지 transaction 이 공유자원 (DB 데이터)를 동시에 접근할 때 여러가지 문제가 발생할 수 있다
 
 대표적으로 다음과 같은 문제가 생길 수 있다
 
@@ -52,7 +52,7 @@ transaction은 다음과 같은 상태를 가진다.
 
 ## Locking
 
-locking은 어떤 database object(tuple) 을 transaction 이 접근할떄, 다른 transaction들이 그 object를 변화시키지 못하도록 방지하는 것으로 2 종류의 lock이 존재한다. 
+locking은 어떤 database object(tuple) 을 transaction 이 접근할 때, 다른 transaction들이 그 object를 변화시키지 못하도록 방지하는 것으로 2 종류의 lock이 존재한다. 
 
 - X lock (exclusive lock, 독점 로크) 
 - S lock (shared lock , 공유 로크)
@@ -74,8 +74,8 @@ transaction이 어떤 tuple에 대해서 연산을 수행하려면 그전에 loc
 
 1. transaction이 tuple을 검색하려면 먼저 그 tuple에 대한 S lock을 획득해야 한다.
 2. transaction이 tuple을 갱신하려면 먼저 그 tuple에 대한 X lock을 획득해야 한다. 
-3. transaction이 가지고 있는 lock 때문에 다른 transaction이 lock를 획득하지 못하면 해당 transaction은 lock를 획득할떄까지 대기 해야한다. 
-4. X,S lock모두 일반적인 경우 transaction이 끝날떄까지 유지된다. 
+3. transaction이 가지고 있는 lock 때문에 다른 transaction이 lock를 획득하지 못하면 해당 transaction은 lock를 획득할 때까지 대기 해야한다. 
+4. X,S lock모두 일반적인 경우 transaction이 끝날 때까지 유지된다. 
 
 ## 2단계 로킹 protocol 
 

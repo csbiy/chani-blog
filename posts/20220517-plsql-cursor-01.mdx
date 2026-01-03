@@ -7,7 +7,7 @@ tags: ["database", "oracle"]
 ---
 ## Cursor
 
-- 특정 SQL 문장을 처리한 결과를 담고 있는 영역 (PRIVATE SQL이라는 메모리 영역) 을 가르키는 일종의 포인터이다. 
+- 특정 SQL 문장을 처리한 결과를 담고 있는 영역 (PRIVATE SQL이라는 메모리 영역) 을 가리키는 일종의 포인터이다. 
 - 커서를 통해 처리된 SQL 문장의 결과 집합에 접근할 수 있다. <strong> 개별 로우에 순차적으로 접근하는 형태이다. </strong>
 
 - 커서의 종류에는 묵시적 커서와 명시적 커서가 있는데, 묵시적 커서는 oracle 내부적으로 자동으로 생성되어 사용하는 커서이다. PL/SQL 블록에서 실행하는 SQL 문장이 실행될 때마다 자동으로 만들어져 사용된다. 명시적 커서는 개발자가 직접 정의해서 사용하는 커서를 뜻한다.  
@@ -67,7 +67,7 @@ OPEN 커서명 (매개변수)
 CLOSE 커서명;
 ```
 
-커서를 닫는 다는 것은 말그대로 커서가 가르키는 결과 집합을 메모리에서 내린다는 뜻이다. 
+커서를 닫는 다는 것은 말그대로 커서가 가리키는 결과 집합을 메모리에서 내린다는 뜻이다. 
 
 
 
@@ -95,7 +95,7 @@ BEGIN
     OPEN cur_emp_dep(90);
     LOOP
         -- Cursor 사용 (FETCH 커서명 INTO 변수)
-        FETCH cur_emp_dep INTO vs_emp_name; -- cur_emp_dep 커서가 가르키는 로우를 vs_emp_name변수에 할당
+        FETCH cur_emp_dep INTO vs_emp_name; -- cur_emp_dep 커서가 가리키는 로우를 vs_emp_name변수에 할당
         EXIT WHEN cur_emp_dep%NOTFOUND; -- cursor의 NOTFOUND속성 접근. 만약 로우가 없으면 반복문 종료 
         DBMS_OUTPUT.PUT_LINE(vs_emp_name);
     END LOOP;
@@ -114,13 +114,13 @@ END;
 
 
 ```
-FOR "커서가 가르키는 레코드" IN 커서명(매개변수)
+FOR "커서가 가리키는 레코드" IN 커서명(매개변수)
 LOOP
  처리문;
 END LOOP;
 ```
 
-- Cursor는 FOR문과 같이 사용될 수도 있다. FOR문과 같이 사용하게 될 경우에 Cursor가 가르키는 레코드가 없으면 (패치가 끝나면) 자동으로 반복문이 종료된다. 또한 Cursor를 명시적으로 닫거나, 열필요가 없어지므로 코드가 휠씬 간결해진다. 
+- Cursor는 FOR문과 같이 사용될 수도 있다. FOR문과 같이 사용하게 될 경우에 Cursor가 가리키는 레코드가 없으면 (패치가 끝나면) 자동으로 반복문이 종료된다. 또한 Cursor를 명시적으로 닫거나, 열필요가 없어지므로 코드가 훨씬 간결해진다. 
 
 
 ```sql

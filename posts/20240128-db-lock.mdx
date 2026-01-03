@@ -19,13 +19,13 @@ tags: [None]
 2. Table Lock
 
 - 개별 테이블 단위로 설정되는 Lock으로 ```LOCK TABLES 테이블명 READ``` , ```LOCK TABLES 테이블명 WRITE``` 로 특정 테이블의 Lock을 획득할 수 있으며 ```UNLOCK TABLES```명령어로 Lock을 해제한다
-- InnoDB 테이블의 경우 스토리지 엔진 차원에서 레코드 기반 잠금을 제공하기 떄문에 DML로는 묵시적으로 Table Lock이 걸리지 않으나 DDL에서는 묵시적 Table Lock이 걸린다.
+- InnoDB 테이블의 경우 스토리지 엔진 차원에서 레코드 기반 잠금을 제공하기 때문에 DML로는 묵시적으로 Table Lock이 걸리지 않으나 DDL에서는 묵시적 Table Lock이 걸린다.
 
 
 3. Named Lock 
 
 - `GET_LOCK()` 함수를 이용해 임의의 문자열에 대해 잠금을 설정 할 수 있다. 
-- 잠금 대상이 데이터베이스 객체가 아니라 임의의 문자열이며, 주로 여러 Client간 동기화 시켜야할 작업이 있을떄 활용될 수 있다. 
+- 잠금 대상이 데이터베이스 객체가 아니라 임의의 문자열이며, 주로 여러 Client간 동기화 시켜야할 작업이 있을 때 활용될 수 있다. 
 
 ```sql
 SELECT GET_LOCK("lock",5); -- lock 문자열에 대해 5초간 잠금획득
@@ -62,7 +62,7 @@ UPDATE employees SET hire_date=NOW() WHERE first_name = "kim" and last_name ="cs
 
 4. Auto Increment Lock
 - 자동 증가하는 숫자값이 중복되지 않고, 저장된 순서대로 증가함을 보장하기 위해 테이블 수준의 잠금을 사용
-- Insert 에서만 걸리며, Delete, Update에서는 걸리지 않는다. 2개의 Insert 쿼리가 동시에 실행되는 경우 하나의 Insert 쿼리가 Auto Increment Lock을 반납할떄까지 다른 하나의 쿼리는 대기해야한다.
+- Insert 에서만 걸리며, Delete, Update에서는 걸리지 않는다. 2개의 Insert 쿼리가 동시에 실행되는 경우 하나의 Insert 쿼리가 Auto Increment Lock을 반납할 때까지 다른 하나의 쿼리는 대기해야한다.
 - 명시적으로 획득하거나 해제가 불가능하다.
 
 
@@ -102,7 +102,7 @@ UPDATE employees SET hire_date=NOW() WHERE first_name = "kim" and last_name ="cs
 ## MVCC (Multi Version Concurrency Control)
 
 - 레코드 레벨의 트랜잭션을 지원하는 DBMS가 제공하는 기능
-- 잠금을 사용하지 않는 읽관된 읽기를 제공하는 것이 목적이다.
+- 잠금을 사용하지 않는 일관된 읽기를 제공하는 것이 목적이다.
 - 하나의 레코드에 대해 여러 버전이 관리되며, InnoDB에서는 Undo Log를 이용해 구현한다. 즉 특정 트랜잭션에서 값을 변경하면 변경전의 값을 Undo Log에 쓰고, InnoDB 버퍼 풀은 변경 후의 값을 저장한다.
 - 격리수준이 UNCOMMITTED라면 Buffer Pool의 데이터를 반환하고, 그 위(COMMITED ~ SERIALIZABLE) 라면 Undo Log의 데이터를 반환한다.
 
@@ -114,9 +114,9 @@ UPDATE employees SET hire_date=NOW() WHERE first_name = "kim" and last_name ="cs
 1. 트랜잭션(6번)이 초기 데이터를 쓴다. 
 2. 트랜잭션(10번)이 데이터를 읽기 시작한다.
 3. 트랜잭션(12번)이 데이터를 변경한다. 
-4. 데이터가 언두로그로 복사된다. 이떄 트랜잭션 번호(6번)도 같이 복사된다.
+4. 데이터가 언두로그로 복사된다. 이때 트랜잭션 번호(6번)도 같이 복사된다.
 5. 트랜잭션(12번)이 커밋한다. 
-6. 트랜잭션(10번)이 데이터를 읽는다. 이떄는 언두로그에서 자신의 트랜잭션 번호보다 낮은 데이터가 있다면 이를 반환한다. 
+6. 트랜잭션(10번)이 데이터를 읽는다. 이때는 언두로그에서 자신의 트랜잭션 번호보다 낮은 데이터가 있다면 이를 반환한다. 
 7. 트랜잭션(6번)이 쓴 초기 데이터가 반환된다. 
 
 ### Serializable

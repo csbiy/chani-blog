@@ -19,7 +19,7 @@ public class GenericExample<T>{} // T : 타입 매개변수
 GenericExample<String> stringGenericExample = new GenericExample<>();
 ```
 
-raw tye은 generic type을 하나 정의하면 함께 정의되는데, <strong> generic type에서 타입 매개변수를 전혀 사용하지 않았을떄를 말한다. </strong> ,  raw type이 generic type을 하나 정의할떄마다 같이 생성되는 이유는 기존 java code와 호환성 문제떄문이다. 
+raw tye은 generic type을 하나 정의하면 함께 정의되는데, <strong> generic type에서 타입 매개변수를 전혀 사용하지 않았을 때를 말한다. </strong> ,  raw type이 generic type을 하나 정의할 때마다 같이 생성되는 이유는 기존 java code와 호환성 문제때문이다. 
 ```java
 GenericExample rawTypeGeneric = new GenericExample();
 ```
@@ -56,7 +56,7 @@ public void doSomething(){
 
 List\<Object>는 모든 타입을 허용하겠다는 의사를 compiler에게 명확히 전달한 것으로 매개변수로 List 를 받는 method에 List\<String> 을 넘길수는 있지만 , 매개변수로 List\<Object>를 받는 method에 List\<String>을 넘길 수는 없다. 
 
-이유는 Generic의 하위 타입 규칙때문이다. List raw type은 `List<String>`,`List<Object>`를 하위타입으로 가지지만,List\<Object>는 List\<String>을 하위타입으로 가지지 않기 떄문이다.
+이유는 Generic의 하위 타입 규칙때문이다. List raw type은 `List<String>`,`List<Object>`를 하위타입으로 가지지만,List\<Object>는 List\<String>을 하위타입으로 가지지 않기 때문이다.
 
 ```java
 // raw type을 매개변수로 받는 method
@@ -71,7 +71,7 @@ public static void main(String[] args) {
 }
 ```
 위 예제와 같이 List\<String>은 List의 하위타입이기 때문에 아무런 compile error가 나지 않는다. 
-문제는 값을꺼낼때 generic이 string type임으로 String으로 자동 형변환됨으로 문제가 생긴다 
+문제는 값을 꺼낼 때 generic이 string type임으로 String으로 자동 형변환됨으로 문제가 생긴다 
 ```java
 // Object type을 매개변수로 받는 method
 private static void unsafeAdd(List<Object> list , Object  o ){
@@ -86,11 +86,11 @@ public static void main(String[] args) {
 List\<Object>를 매개변수로 선언하면 다른 매개변수 타입은 들어갈수없으므로, compile error가 발생한다 (빠르게 디버깅이 가능하다 )
 
 ##  unbounded wildcard type 
-unbounded wildcard type은 어떤 타입 매개변수도 허용하고자할떄 사용한다. unbounded wildcard type collection에는 null을 제외한 어떠한 원소도 삼입이 불가능하다. 
+unbounded wildcard type은 어떤 타입 매개변수도 허용하고자할 때 사용한다. unbounded wildcard type collection에는 null을 제외한 어떠한 원소도 삽입이 불가능하다. 
 
 java 공식 문서에 보면  unbounded wildcard type 을 사용하는 상황은 다음과 같다.
 
-아래와 같이 list 원소를 loop를 돌려 출력하고자할떄, List\<Object> 는 다른 generic type을 받을 수 없다. 
+아래와 같이 list 원소를 loop를 돌려 출력하고자할 때, List\<Object> 는 다른 generic type을 받을 수 없다. 
 ```java
 public static void printList(List<Object> list) {
     for (Object elem : list)
@@ -122,7 +122,7 @@ It"s important to note that List\<Object> and List\<?> are not the same. You can
 (ref - https://docs.oracle.com/javase/tutorial/java/generics/unboundedWildcards.html)
 
 
-raw type은 아무 원소나 collection에 삼입할수있으므로, 타입 불변식을 훼손하기 쉽다. 
+raw type은 아무 원소나 collection에 삽입할수있으므로, 타입 불변식을 훼손하기 쉽다. 
 
 ## 예외상황 - class literal, instanceof
 
@@ -147,4 +147,4 @@ generic은 runtime 시점에 매개변수화 타입이 모두 지워진다. (Typ
 
 ## 정리
 
-raw type을 사용하는 경우에는 타입 안전성을 제공해주지 않아 runtime error가 발생하기 쉬우므로, 예외상황이 아닌 경우에는 raw type보다는 generic type을 사용해야한다.  \<Object> 는 어떤 타입의 객체도 받을 수 있는 매개변수화 타입이고, \<?> 는 어떤 타입도 받을 수는 있으나, Collection\<?> 인 경우에 null을 제외한 어떠한 원소도 삼입이 불가능하다.
+raw type을 사용하는 경우에는 타입 안전성을 제공해주지 않아 runtime error가 발생하기 쉬우므로, 예외상황이 아닌 경우에는 raw type보다는 generic type을 사용해야한다.  \<Object> 는 어떤 타입의 객체도 받을 수 있는 매개변수화 타입이고, \<?> 는 어떤 타입도 받을 수는 있으나, Collection\<?> 인 경우에 null을 제외한 어떠한 원소도 삽입이 불가능하다.

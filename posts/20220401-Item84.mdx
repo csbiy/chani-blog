@@ -5,13 +5,13 @@ description: ""
 date: "2022-04-01 00:37:24"
 tags: ["Java", "Effective Java 3/E"]
 ---
-- 실행 가능한 Thread의 평균적인 수를 processor 수보다 지나치게 많아지지 않도록 유지하는게 좋다. 그래야만 Thread scheudling 정책이 상이한 시스템에도 다른 시스템들과 동작이 크게 달라지지 않는다.
+- 실행 가능한 Thread의 평균적인 수를 processor 수보다 지나치게 많아지지 않도록 유지하는게 좋다. 그래야만 Thread scheduling 정책이 상이한 시스템에도 다른 시스템들과 동작이 크게 달라지지 않는다.
 
 ## 실행 가능한 Thread 수를 적게 유지하는 기법 (불필요한 Thread 를 만들지 않는 방법) 
 
 1. Thread 가 busy wait 상태가 되지 않게 한다. 즉 처리할 작업이 없다면 실행되지 않도록 한다. 
 
-공유 객체의 상태가 바뀔떄까지 쉬지 않고 검사해서는 안된다는 뜻이다. busy wait는 processror 에 큰 부담을 주어 다른 유용한 작업이 실행될 기회를 박탈한다. 
+공유 객체의 상태가 바뀔 때까지 쉬지 않고 검사해서는 안 된다는 뜻이다. busy wait는 processror 에 큰 부담을 주어 다른 유용한 작업이 실행될 기회를 박탈한다. 
 
 ```java
 public class SlowCountDownLatch {

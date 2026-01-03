@@ -5,7 +5,7 @@ description: ""
 date: "2022-01-31 11:34:20"
 tags: ["Java", "Effective Java 3/E"]
 ---
-## 매개변수가 동일한 부모 타입일떄 overloading의 문제점 
+## 매개변수가 동일한 부모 타입일 때 overloading의 문제점 
 
 다음과 같이 collection을 집합, 리스트 , 그외로 구분하고자 만든 CollectionClassifier 프로그램이 있다.
 
@@ -37,7 +37,7 @@ public class CollectionClassifier {
 ```
 
 collection에 set,list,map을 넣어주면 예상결과는 set,list,others인데 실제로는 others만 세번 출력된다. 
-그 이유는 다중정의(overloading)된 classify증에 어느 method를 실행할지가 compile time에 정해지기 떄문이다. compile time에 for문안의 c는 항상 Collection\<?> 타입이다. runtime에는 타입이 매번 달라지지만 호출할 method를 선택하는데는 영향을 주지 못한다. 
+그 이유는 다중정의(overloading)된 classify증에 어느 method를 실행할지가 compile time에 정해지기 때문이다. compile time에 for문안의 c는 항상 Collection\<?> 타입이다. runtime에는 타입이 매번 달라지지만 호출할 method를 선택하는데는 영향을 주지 못한다. 
 
 ## overloading vs overriding 
 
@@ -111,7 +111,7 @@ public void writeShort(int val)  throws IOException {
 }
 ```
 
-3. 생성자의 경우는 이름을 다르게 지을 수 없으니, 2번쨰 생성자부터는 무조건 overloading이 적용된다. 하지만 정적 팩토리 method를 활용하는 방안도 있다. 
+3. 생성자의 경우는 이름을 다르게 지을 수 없으니, 2번째 생성자부터는 무조건 overloading이 적용된다. 하지만 정적 팩토리 method를 활용하는 방안도 있다. 
    
 4. 매개변수 수가 같은 다중정의 method가 많다하더라도 매개변수가 서로간에 근본적으로 다른 경우 ( = 형변환이 아예 불가능한 경우)는 사용하여도 어차피 다중정의 method가 매개변수의 runtime 타입으로만 결정된다. 
 
@@ -164,7 +164,7 @@ public class SetList {
 [-3, -2, -1] [-2, 0, 2]
 ```
 
-반면 Integer로 명시적 형변환했을떄는 Object 매개변수를 받는 method가 선택되어 정상적으로 작동하낟. 
+반면 Integer로 명시적 형변환했을 때는 Object 매개변수를 받는 method가 선택되어 정상적으로 작동한다. 
 
 ```java
 public class SetList {
@@ -203,7 +203,7 @@ new Thread(System.out::println).start();
 ExecutorService exec = Executors.newCachedThreadPool();
 exec.submit(System.out::println); // compile error
 ```
-1,2번모두 매개변수는 같고 , Runnable을 받는 method를 다중 정의하고 있다. 하지만 2번의 경우에만 compile error가 나는데  그 이유는 submit 다중정의 method 중에 Callable\<T>를 받는 method도 있기 떄문이다. 
+1,2번모두 매개변수는 같고 , Runnable을 받는 method를 다중 정의하고 있다. 하지만 2번의 경우에만 compile error가 나는데  그 이유는 submit 다중정의 method 중에 Callable\<T>를 받는 method도 있기 때문이다. 
 
 ```java
 <T> Future<T> submit(Callable<T> task);
@@ -214,4 +214,4 @@ println method는 반환값이 없으니, 반환값이 있는 Callable method와
 
 결론은 다중정의된 method들이 함수형 인터페이스를 인수로 받을 수 있을때, 서로 다른 함수형 인터페이스라고 할지라도 인수 위치가 같으면 혼란이 생길 수도 있다는 게 결론이다. 
 
-따라서 method를 다중정의할떄, 서로 다른 함수형 인터페이스라고 할지라도 같은 위치의 매개변수로 받아서는 안된다.
+따라서 method를 다중정의할 때, 서로 다른 함수형 인터페이스라고 할지라도 같은 위치의 매개변수로 받아서는 안된다.

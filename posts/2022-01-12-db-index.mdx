@@ -6,9 +6,9 @@ date: "2022-01-12 20:53:22"
 tags: ["Computer Science", "Database"]
 ---
 ## Index 정의 
-Disk I/O를 최소화시키면서 원하는 데이터를 효율적으로 검색하기 위한 자료구조로 Data file과 분리된 index file 에 보관되며, 데이터 필드에 대한 탐색 키값과 record 물리적 위치를 가르키는 포인터로 구성된다. 
+Disk I/O를 최소화시키면서 원하는 데이터를 효율적으로 검색하기 위한 자료구조로 Data file과 분리된 index file 에 보관되며, 데이터 필드에 대한 탐색 키값과 record 물리적 위치를 가리키는 포인터로 구성된다. 
 
-- Index의 크기는 data file에 비해 휠씬 작다.
+- Index의 크기는 data file에 비해 훨씬 작다.
 - 하나의 data file에 여러 개의 index가 정의될 수 있다. (하나의 희소인덱스와 여러개의 밀집 인덱스를 가질 수 있다. )
 - Index가 정의된 table의 필드를 탐색 키라고 한다. 
 
@@ -37,7 +37,7 @@ primary key에 대해 정렬된 상태로 유지되야 희소 인덱스를 가�
 
 ## clustering index 장점
 
-clustering index는 범위 질의에 유용하다. 범위의 시작 값에 해당하는 index entry를 먼저 찾고, 범위에 속하는 index entry를 따라가면서 record를 검색할떄 디스크에서 읽어오는 block수가 최소화된다. 
+clustering index는 범위 질의에 유용하다. 범위의 시작 값에 해당하는 index entry를 먼저 찾고, 범위에 속하는 index entry를 따라가면서 record를 검색할 때 디스크에서 읽어오는 block수가 최소화된다. 
 
 ## clustering index 단점 
 
@@ -55,12 +55,12 @@ table 에 data가 INSERT된다고하면 해당 table의 지정된 column은 모�
 
 ## non-clustering index 단점
 
-밀집 인덱스이므로, 레코드에 접근할떄 Disk I/O 횟수가 증가한다. 
+밀집 인덱스이므로, 레코드에 접근할 때 Disk I/O 횟수가 증가한다. 
 
 
 ## Index 설계 조건 
 
-- 갱신이나 삼입이 자주 일어나지 않으며 검색이 빈번한 field에 사용하는게 효과적이다. 
+- 갱신이나 삽입이 자주 일어나지 않으며 검색이 빈번한 field에 사용하는게 효과적이다. 
 - domain cardnality(해당 필드내 상이한 값들의 개수)가 적은 경우에는 index를 사용하지 않는게 효과적이다. 
 - table의 크기가 작은 경우에는 index를 사용하지 않는게 효과적이다.
 

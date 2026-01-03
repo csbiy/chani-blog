@@ -136,7 +136,7 @@ public class WebConfig implements WebMvcConfigurer {
 
 controller에서 model 객체에 converting 할 객체를 담아서 보내면, thymeleaf template engine에서 등록된 converter를 사용해서 다음과 같이 convert 할수 있다.  
 
-이떄 converter를 사용하려면 &#123; &#123; converting 대상 &#125; &#125; 을입력한다. 또는 th:field로도 꺼내 사용할 수 있다. 
+이때 converter를 사용하려면 &#123; &#123; converting 대상 &#125; &#125; 을입력한다. 또는 th:field로도 꺼내 사용할 수 있다. 
 
 ```html
     <li>${ipPort}: <span th:text="${ipPort}" ></span></li>

@@ -17,7 +17,7 @@ protected boolean removeEldestEntry(Map.Entry<K,V> eldest){
 ```
 다음과 같이 100개 미만의 크기를 가진 map의 경우에는 원소를 제거하지 않고, 100개 이상부터 오래된 원소를 제거하도록 구현할 수 있는데, 이를 함수형 인터페이스로 변경가능하다.
 
-주의할점은 위 method가 instance method이기 떄문에, 람다를 사용할떄에는 Map instance도 매개변수로 받아야 한다. 
+주의할점은 위 method가 instance method이기 때문에, 람다를 사용할 때에는 Map instance도 매개변수로 받아야 한다. 
 
 ```java
 @FunctionalInterface
@@ -214,7 +214,7 @@ public interface ToLongFunction<T> {
 
 이외에도 인수를 2개씩 받는 변형들이 존재한다. 예를 들면 BiPredicate\<T,U>,BiFunction\<T,U,r> , BiConsumer\<T,U> 가 있다. 
 
-인터페이스 자체가 43개기 떄문에 외우는건 당연히 불가능하고 필요할떄마다 API문서를 뒤져서 찾아서 사용하면 된다. 
+인터페이스 자체가 43개기 때문에 외우는건 당연히 불가능하고 필요할 때마다 API문서를 뒤져서 찾아서 사용하면 된다. 
 
 
 

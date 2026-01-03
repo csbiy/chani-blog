@@ -24,7 +24,7 @@ Thread-hostile 으로 밝혀진 class나 method의 경우는 일반적으로 문
 
 - 조건부 스레드 안전한 클래스의 경우 특히 주의해서 문서화해야 한다고 한다. 일부 method만 동기화 작업이 필요하는데, 어떤 method를 호출할때 외부 동기화 필요한지, 어떤 lock을 얻어야 하는지를 써주어야 한다. 
 
-예를 들면 Collcetions.synchronizedMap method에는 다음과 같이 synchronized block안에 들어와야할 변수에 대해 API 문서에 써져있다고 한다. 
+예를 들면 Collections.synchronizedMap 메소드에는 다음과 같이 synchronized block안에 들어와야할 변수에 대해 API 문서에 써져있다고 한다. 
 
 
 ![](/images/Item82-01.png)

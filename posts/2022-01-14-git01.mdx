@@ -17,7 +17,7 @@ tags: ["개발 상식", "Git"]
     - Local Repository (로컬 저장소) : 말 그대로 로컬 PC에 파일이 저장되며 개인 저장소이다. 
 
 Git은 로컬저장소가 있음으로 성능상에 SVN에 비해 얻을 수 있는 장점도 있다. 
-프로젝트의 history를 조회하거나 어떤 파일의 현재 버전과 한달전 버전을 비교하고자 할떄 네트워크 요청없이 수행될 수도 있다. 
+프로젝트의 history를 조회하거나 어떤 파일의 현재 버전과 한달전 버전을 비교하고자 할 때 네트워크 요청없이 수행될 수도 있다. 
 
 
 ## Git 파일 상태
@@ -31,7 +31,7 @@ Git은 로컬저장소가 있음으로 성능상에 SVN에 비해 얻을 수 있
 
 ## Commit 
 
-- 파일(소스코드)의 변경사항이 있을떄 저장소에 반영하고자 하면 Git commit 명령어를 통해 수행될 수 있다. 
+- 파일(소스코드)의 변경사항이 있을 때 저장소에 반영하고자 하면 Git commit 명령어를 통해 수행될 수 있다. 
 
 각 commit 은 40자리의 id값을 부여받는데 , SHA-1 해시를 사용해서 checksum을 만든다. 저장소에는 이 id값을 보고 commit을 구분한다. 
 
@@ -213,7 +213,7 @@ cs@gimchansuui-iMac hello-git %
 
 ## git commit 되돌리기 
 
-완료한 commit을 수정해야할떄 , 파일을 수정하고나서 git add 명령어로 staging 상태로 만든 다음에 git commit --amend 옵션을 주어 commit을 재작성할 수 있다. 
+완료한 commit을 수정해야할 때 , 파일을 수정하고나서 git add 명령어로 staging 상태로 만든 다음에 git commit --amend 옵션을 주어 commit을 재작성할 수 있다. 
 
 git commit --amend 명령어를 쳤는데 만약 수정된 내용이 없다면 commit message만 수정된다. 
 

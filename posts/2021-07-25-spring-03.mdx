@@ -68,7 +68,7 @@ ApplicationContext는 interface type이고 그 구체 type으로는 여러 종�
 client가 getBean("@Bean Method명","bean.class");을 호출하면 이 목록에 해당 bean이 있는지 확인하고 있다면 , @Bean method를 호출해서 Bean 객체를 반환받아 넘겨준다. 
 
 #### 그렇다면 기존의 IoC Container와 spring application context간에는 무슨 차이점이 있을까? 
-spring application context에서는 싱글톤으로 하나의 bean 객체만 반환한다. 떄문에 spring application context를 singleton registry라고도 부르기도 한다. 
+spring application context에서는 싱글톤으로 하나의 bean 객체만 반환한다. 때문에 spring application context를 singleton registry라고도 부르기도 한다. 
 
 ```java
     public static void main(String[] args) {

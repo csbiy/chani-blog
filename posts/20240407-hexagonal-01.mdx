@@ -70,7 +70,7 @@ public class RouterViewInputPort implements RouterViewUseCase {
 #### 출력 포트 
 
 - 유스케이스는 목표를 달성하기 위해 외부 리소스에서 데이터를 가져와야 하는 상황이 있습니다. 이때 출력 포트가 외부에서 데이터를 제공하는 인터페이스 역할을 수행합니다. 
-- 이떄 출력 포트는 특정 기술에 종속되지 않습니다. 즉 데이터가 RDB로부터 오던 API부터로 오던 세분화된 책임은 출력 어댑터에 할당됩니다.
+- 이때 출력 포트는 특정 기술에 종속되지 않습니다. 즉 데이터가 RDB로부터 오던 API부터로 오던 세분화된 책임은 출력 어댑터에 할당됩니다.
 
 ```java
 public interface RouterViewOutputPort {

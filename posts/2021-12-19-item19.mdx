@@ -112,13 +112,13 @@ public final class Child extends Parent {
 
 3. Serializable 을 구현한 상속용 class가 readResolve 나 writeReplace method를 갖는다면 이 method들은 private 가 아닌 protected 로 선언해야 한다.
 * readResolve : 역직렬화 과정에서 호출되는 method
-* writeReplace : 직렬화된 상태에서 다시 객체로 만들떄 호출되는 method 
+* writeReplace : 직렬화된 상태에서 다시 객체로 만들 때 호출되는 method 
 
-private 로 선언한다면 하위 class에서 무시되기 떄문이다. 
+private 로 선언한다면 하위 class에서 무시되기 때문이다. 
 
 ## 일반적인 구체 클래스
 
-- 상속용으로 만들지 않고, 문서화되지 않은 class는 개발할떄 필요에 의해서 상속해도 괜찮을까?  되도록이면 상속을 금지하고, 대신 핵심 기능들을 정의해놓은 인터페이스 구현을 하는 것을 권고하고 있다.  
+- 상속용으로 만들지 않고, 문서화되지 않은 class는 개발할 때 필요에 의해서 상속해도 괜찮을까?  되도록이면 상속을 금지하고, 대신 핵심 기능들을 정의해놓은 인터페이스 구현을 하는 것을 권고하고 있다.  
 
 - 상속을 금지하는 방법은 이전 item에서도 다루었듯이 class를 final로 선언하거나 생성자를 하위class에서 호출할수 없도록 막는 방법이 있다. 
 

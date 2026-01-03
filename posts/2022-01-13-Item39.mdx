@@ -266,7 +266,7 @@ public static void doublyBad(){
 
 ## @Repeatable annotation 사용주의점 
 
-- 두 개 이상의 @Repeatable annotation을 받았을떄는 container annotation type이 적용된다. 
+- 두 개 이상의 @Repeatable annotation을 받았을 때는 container annotation type이 적용된다. 
 
 ```java
     // container annotation type
@@ -286,7 +286,7 @@ public static void doublyBad(){
 
 getAnnotationsByType method는 이 둘(container annotation type과 repeatable annotation type)을 구분하진 않지만, isAnnotationPresent method는 이 둘을 구분한다. 
 
-따라서 위 방법을 적용했을떄는 다음과 같이 로직이 변경된다. 
+따라서 위 방법을 적용했을 때는 다음과 같이 로직이 변경된다. 
 
 ```java
 Class<?> testClass = Class.forName("study.effectivejv.ch03.item39.Sample3");

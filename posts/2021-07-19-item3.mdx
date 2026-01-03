@@ -47,7 +47,7 @@ public class Elvis{
     }
 }
 ```
-getInstance method는 new 객체를 생성해반환하는 것이 아니라, 이미 만들어진 instance의 참조를 넘김으로, 마찬가지로 singleton을 보장한다. 
+getInstance method는 new 객체를 생성해 반환하는 것이 아니라, 이미 만들어진 instance의 참조를 넘김으로써 마찬가지로 singleton을 보장한다. 
 
 3. 원소가 하나인 열거타입을 사용한다. 
 ```java
@@ -75,4 +75,4 @@ Supplier<Elvis>
 1. 코드 간결성이 제일 뛰어나고, reflection 공격에서도 제 2의 instance가 생기는 것을 막아준다. 
 
 
-effective java 에서는 enum type을 선언하여 싱글톤 객체를 만드는 것을 권하고 있다.단 만드려는 instance가 enum class 외의 class를 상속해야 한다면, 해당 방법은 당연히 사용이 불가능함으로, static factory method 방법을 고려하면 되겠다.
+Effective Java에서는 enum type을 선언하여 싱글톤 객체를 만드는 것을 권하고 있다. 단, 만드려는 instance가 enum class 외의 class를 상속해야 한다면 해당 방법은 사용이 불가능하므로 static factory method 방법을 고려하면 되겠다.

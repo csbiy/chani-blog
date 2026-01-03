@@ -12,7 +12,7 @@ tags: ["Java", "Effective Java 3/E"]
 상위 class 내부 구현 변경에 따라 하위 class가 영향을 받을 수도 있다.  상위 class가 확장을 충분히 고려해두고 설계되지 않으면 하위 class는 상위 class의 변화맞추어 수정되야 한다. 
 
 
-hashSet에서 원소가 하나 추가될떄마다 count해주기 위해서 다음과 같이 HashSet을 상속받은 클래스가 있다고 가정하자.
+hashSet에서 원소가 하나 추가될 때마다 count해주기 위해서 다음과 같이 HashSet을 상속받은 클래스가 있다고 가정하자.
 ```java
 public class InstrumentedHashSet<E> extends HashSet<E> {
 
@@ -42,7 +42,7 @@ public class InstrumentedHashSet<E> extends HashSet<E> {
 
 ```
 
-위 class는 실제로 Test해보면 정상작동하지 않는다는 것을 알 수 있다. HashSet의 addAll이 내부적으로 add를 호출하기 떄문이다. addAll을 overriding안하면 해결되겠지만, 이는 HashSet의 내부구현방식이 변경되면 작동하지 않는다.
+위 class는 실제로 Test해보면 정상작동하지 않는다는 것을 알 수 있다. HashSet의 addAll이 내부적으로 add를 호출하기 때문이다. addAll을 overriding안하면 해결되겠지만, 이는 HashSet의 내부구현방식이 변경되면 작동하지 않는다.
 
 ```java
 class InstrumentedHashSetTest {
@@ -145,7 +145,7 @@ Beverage beverage = new Whipping(new Coffee());
 - Composition과 전달의 조합은 넓은 의미로는 위임(delegation)이라고 하는데, 정확히는 Wrapper 객체가 내부 객체에 자기 자신의 참조를 넘기는 경우만 위임에 해당 된다. 
 
 
-- 구현체가 여러개 있을떄, 전달 method을 매 구현체마다 작성하는 대신 공통적인 전달 method 묶음을 인터페이스로 만들어두면 편리하게 구현할 수 있다. 
+- 구현체가 여러개 있을 때, 전달 method을 매 구현체마다 작성하는 대신 공통적인 전달 method 묶음을 인터페이스로 만들어두면 편리하게 구현할 수 있다. 
 
 
 ## Composition의 단점
@@ -158,9 +158,9 @@ Beverage beverage = new Whipping(new Coffee());
 
 
 ## 상속을 사용하는 상황 
-클래스 A를 상속하는 클래스 B를 작성하려고 하면 ,  B is-a A 관계일떄만 클래스를 상속해야 한다.
+클래스 A를 상속하는 클래스 B를 작성하려고 하면 ,  B is-a A 관계일 때만 클래스를 상속해야 한다.
 
 
 ## 정리 
 
-상속은 상위 class가 변경됨에따라 하위class가 영향을 받으므로, 캡슐화를 해친다는 문제가 있다. 순수한 is-a관계일떄만 사용을 지향해야하고, 상속의 문제점을 피하려면 Composition과 전달을 사용하자
+상속은 상위 class가 변경됨에따라 하위class가 영향을 받으므로, 캡슐화를 해친다는 문제가 있다. 순수한 is-a관계일 때만 사용을 지향해야하고, 상속의 문제점을 피하려면 Composition과 전달을 사용하자

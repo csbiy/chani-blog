@@ -1,6 +1,6 @@
 ---
 id: 74
-title: "brower javascript test하기(Mocha,NodeJs)"
+title: "browser javascript test하기(Mocha,NodeJs)"
 description: ""
 date: "2021-07-22 19:30:02"
 tags: ["Javascript"]
@@ -10,14 +10,14 @@ tags: ["Javascript"]
 
 Nodejs의 express framework를 사용하여 Backend개발을 하면서 단위 테스트는 mocha를 활용하였다. 서버 코드는 mocha로 테스트를 진행하였는데,  browser(client) 쪽 javascript  도 mocha (javascript test framework)가 지원한다고 한다. 
 
-기본 템플릿은 다음과 같다 유의할점은 command line interfcae를 지원해주지 않고, html 을 통해서 테스트 결과를 확인할 수 있다. 
+기본 템플릿은 다음과 같다. 유의할 점은 command line interface를 지원해주지 않고, html 을 통해서 테스트 결과를 확인할 수 있다. 
 
 ```javascript
 mocha.setup("{mocha interface style}") ex) mocha.setup("bdd"),mocha.setup("tdd")
 ```
 를 통해 테스트 인터페이스 스타일을 지정하고,
 
-test할 client javascript file을 import한다. 이떄, javsacript module 시스템을 브라우저에서 하려면
+test할 client javascript file을 import한다. 이때, javascript module 시스템을 브라우저에서 하려면
 type="module"을 명시해야 한다.
 
 * internet explorer는 아예 지원되지 않으니 참고하자. https://developer.mozilla.org/ko/docs/orphaned/Web/JavaScript/Guide/Modules

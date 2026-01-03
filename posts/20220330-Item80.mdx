@@ -36,9 +36,9 @@ Queue를 둘 이상의 Thread 가 처리하게 하고 싶다면 간단히 다른
 - 작은 프로그램이나 가벼운 서버라면 Executors.newCachedThreadPool 이 일반적으로 좋은 선택이다. 
 
 CachedThreadPool 의 동작 방식은 요청받은 task를 queing 하지 않고 바로 thread에게 위임하여 실행시키는 것이다. 
-가용한 thread가 없으면 새로 하나를 생성한다. 따라서 무거운 서버의 경우에 task요청이 많을떄에는 thread를 계속해서 생성하므로 cpu 이용률이 과도하게 높아진다. 
+가용한 thread가 없으면 새로 하나를 생성한다. 따라서 무거운 서버의 경우에 task요청이 많을 때에는 thread를 계속해서 생성하므로 cpu 이용률이 과도하게 높아진다. 
 
-- 무거운 서버의 경우에는 Thread 개수를 고정한 Executors.newFixedThreadPool이나, 완전히 통제할 수 있는 ThreadPoolExecutor를 직접 사용하는 편이 휠씬 낫다. 
+- 무거운 서버의 경우에는 Thread 개수를 고정한 Executors.newFixedThreadPool이나, 완전히 통제할 수 있는 ThreadPoolExecutor를 직접 사용하는 편이 훨씬 낫다. 
 
 
 
@@ -56,9 +56,9 @@ CachedThreadPool 의 동작 방식은 요청받은 task를 queing 하지 않고 
 - 작은 프로그램이나 가벼운 서버라면 Executors.newCachedThreadPool 이 일반적으로 좋은 선택이다. 
 
 CachedThreadPool 의 동작 방식은 요청받은 task를 queing 하지 않고 바로 thread에게 위임하여 실행시키는 것이다. 
-가용한 thread가 없으면 새로 하나를 생성한다. 따라서 무거운 서버의 경우에 task요청이 많을떄에는 thread를 계속해서 생성하므로 cpu 이용률이 과도하게 높아진다. 
+가용한 thread가 없으면 새로 하나를 생성한다. 따라서 무거운 서버의 경우에 task요청이 많을 때에는 thread를 계속해서 생성하므로 cpu 이용률이 과도하게 높아진다. 
 
-- 무거운 서버의 경우에는 Thread 개수를 고정한 Executors.newFixedThreadPool이나, 완전히 통제할 수 있는 ThreadPoolExecutor를 직접 사용하는 편이 휠씬 낫다. 
+- 무거운 서버의 경우에는 Thread 개수를 고정한 Executors.newFixedThreadPool이나, 완전히 통제할 수 있는 ThreadPoolExecutor를 직접 사용하는 편이 훨씬 낫다. 
   
 - task (callable,runnable 구현체) 를 실행하는 일반적인 메카니즘이 바로 java.util.concurrent.ExecutorService이다
 - Jdk7부터 Executor Framework는 Fork-Join Task를 지원하도록 확장되었다. 

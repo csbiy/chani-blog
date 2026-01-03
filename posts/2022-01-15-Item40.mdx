@@ -32,7 +32,7 @@ public class Bigram {
     public static void main(String[] args) {
         Set<Bigram> s = new HashSet<>();
         for(int i = 0; i< 10 ; i++){
-            for (char ch = "a"; ch <= "z";ch++){
+            for (char ch = 'a'; ch <= 'z';ch++){
                 s.add(new Bigram(ch,ch));
             }
         }
@@ -41,10 +41,10 @@ public class Bigram {
 }
 ```
 
-그 이유는 바로 equals method를 실수로 parameter 를 Bigram type으로 받아 overrloading하였기 때문이다. @Override 를 붙여주면 바로 compile error를 보여준다. 
+그 이유는 바로 equals 메소드를 실수로 parameter를 Bigram 타입으로 받아 overloading하였기 때문이다. @Override 를 붙여주면 바로 compile error를 보여준다. 
 
 따라서 상위 class의 method를 재정의하는 모든 method는 @Override annotation을 달 것을 권고한다. 
 
 
 
-추가로  구체 class에서 상위 추상 class의 추상 method를 재정의하는 상황에서 개발자가 실수로 method overrloading시에는 어차피 compile error가 터지기에 @Override annotation을 안달아도 되지만, 일관성을 위해서 달아도 무관한다.
+추가로 구체 class에서 상위 추상 class의 추상 메소드를 재정의하는 상황에서 개발자가 실수로 메소드 overloading 시에는 어차피 컴파일 에러가 터지기에 @Override annotation을 안 달아도 되지만, 일관성을 위해서 달아도 무관하다.

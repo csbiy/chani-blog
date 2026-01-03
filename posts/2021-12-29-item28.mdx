@@ -10,7 +10,7 @@ tags: ["Java", "Effective Java 3/E"]
 1. 배열은 공변(covariant) 인 반면 Generic은 불공변(invariant) 이다.
 
 Sub class가 Super class의 하위 class라고 가정하면 배열 Sub[]는 Super[]의 하위 타입이 된다. 
-반면에 서로 다른 타입인 Type1과 Type2가 있을떄 Generic인 List\<Type1> List\<Type2> 은 아무 계층관계도 가지지 않는다. 
+반면에 서로 다른 타입인 Type1과 Type2가 있을 때 Generic인 List\<Type1> List\<Type2> 은 아무 계층관계도 가지지 않는다. 
 
 ```java
 // Array 
@@ -31,9 +31,9 @@ List<Object> ol = new ArrayList<Long>(); // compile Error
 
 
 
-위와 같은 차이점 떄문에 Generic 배열은 Java에서 허용되지 않는다. 
+위와 같은 차이점 때문에 Generic 배열은 Java에서 허용되지 않는다. 
 
-예시로 아래와 같이 `List<String>` 를 원소로 갖는 제너릭 배열을 만든다고 가정하면, 배열은 공변이기 떄문에 Object[] 으로 배열을 받을 수 있고,Object[] 배열은 모든 타입의 원소를 받을 수 있으므로 값을꺼낼때 runtime error가 발생할수도 있다.
+예시로 아래와 같이 `List<String>` 를 원소로 갖는 제너릭 배열을 만든다고 가정하면, 배열은 공변이기 때문에 Object[] 으로 배열을 받을 수 있고,Object[] 배열은 모든 타입의 원소를 받을 수 있으므로 값을 꺼낼 때 runtime error가 발생할수도 있다.
 
 ```java
 List<String>[] stringList = new List<String>[1];
@@ -46,7 +46,7 @@ String s = stringList[0].get(0);
 
 ## 실체화 불가 타입 
 
-E,List\<E>,List\<String>과 같은 type을 실체화 불가 타입이라고 한다. 실체화 불가 타입이란 runtime에는 compile time보다 타입 정보를 적게 가지는 타입이다. runtime시 타입 소거 떄문에 매개변수화 타입 중에 실체화 될 수 있는 타입은 List\<?> 와 Map\<?,?> 와 같은 비한정적 wildcard 타입 뿐이다. 
+E,List\<E>,List\<String>과 같은 type을 실체화 불가 타입이라고 한다. 실체화 불가 타입이란 runtime에는 compile time보다 타입 정보를 적게 가지는 타입이다. runtime시 타입 소거 때문에 매개변수화 타입 중에 실체화 될 수 있는 타입은 List\<?> 와 Map\<?,?> 와 같은 비한정적 wildcard 타입 뿐이다. 
 
 ## Generic type을 배열로 형변환 
 

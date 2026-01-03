@@ -256,14 +256,14 @@ public class ExampleController {
 
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(IllegalArgumentException.class)
-    // IllegalArgumentException 또는 그 자식 예외가 들어올떄 실행된다. 
+    // IllegalArgumentException 또는 그 자식 예외가 들어올 때 실행된다. 
     public ErrorResult illegalExHandler(IllegalArgumentException e){
         log.error("[exceptionHandle] ex",e);
         return new ErrorResult("BAD",e.getMessage());
     }
 
     @ExceptionHandler
-    // 예외 class를 별도로 지정해주지 않는 경우에는 parameter의 예외를 처리해준다 즉 아래의 경우에는 UserException이 들어올떄 실행된다. 
+    // 예외 class를 별도로 지정해주지 않는 경우에는 parameter의 예외를 처리해준다 즉 아래의 경우에는 UserException이 들어올 때 실행된다. 
     public ResponseEntity<ErrorResult> userExHandle(UserException e){
         log.error("[exceptionHandle] ex",e);
         ErrorResult errorResult = new ErrorResult("USER-EX", e.getMessage());

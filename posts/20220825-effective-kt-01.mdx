@@ -31,7 +31,7 @@ class InsufficientFunds :Exception()
 - 프로그램을 이해하고 디버깅하기 힘들어진다. 오류시 상태 변경을 추적해야 한다. 
 - 멀티쓰레드 환경에서 동기화가 필요하다 
 - 테스트가 어렵다. 모든 상태에 대해서 테스트를 염두해두어야 한다.
-- 상태변경에 따른 추가적인 조치가 필요할수도 있다. 예를 들면 항상 정렬된 경우로 유지되야할경우 값이 추가되었을떄 정렬작업이 필요하다. 
+- 상태변경에 따른 추가적인 조치가 필요할수도 있다. 예를 들면 항상 정렬된 경우로 유지되야할경우 값이 추가되었을 때 정렬작업이 필요하다. 
 
 반면 불변성을 유지하였을때 갖는 장점은 다음과 같다.
 
@@ -55,7 +55,7 @@ fun main() {
     println(num)
 }
 ```
-위 연산은 매번 실행할떄마다 공유변수에 값을 여러 쓰레드에서 변경함으로 , 연산이 덮어씌워지는 경우가 생겨 다른 값이 나온다. 
+위 연산은 매번 실행할 때마다 공유변수에 값을 여러 쓰레드에서 변경함으로 , 연산이 덮어씌워지는 경우가 생겨 다른 값이 나온다. 
 이를 동기화하려면 아래와 같이 공유변수에 Lock을 걸어서, 접근을 제한하고 순차적으로 값을 증가시켜야 한다. 
 
 ```java
@@ -118,7 +118,7 @@ class ActualElement : Element{
     }
 ```
 
-- Jvm에서 listOf는 Java의 List 인터페이스를 구현한 Array.ArrayList 객체를 반환하는데 이는 add,set 을 모두 가지고 있기에 MutableList로 다운캐스팅이 된다. 하지만 Arrays.ArrayList 객체는 이러한 연산을 구현하고 있지 않기 떄문에 위와 같이 UnsupportedOperationException이 터진다. 
+- Jvm에서 listOf는 Java의 List 인터페이스를 구현한 Array.ArrayList 객체를 반환하는데 이는 add,set 을 모두 가지고 있기에 MutableList로 다운캐스팅이 된다. 하지만 Arrays.ArrayList 객체는 이러한 연산을 구현하고 있지 않기 때문에 위와 같이 UnsupportedOperationException이 터진다. 
 
 읽기 전용 Collection에서  MutableCollection으로 꼭 변경해야 한다면 , copy를 사용해서 변경해야 한다. 
 
@@ -137,7 +137,7 @@ fun main() {
 
 - immutable 객체는 자기 자신의 상태가 일부 다른 경우에도 새로운 객체를 만들어야 되기 때문에, 자신의 일부를 수정해서 새로운 객체를 만들어 줄 수 있는 method를 가져야 한다. 
 
-- 이떄 data 한정자를 붙이면 자동으로 copy method를 만들어주는데, copy method는 모든 기본생성자 프로퍼티가 동일한 새로운 객체를 만들어 낼 수 있다. 따라서 원래의 불변객체가 존재하는데, 특정 상태만 바꾼 새로운 객체를 만들어내고 싶다면 copy method를 활용하면 된다. 
+- 이때 data 한정자를 붙이면 자동으로 copy method를 만들어주는데, copy method는 모든 기본생성자 프로퍼티가 동일한 새로운 객체를 만들어 낼 수 있다. 따라서 원래의 불변객체가 존재하는데, 특정 상태만 바꾼 새로운 객체를 만들어내고 싶다면 copy method를 활용하면 된다. 
 
 ```java
 data class Account(val money:Int,val owner:String)

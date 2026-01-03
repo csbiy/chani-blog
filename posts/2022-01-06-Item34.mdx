@@ -197,7 +197,7 @@ for (Operation op : Operation.values()) {
 ```
 추가된 필드는 다음과 같이 재정의한 추상 method 와 함께 사용될 수 있다.
 
-toString 을 overriding할떄는 반대로 toString한 문자열로부터 Enum Type을 만들 수 있는 fromString 편의 method를 만드는 것을 고려할 수 있다. 
+toString 을 overriding할 때는 반대로 toString한 문자열로부터 Enum Type을 만들 수 있는 fromString 편의 method를 만드는 것을 고려할 수 있다. 
 
 
 ```java
@@ -211,7 +211,7 @@ public static Optional<Operation> fromString(String symbol){
 }
 ```
 
-위 Operation Enum type이 stringToEnum map에 추가되는 시점은 열거 타입 상수 생성 후 정적 필드가 초기화될떄이다. 
+위 Operation Enum type이 stringToEnum map에 추가되는 시점은 열거 타입 상수 생성 후 정적 필드가 초기화될 때이다. 
 
 enum type의 static 필드 중 enum type의 생성자에 접근할 수 있는 건 상수 필드 뿐이다. 
 
@@ -244,9 +244,9 @@ public enum PayrollDay {
 }
 ```
 
-위 코드는 휴가와 같은 새로운 열거 타입이 추가되었을떄 case문에 추가해야한다. 이를 해결하기 위한 방안으로 책에서는 3가지를 제시하고 있다. 
+위 코드는 휴가와 같은 새로운 열거 타입이 추가되었을 때 case문에 추가해야한다. 이를 해결하기 위한 방안으로 책에서는 3가지를 제시하고 있다. 
 
-1. 상수별로 중복 코드 삼입 (지양)
+1. 상수별로 중복 코드 삽입 (지양)
 2. 도우미 method를 작성해 각 상수가 자신에게 필요한 method를 적절히 호출 
 3. 상수 추가시마다 전략 enum type을 선택하는, 전략 열거 타입 패턴.
 
@@ -302,9 +302,9 @@ public enum PayrollDay {
   MONDAY(PayType.WEEKEND) // 월요일 연차 사용 ~
 ```
 
-앞선 예제들에서는 switch 문은 enum type의 상수별 동작을 구현하는데 적합하지 않다고 설명하였으나, 기존 enum type에 상수별 동작을 혼합해 넣을때는 switch문을 선택하는게 좋을떄도 있다. 
+앞선 예제들에서는 switch 문은 enum type의 상수별 동작을 구현하는데 적합하지 않다고 설명하였으나, 기존 enum type에 상수별 동작을 혼합해 넣을때는 switch문을 선택하는게 좋을 때도 있다. 
 
-예를 들면 외부 library에서 가져온 enum type 의 상수별 동작을 변경할떄이다. 
+예를 들면 외부 library에서 가져온 enum type 의 상수별 동작을 변경할 때이다. 
 
 ```java
 public static Operation inverse(Operation op){
@@ -322,10 +322,10 @@ public static Operation inverse(Operation op){
 
 - 필요한 원소를 compile time에 알 수 있는 상수 집합인 경우 항상 Enum type을 사용할것을 권고한다. 
 
-또한 enum type에 추가로 상수를 정의하더라도 binary 수준에서 호환되도록 설계되었기 떄문에 enum type에 정의된 상수 개수가 영원히 고정 불변일 필요는 없다. 
+또한 enum type에 추가로 상수를 정의하더라도 binary 수준에서 호환되도록 설계되었기 때문에 enum type에 정의된 상수 개수가 영원히 고정 불변일 필요는 없다. 
 
 ## 정리 
 
 Enum Type은 정수 , 상수 열거 패턴보다 compile time에 타입 안전하며, 
-Enum type 내 상수별로 다르게 동작하는 method가 필요할떄에는 enum class 에 추상 method를 선언해서 상수마다 method를 overriding해서 사용할 수 있다. 
+Enum type 내 상수별로 다르게 동작하는 method가 필요할 때에는 enum class 에 추상 method를 선언해서 상수마다 method를 overriding해서 사용할 수 있다. 
 상수 일부가 같은 동작을 공유한다면 전략 열거 타입 패턴을 사용할 수 있다.

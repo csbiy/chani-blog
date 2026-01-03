@@ -196,7 +196,7 @@ spec:
 
 여러 container간에 mount 된 volume을 마치 자기 자신 local에 있는 것처럼 사용함.
 
-pod안에 생성되는것이기 떄문에 pod에 문제가 생겨 재생성된다면 날라간다. 즉 휘발적인 데이터만 넣어야한다. 
+pod안에 생성되는것이기 때문에 pod에 문제가 생겨 재생성된다면 날라간다. 즉 휘발적인 데이터만 넣어야한다. 
 
 2. hostPath 
 
@@ -223,7 +223,7 @@ Pod 생성시 위 두 object를 연결할 수 있다. (ConfigMap, Secret)
 
 Literal(상수)형태로 외부환경변수를 주입하는 경우에는,
 ConfigMap,Secret Object 모두 K-V꼴로 데이터를 넣음. 
-다만 Value의 경우는 base64 인코딩해서 넣음. pod로 넣을떄는 자동으로 decoding. 
+다만 Value의 경우는 base64 인코딩해서 넣음. pod로 넣을 때는 자동으로 decoding. 
 Secret의 경우는 tmpfs 인메모리 파일시스템에 넣어 데이터가 파일에 영구적으로 보관되지 않고 파드 삭제시 소실됨
 이렇게 상수를 만들어 pod생성시 명시하는 경우에 해당 pod의 env 명령어를 치면 환경변수로 잡혀있음 
 
@@ -251,7 +251,7 @@ NodePort 타입의 service object도 namespace로 나눌수없음. 즉 경우에
 물론 persistent volume이나 node와 같이 여러 namespace에서 공유될수있는 object들도 존재한다. 
 
 namespace를 지우게되면 해당 namespace에 속한 모든 자원도 지워진다. 
-pod나 service를 만들떄 속할 namespace를 지정할 수 있음
+pod나 service를 만들 때 속할 namespace를 지정할 수 있음
 
 -->
 

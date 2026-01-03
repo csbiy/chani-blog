@@ -67,7 +67,7 @@ TDD 예시)
 
 <h2> JUNIT </h2>
   
-  - JUnuit framework는 테스트 메소드를 실행할떄 부가적으로 해주는 작업을 지원해준다. 
+  - JUnuit framework는 테스트 메소드를 실행할 때 부가적으로 해주는 작업을 지원해준다. 
 
 1. @BeforeEach : Junit이 제공하는 annotation인 @Test 메소드가 각각 실행되기전에 먼저 실행돼야 하는 메소드를 정의한다. (이외에도 AfterEach , AfterAll, BeforeAll이 있다. )
 
@@ -177,7 +177,7 @@ public class UserDaoTest {
 <h3> 테스트간 context 공유 </h3>
 
 - application context는 생성에 많은 리소스가 소모됨으로, 한번만 생성해서 테스트간 공유하면 된다. 
-- JUnit은 매번 test class 의 object를 새로 만들기 떄문에 멤버변수로 application context를 만든다하더라도, 매번 새롭게 생성된다.  
+- JUnit은 매번 test class 의 object를 새로 만들기 때문에 멤버변수로 application context를 만든다하더라도, 매번 새롭게 생성된다.  
 
 ```java
 public class Test {
@@ -208,7 +208,7 @@ public class Test {
 
 ```
 
-이와 같은 문제가 있기 떄문에, Junit은 test context를 지원해준다. test 실행이전에 딱 한번만 application context를 만들어준다. (test class간에도 context configuration이 같다면 공유된다.)
+이와 같은 문제가 있기 때문에, Junit은 test context를 지원해준다. test 실행이전에 딱 한번만 application context를 만들어준다. (test class간에도 context configuration이 같다면 공유된다.)
 
 
 ```java

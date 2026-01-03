@@ -12,7 +12,7 @@ Java는 두가지 객체 소멸자를 제공한다.
 
 2. cleaner 
 
-여기서 객체 소멸자란 생성자와 정반대의 개념으로, 객체가 소멸될떄(GC될때)
+여기서 객체 소멸자란 생성자와 정반대의 개념으로, 객체가 소멸될 때(GC될때)
 자동으로 호출되는 함수이다. 
 
 
@@ -95,7 +95,7 @@ public class Room implements AutoCloseable{
 
     @Override
     public void close() throws Exception {
-        // 자원 사용하는 client가 리소스를 깜빡하고 반환하지 못하였을때, cleaner가 안전망 역할로써 이를 반환해준다 (gc될떄 호출됨 )
+        // 자원 사용하는 client가 리소스를 깜빡하고 반환하지 못하였을때, cleaner가 안전망 역할로써 이를 반환해준다 (gc될 때 호출됨 )
         cleanable.clean();
     }
 }

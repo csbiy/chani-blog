@@ -55,7 +55,7 @@ public class Outer {
 
 - public 필요가 없는 클래스의 접근 수준을 package-private(default) 로 좁히자. 
 
-public 클래스는 그 패키지의 API인 반면, package-prviate는 내부구현으로 분류되기 떄문이다. 
+public 클래스는 그 패키지의 API인 반면, package-prviate는 내부구현으로 분류되기 때문이다. 
 
 - 접근 제한자의 종류와 접근 가능 범위 
 
@@ -69,7 +69,7 @@ public 클래스는 그 패키지의 API인 반면, package-prviate는 내부구
 
 
 
-클래스의 공개 API를 만들떄는 해당 클래스의 모든 멤버는 우선 private로 선언해두고, 오직 같은 패키지의 다른 클래스가 접근해야 하는 멤버에 한 해 , default로 풀어주자
+클래스의 공개 API를 만들 때는 해당 클래스의 모든 멤버는 우선 private로 선언해두고, 오직 같은 패키지의 다른 클래스가 접근해야 하는 멤버에 한 해 , default로 풀어주자
 
 public class의 protcted 멤버는 공개 API에 속함으로, 계속 지원해주어야 하고, 내부 동작방식을 API문서에 적어 공개해야 할 수도 있다. 
 
@@ -83,7 +83,7 @@ Test 상황시에는 public 클래스의 private 멤버 변수를 default까지�
 - public class의 필드는 되도록 public이 아니여야 한다.
   (item16관련, Immutable 객체 관련 내용이다. )
 
-immutable 객체란 객체가 한번 생성되고 나서 외부에서 상태를 변경시킬 수없는 객체를 말하는데, 필드가 public이면 당연히 값 변경이 자유롭기 떄문에, 불변객체가 아니고 또한 Thread-safe 하지 않다. 
+immutable 객체란 객체가 한번 생성되고 나서 외부에서 상태를 변경시킬 수없는 객체를 말하는데, 필드가 public이면 당연히 값 변경이 자유롭기 때문에, 불변객체가 아니고 또한 Thread-safe 하지 않다. 
 
 
 - 헤당 클래스와 관련된 상수인 경우는 public stiac final 필드로 공개하여도 괜찮다 
@@ -95,7 +95,7 @@ public class Round{
 }
 ```
 
-이떄 주의할 사항은 public static final 필드에 배열을 두거나, 이 필드를 반환하는 접근자 method를 제공해서는 안된다는 점이다. 
+이때 주의할 사항은 public static final 필드에 배열을 두거나, 이 필드를 반환하는 접근자 method를 제공해서는 안된다는 점이다. 
 
 ```java
 public static final Thing[] VALUES = {...};
@@ -152,4 +152,4 @@ public class Round {
 ## 정리
 
 program 요소의 접근성은 가능한 최소한으로 해서 필수적인 것만 public API로 공개하자.
- 해당 클래스의 개념과 관련된 상수들은 public static final 로 선언하고, 이떄 public static final 필드가 client에서 변경할 수 없는 불변임을 확인하라
+ 해당 클래스의 개념과 관련된 상수들은 public static final 로 선언하고, 이때 public static final 필드가 client에서 변경할 수 없는 불변임을 확인하라

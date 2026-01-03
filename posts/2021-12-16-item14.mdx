@@ -43,7 +43,7 @@ compareTo규약을 지키지 못하면 비교를 활용하는 TreeSet, TreeMap, 
 
 
 
-equals와 마찬가지로 기존 클래스를 확장한 구체 클래스에서 새로운 값 타입을 추가했다면, compareTo규약을 지킬 방법이 없으므로, item10에서 설명했던 것처럼 상속 대신에 독립된 class를 만들고, 이 클래스에 원래 클래스의 인스턴스를 가르키는 필드를 두고, 해당 인스턴스를 가르키는 view method 를 만들어주면 된다.
+equals와 마찬가지로 기존 클래스를 확장한 구체 클래스에서 새로운 값 타입을 추가했다면, compareTo규약을 지킬 방법이 없으므로, item10에서 설명했던 것처럼 상속 대신에 독립된 class를 만들고, 이 클래스에 원래 클래스의 인스턴스를 가리키는 필드를 두고, 해당 인스턴스를 가리키는 view method 를 만들어주면 된다.
  
 
 예를 들어, 아래와 같은 학생 class가 있고, 키를 기준으로 정렬한다고하면 comparable은 다음과 같이 overriding할 수 있을 것이다. 
@@ -78,7 +78,7 @@ public class Student implements Comparable<Student> {
 
 ```
 
-score 값을 추가하고자 할떄 student class를 상속하는 경우에는 equals와 compareTo 를 적절히 사용할 수 없기 때문에 (item 10 참조) 다음과 같이 멤버 변수로 값을 추가하고, 학생 타입은 view method로 꺼내서 비교한다. 
+score 값을 추가하고자 할 때 student class를 상속하는 경우에는 equals와 compareTo 를 적절히 사용할 수 없기 때문에 (item 10 참조) 다음과 같이 멤버 변수로 값을 추가하고, 학생 타입은 view method로 꺼내서 비교한다. 
 
 
 ```java
@@ -173,7 +173,7 @@ compareTo method 작성 요령은 equals와 비슷하다. 몇가지 차이점이
 1. Comparable 은 타입을 인수로 받는 generic Interface임으로, compareTo method의 인수 타입은 컴파일 타임에 정해진다. 
    (굳이 런타임에 형변환하는 건 당연히 안하는게 좋다. )
 
-2. null을 인수로 넣어 호출하면 NullPointerException이 발생해야 한다. 어짜피 필드 값을 비교하려고 할떄, 객체가 null임으로 NPE가 발생할 것이다. 
+2. null을 인수로 넣어 호출하면 NullPointerException이 발생해야 한다. 어짜피 필드 값을 비교하려고 할 때, 객체가 null임으로 NPE가 발생할 것이다. 
 
 3. compareTo는 equals와 다르게 동치인지를 비교하는게 아니라 순서를 비교한다. 객체 참조 필드를 비교하려면 compareTo method를 재귀적으로 호출하면 된다. 
 
@@ -218,7 +218,7 @@ public final class CaseInsensitiveString  implements Comparable<CaseInsensitiveS
 
 - boxing된 primitive type들에 새로 정의된 정적 method인 compare를 이용해서 값을 비교하라 
 
-java 7이전 부터는 boxing된 primitive type들에 새로 정의된 정적 method인 compare가 없었기 떄문에 부등호(`>,<>`) 로 값을 비교하였는데, java7부터는 이를 지원해주기 때문에, 실수가 발생할 수 있는 부등호보다는 정적 메소드를 사용하는게 좋다.
+java 7이전 부터는 boxing된 primitive type들에 새로 정의된 정적 method인 compare가 없었기 때문에 부등호(`>,<>`) 로 값을 비교하였는데, java7부터는 이를 지원해주기 때문에, 실수가 발생할 수 있는 부등호보다는 정적 메소드를 사용하는게 좋다.
 
 위 예제들도 모두 정적 메소드를 사용해서 구현하였다. 
 

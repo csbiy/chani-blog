@@ -31,7 +31,7 @@ public <T> T[] toArray(T[] a){
     return a;
 }
 ```
-ArrayList를 compile하면 경고가 발생한다, 이떄 method 전체에 @SuppressWarnings를 선언해 혹시 발생할 수도 있는 다른 error를 숨기는 방향보다, 지역변수로 뽑아서 @SuppressWarnings를 적용하는것을 권고하고 있다.
+ArrayList를 compile하면 경고가 발생한다, 이때 method 전체에 @SuppressWarnings를 선언해 혹시 발생할 수도 있는 다른 error를 숨기는 방향보다, 지역변수로 뽑아서 @SuppressWarnings를 적용하는것을 권고하고 있다.
 
 ```java
 public <T> T[] toArray(T[] a){

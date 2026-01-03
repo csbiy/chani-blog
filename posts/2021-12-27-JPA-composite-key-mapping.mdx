@@ -48,8 +48,8 @@ public class User {
     private LocalDateTime deletedAt;
 }
 ```
-@AllArgsConstructor annotation이 entity에 추가된 이유는 lombok 빌더 떄문이다.(@Builder)
-빌더 패턴은 모든 멤버변수를 생성자로 받을 수 있어야 한다, 자세한 내용은 이펙티브 자바 , builder pattern 내부 구현을 보면 알수 있는데 간략하게 정리하면 아래와 같이 빌더내 멤버변수를 생성하고자 하는 객체에 넘겨줄떄 생성자가 필요하기 떄문이다. 또는 빌더 자체를 넘겨주어서 빌더로부터 필드를 가져오는 방식도 존재한다. 
+@AllArgsConstructor annotation이 entity에 추가된 이유는 lombok 빌더 때문이다.(@Builder)
+빌더 패턴은 모든 멤버변수를 생성자로 받을 수 있어야 한다, 자세한 내용은 이펙티브 자바 , builder pattern 내부 구현을 보면 알수 있는데 간략하게 정리하면 아래와 같이 빌더내 멤버변수를 생성하고자 하는 객체에 넘겨줄 때 생성자가 필요하기 때문이다. 또는 빌더 자체를 넘겨주어서 빌더로부터 필드를 가져오는 방식도 존재한다. 
 ```java
 // lombok builder 구현방식
 public build(){
@@ -180,7 +180,7 @@ public class User {
 ## @IdClass와  @EmbeddedClass간의 차이점 
 
 @EmbeddedClass에서는 entity class에 복합키 클래스만 명시해주는 반면, @IdClass는 복합키 클래스의 필드를 중복으로 다시 명시해주어야 한다
-jpql query가 나갈떄 차이점도 존재한다. 
+jpql query가 나갈 때 차이점도 존재한다. 
 @IdClass 
 ```sql
 SELECT user.userId,user.password from User user

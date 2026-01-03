@@ -76,7 +76,7 @@ EntityManager 가 사실상 Jpa 기능의 대부분을 제공한다.
 ## Persistence Context (영속성 컨텍스트)
 
 <blockquote>
-Entity를 영구 저장하는 환경으로, EntityManager가 생성될떄 하나 만들어지고, EntityManager는 이 영속성 컨텍스트에 Entity를 보관하고 관리한다. 
+Entity를 영구 저장하는 환경으로, EntityManager가 생성될 때 하나 만들어지고, EntityManager는 이 영속성 컨텍스트에 Entity를 보관하고 관리한다. 
 </blockquote>
 
 
@@ -143,7 +143,7 @@ Persistent Context의 특징은 다음과 같다.
 ## 1차 cache 
 
 영속성 컨텍스트는 DB에 쿼리문을 바로 날리는게 아니라 내부적으로 1차 Cache 에 먼저 저장한다. 
-이떄 @Id (DB의 PK값) 와 Entity 객체를 K-V 로 저장한다. 
+이때 @Id (DB의 PK값) 와 Entity 객체를 K-V 로 저장한다. 
 
 그렇다면 왜 1차 Cache에 먼저 저장할까? 이름에서 알 수 있듯이 Cache의 장점이다. 접근하기 빠른 더 상위 계층의 저장계층에 저장함으로서 DB까지 I/O query가 안나가고 application에서 영속성 상태의 Entity 객체를 찾아 올 수 있는 것이다. (성능상 장점)
 
@@ -202,7 +202,7 @@ transaction.commit(); // 최종적으로는 snapshot과 비교후 1개의 update
 
 ![](/images/jpa-basic-01.png)
 
-이렇게 write buffering 하면 불필요한 쿼리를 줄일 수 있다 예를 들어 위와 같이 member에 대해 update 를 수행하였을떄 바로바로 update query가 나가지 않고, commit 시점에 snapshot과 비교해 한번의 update쿼리가 나간다 (dirty checking) . 이부분은 영속성컨텍스트의 또다른 특징으로 아래에 정리하였다. 
+이렇게 write buffering 하면 불필요한 쿼리를 줄일 수 있다 예를 들어 위와 같이 member에 대해 update 를 수행하였을 때 바로바로 update query가 나가지 않고, commit 시점에 snapshot과 비교해 한번의 update쿼리가 나간다 (dirty checking) . 이부분은 영속성컨텍스트의 또다른 특징으로 아래에 정리하였다. 
 
 
 +) 만약 성능 최적화를 위해 JPQL 쿼리 실행시에도 flsuh가 호출되지 않게하려면 다음과 같이 설정할 수 있다. 
@@ -214,7 +214,7 @@ transaction.commit(); // 최종적으로는 snapshot과 비교후 1개의 update
 
 ## Dirty Checking (변경 감지)
 
-Jpa는 Entity를 영속화해서 영속성 컨텍스트에 보관할떄 최초의 상태를 복사해 저장해준다 (SNAPSHOT)
+Jpa는 Entity를 영속화해서 영속성 컨텍스트에 보관할 때 최초의 상태를 복사해 저장해준다 (SNAPSHOT)
 
 그리고 flush 시점에 SNAPSHOT과 Entity를 비교해서 변경된 Entity를 찾고 ,update query를 생성해서 EntityManager 내부 쿼리 저장소에 쿼리를 저장해두고 flush 시점에 한번에 커밋한다. 
 
@@ -246,7 +246,7 @@ transaction.commit();
 1. 수정쿼리가 항상 동일함으로,application 로딩시점에 미리 수정쿼리를 생성해두고 binding 시킬 수 있다. 
 2. 데이터베이스에 동일한 쿼리를 보내면 데이터베이스는 이전에 parsing한 쿼리를 재사용할 수 있다. 
 
- org.hibernate.annotations.DynamicUpdate 을 사용하면 변경되는 필드에 대해서만 쿼리가 나갈수도 있으나, 성능상이점을 얻는 정도는 약 30개이상의 필드가 존재할떄라고 한다. (ref - https://www.baeldung.com/spring-data-jpa-dynamicupdate )
+ org.hibernate.annotations.DynamicUpdate 을 사용하면 변경되는 필드에 대해서만 쿼리가 나갈수도 있으나, 성능상이점을 얻는 정도는 약 30개이상의 필드가 존재할 때라고 한다. (ref - https://www.baeldung.com/spring-data-jpa-dynamicupdate )
 
  
 
@@ -262,7 +262,7 @@ public class Member {}
 
 ## Lazy Loading (지연로딩)
 
-준영속 상태가 아닌 실제 Entity 객체 대신 proxy 객체를 반환받고, 해당 객체를 실제 사용할떄 영속성 컨텍스트를 통해 데이터를 불러오는 방법이다. 이와 반대되는 개념이 즉시로딩 (eager loading)이 있는데, entity간 관계를 mapping하는 chapter에서 다시 정리하려고 한다. 
+준영속 상태가 아닌 실제 Entity 객체 대신 proxy 객체를 반환받고, 해당 객체를 실제 사용할 때 영속성 컨텍스트를 통해 데이터를 불러오는 방법이다. 이와 반대되는 개념이 즉시로딩 (eager loading)이 있는데, entity간 관계를 mapping하는 chapter에서 다시 정리하려고 한다. 
 
 
 ## Merge vs Persist 
@@ -332,13 +332,13 @@ merge 동작 방식은 다음과 같다.
 2. 조회된 entity를 준영속상태의 entity 의 모든 값으로 변경한다. ***
 3. 영속 상태인 조회된 entity를 반환한다. 
 
-정리하면 merge는 persist와 다르게 준영속상태의 entity를 영속화시킬떄 쓰이는데 , 모든 필드의 값을 덮어씌운다는게 차이점이다. 
+정리하면 merge는 persist와 다르게 준영속상태의 entity를 영속화시킬 때 쓰이는데 , 모든 필드의 값을 덮어씌운다는게 차이점이다. 
 
 
-어쩄거나 영속 상태인 조회된 entity의 값이 변경되었으므로 commit시점에 다시 dirty checking이 일어난다. 
+어쨌거나 영속 상태인 조회된 entity의 값이 변경되었으므로 commit시점에 다시 dirty checking이 일어난다. 
 
 ![](/images/jpa-basic-02.png)
 
 ## 정리 
 
-Jpa는 Java 표준 ORM으로 요청시마다 EntityManagerFactory로부터 entity manager가 생성되고, 이 entity manager가 DB connection 을 가지고 와 요청을 수행한다. 이떄 entity manager는 논리적인 persistent context에 entity를 관리하는데, persistent context의 특징은 1차캐시/동일성 보장/write buffering/dirty checking/lazy loading이 있다.
+Jpa는 Java 표준 ORM으로 요청시마다 EntityManagerFactory로부터 entity manager가 생성되고, 이 entity manager가 DB connection 을 가지고 와 요청을 수행한다. 이때 entity manager는 논리적인 persistent context에 entity를 관리하는데, persistent context의 특징은 1차캐시/동일성 보장/write buffering/dirty checking/lazy loading이 있다.

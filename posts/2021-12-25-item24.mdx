@@ -25,7 +25,7 @@ tags: ["Java", "Effective Java 3/E"]
 
 1. 정적 멤버 class 
 
-정적 멤버 class는 흔히 바깥 class와 함께 쓰일떄만 유용한 public 도우미 class로 쓰인다. 
+정적 멤버 class는 흔히 바깥 class와 함께 쓰일 때만 유용한 public 도우미 class로 쓰인다. 
 
 예를 들어, Operation 열거 타입은 Calcuator class의 정적 member class가 되어, 부가적인 기능을 제공해줄 수 있을 것이다. 
 
@@ -46,7 +46,7 @@ public class Calculator {
 }
 ```
 
-private 정적 멤버 class는 바깥 class가 표현하는 객체의 한 구성요소를 나타낼떄 사용한다.  ex) Map 구현체의 Entry class
+private 정적 멤버 class는 바깥 class가 표현하는 객체의 한 구성요소를 나타낼 때 사용한다.  ex) Map 구현체의 Entry class
 
 
 2. 멤버 class ( = 비정적 멤버 class )
@@ -59,7 +59,7 @@ private 정적 멤버 class는 바깥 class가 표현하는 객체의 한 구성
 
 - 정규화된 this : 멤버 class의 instance는 바깥 class.this 형태로 바깥 class의 instance 참조값을 가져올 수 있다. 
 
-멤버 class instance와 바깥 class instance간에 관계는 멤버 class가 instance화될떄 확립되며, 더이상 변경될 수 없다. 이 관계는 보통 바깥 class의 method에서 멤버 class의 생성자를 호출할떄 자동으로 만들어진다. 
+멤버 class instance와 바깥 class instance간에 관계는 멤버 class가 instance화될 때 확립되며, 더이상 변경될 수 없다. 이 관계는 보통 바깥 class의 method에서 멤버 class의 생성자를 호출할 때 자동으로 만들어진다. 
 
 ```java
 public class Outer {
@@ -94,7 +94,7 @@ Outer.Inner inner = new Outer().new Inner(); // 드물게는 다음과 같이 �
 
 멤버 class의 주 용도는 <strong> 어댑터  </strong> 에 사용된다고 한다. 
 
-(Q: 어댑터를 만들떄 내부 멤버 class 를 사용하는 지)
+(Q: 어댑터를 만들 때 내부 멤버 class 를 사용하는 지)
 
 
 즉 어떤 class의 instance를 감싸 마치 다른 class의 instance처럼 보이게 하는 view로 사용하는 것이다. 
@@ -115,7 +115,7 @@ public class MySet<E> extends AbstractSet {
 3. 익명 class 
 
 쓰이는 시점에 선언과 동시에 인스턴스가 만들어지며, 코드의 어디서든 만들 수 있다. 
-비정적인 문맥에서 사용될떄만 바깥 class의 instance를 참조할 수 있고, 정적 문맥에서라도 상수 변수 이외의 정적 멤버는 가질 수 없다. 
+비정적인 문맥에서 사용될 때만 바깥 class의 instance를 참조할 수 있고, 정적 문맥에서라도 상수 변수 이외의 정적 멤버는 가질 수 없다. 
 
 ```java
 public class Outer {
@@ -181,7 +181,7 @@ static List<Integer> intArrayAsList(int[] a){
 지역 변수를 선언하는 곳이면 선언 가능하며, 유효 변수도 지역변수와 동일하다, 
 
 멤버 class 처럼 이름이 있고, 반복적으로 사용가능하다.
-익명 class 처럼 비정적 문맥에서 사용될떄만 바깥 instance를 참조할 수 있으며, 정적 멤버는 가질 수 없으며 가독성을 위해 짧게 작성되야 한다. 
+익명 class 처럼 비정적 문맥에서 사용될 때만 바깥 instance를 참조할 수 있으며, 정적 멤버는 가질 수 없으며 가독성을 위해 짧게 작성되야 한다. 
 
 
 ## 정리 

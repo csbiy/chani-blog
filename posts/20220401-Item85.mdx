@@ -8,12 +8,12 @@ tags: ["Java", "Effective Java 3/E"]
 ## 직렬화, 역직렬화 
 
 - 직렬화 : Java가 객체를 byte stream으로 인코딩 
-- 역직렬화 : byte stream을 객체로 encoding 
+- 역직렬화 : byte stream을 객체로 decoding 
 
 ## 역직렬화와 보안간의 관련성 
 
 - 직렬화의 근본적인 문제는 공격범위가 넓다는 점이다. ObjectInputStream의 readObject method를 호출하면 객체 그래프가 역직렬화되기 때문이다. 
-클래스패스 안의 Serilizable interface를 구현한 거의 모든 타입의 객체를 만들어낼 수 있기 떄문에, 바이트 스트림을 역직렬화하는 과정에서 이 method는 그 타입들 안의 모든 코드를 수행할 수 있다. 
+클래스패스 안의 Serilizable interface를 구현한 거의 모든 타입의 객체를 만들어낼 수 있기 때문에, 바이트 스트림을 역직렬화하는 과정에서 이 method는 그 타입들 안의 모든 코드를 수행할 수 있다. 
 --> 그 타입들의 코드 전체가 공격범위에 들어간다. 
 
 - gadget method : 객체 역직렬화 과정에서 호출되어 잠재적으로 위험한 동작을 수행하는 method 

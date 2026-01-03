@@ -35,7 +35,7 @@ def quickSort(arr,lt,rt):
     left = lt+1;
     right= rt;
     while left<=right:
-        # 왼쪽에서부터 pivot값보다 작거나 같은 값을 찾는다. 
+        # 왼쪽에서부터 pivot값보다 큰 값을 찾는다. 
         while  left<=rt and arr[left] <= pivot:
             left+=1;
         # 오른쪽에서부터 pivot값보다 큰 값을 찾는다.

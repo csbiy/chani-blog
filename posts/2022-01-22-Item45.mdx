@@ -22,7 +22,7 @@ Stream API의 핵심 개념은 다음과 같다.
 4. Laziness-seeking. 
 stream API는 2가지 연산으로 나뉜다. map,filer 와 같은 intermediate operation (중개 연산) , collect와 같은 terminal operation (종료 연산)이 있다. 
 중개 연산은 stream을 반환하고 종료 연산은 stream 타입을 반환하지 않는다. 중개 연산은 lazy evalutation(지연 평가) 된다고 공식 문서에 적혀 있는데, 
-이는 종료형 연산( 예를 들면 .collect(toList())) 이 오기전까지는 중개 연산이 실행자체가 되지 않기 떄문이다.  
+이는 종료형 연산( 예를 들면 .collect(toList())) 이 오기전까지는 중개 연산이 실행자체가 되지 않기 때문이다.  
 
 ```java
 List.of("a", "b", "c").stream().map((s) -> {
@@ -159,7 +159,7 @@ stream pipeline은 주로 되풀이 되는 계산을 함수 객체로 표현한�
 2. 코드 블록에서는 return 문을 이용해 method를 빠져나가거나, break, continue 문 사용이 가능하고, 예외를 던질 수도 있다. 하지만 람다에서는 불가능하다.
 
 따라서 위와 같은 코드 블록에서만 할 수 있는 일이 필요하다면 반복 코드를 사용해야 한다. 
-또 데이터가 stream pipeline의 각 단계(연산)에서 나온 값들을 동시에 접근하고자 할떄도, stream을 사용하기 어렵다. stream은 한 원소를 다른 값에 매핑하고 나면 원래 값은 잃는 구조이기 때문이다. 
+또 데이터가 stream pipeline의 각 단계(연산)에서 나온 값들을 동시에 접근하고자 할 때도, stream을 사용하기 어렵다. stream은 한 원소를 다른 값에 매핑하고 나면 원래 값은 잃는 구조이기 때문이다. 
 
 ## 어떨때 Stream을 써야하는가? 
 

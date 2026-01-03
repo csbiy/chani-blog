@@ -14,7 +14,7 @@ tags: ["spring", "webflux"]
 - 시스템의 작업량이 변화하더라도 일정한 응답, 즉 시스템의 트래픽이 많든 적든 시스템에서 요구하는 응답성을 일정하게 유지하는 것입니다. 
 
 3. Resilient (회복성)
-- 시스템에 장애가 발생하더라도 응답성을 유지하는 것을 의미한다. 시스템의 구성요소들이 독립적으로 분리되기 떄문에 장얘가 발생하더라도 전체 시스템은 여전히 응답 가능하고, 장애가 난 부분만 복구하면 된다는 의미입니다.
+- 시스템에 장애가 발생하더라도 응답성을 유지하는 것을 의미한다. 시스템의 구성요소들이 독립적으로 분리되기 때문에 장애가 발생하더라도 전체 시스템은 여전히 응답 가능하고, 장애가 난 부분만 복구하면 된다는 의미입니다.
 
 4. Responsive (응답성)
 - 비동기 메시지 기반 통신을 바탕으로 한 회복성과 탄력성을 기반으로 즉각적으로 응답 가능한 시스템을 의미합니다. 
@@ -26,7 +26,7 @@ tags: ["spring", "webflux"]
 ## 리액티브 프로그래밍(Reactive Programming)이란?
 
 - 비동기 메시지 기반으로 통신하는 높은 응답성을 가지는 Reactive System을 구축하는 데 필요한 프로그래밍 모델입니다. 
-- 데이터 소스의 변경이 있을떄 마다 데이터를 전파하는 이벤트 기반 아키텍쳐를 사용합니다. 
+- 데이터 소스의 변경이 있을 때 마다 데이터를 전파하는 이벤트 기반 아키텍쳐를 사용합니다. 
 - 선언형 프로그래밍 방식을 사용해 실행할 동작을 구체적으로 명시하지 않고, 목표만 선언합니다. 
 
 
@@ -46,7 +46,7 @@ tags: ["spring", "webflux"]
 
 
 ## 리액티브 스트림즈(Reactive Streams)
-- 리액티브 라이브러리를 어떻게 구현할지 정의해놓은 표준 명세를 Reative Streams 라고 부릅니다. 
+- 리액티브 라이브러리를 어떻게 구현할지 정의해놓은 표준 명세를 Reactive Streams라고 부릅니다. 
 - `RxJava`, `Reactor` , Java9의 FlowAPI와 같은 여러 구현체가 존재합니다. 
 - Spring에서는 `Reactor`가 Reactor 3.x가 Spring Framework 5부터 포함되어 있습니다. 
 
@@ -71,7 +71,7 @@ public interface Subscriber<T> {
     public void onSubscribe(Subscription s);  // 구독처리시점에 수행할 역할 지정 
     public void onNext(T t); // Publisher가 통지한 데이터를 처리하는 역할 
     public void onError(Throwable t); //  Publisher가 데이터 통지를 위한 처리과정에서 에러 발생시 에러를 처리하는 역할 수행
-    public void onComplete(); // 데이터 통지를 완료했을떄 호출되는 메소드 (후처리)
+    public void onComplete(); // 데이터 통지를 완료했을 때 호출되는 메소드 (후처리)
 }
 ```
 3. Subscription 
@@ -98,7 +98,7 @@ public interface Processor<T,R> extends Subscriber<T> , Publisher<R>{
 3. 많은 수의 I/O가 발생하는 마이크로 서비스 기반 시스템 
 
 ## Project Reactor 
-- Spring Framework 5버전부터 Reactive Stack에 포함되어 Spring WebFlux 기반의 리액티브 application 을 개발할떄 핵심 역할을 담당하고 있습니다. 
+- Spring Framework 5버전부터 Reactive Stack에 포함되어 Spring WebFlux 기반의 리액티브 application 을 개발할 때 핵심 역할을 담당하고 있습니다. 
 - 앞서 정리했던것 처럼 Reactive Streams의 구현체입니다. 
 - Reactor의 공식 사이트(https://projectreactor.io/) 를 가보면 Reactive Streams의 구현체임과, Non-Blocking I/O 방식으로 개발하고, Java의 함수형 프로그래밍 API(스트림/람다)를 사용하고 있음을 알수 있습니다.
 

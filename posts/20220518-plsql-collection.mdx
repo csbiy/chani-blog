@@ -23,7 +23,7 @@ tags: ["database", "oracle"]
 
 ## 연관 배열 (Associative Array)
 
-- 키-값 pair로 구성된 Collection. Key를 인덱스라고도 부르기 떄문에 index-by 테이블이라고도 한다. 
+- 키-값 pair로 구성된 Collection. Key를 인덱스라고도 부르기 때문에 index-by 테이블이라고도 한다. 
 
 - 연관 배열 선언 문법
 
@@ -196,7 +196,7 @@ BEGIN
     -- collection 맨 끝에 NULL 요소 추가 
     vnt_test.EXTEND;
     vnt_test(3) := "THIRD";
-    -- collection의 1번쨰 원소를 collection의 맨 끝에 2개 추가 
+    -- collection의 1번째 원소를 collection의 맨 끝에 2개 추가 
     vnt_test.EXTEND(2,1);
     DBMS_OUTPUT.PUT_LINE(vnt_test(5));
     DBMS_OUTPUT.PUT_LINE(vnt_test(4));

@@ -17,16 +17,16 @@ Factory 패턴을 이해하기 위해 예시를 가지고 왔다.
 
 ```java
 Pizza orderPizza(String type){
-    Pizza pizza;
-    if (type.equals("cheese"){
+    Pizza pizza = null;
+    if (type.equals("cheese")) {
         pizza = new CheesePizza();
-    })
-    if (type.equals("greek"){
+    }
+    if (type.equals("greek")) {
         pizza = new GreekPizza();
-    })
-    if (type.equals("pepperoni"){
+    }
+    if (type.equals("pepperoni")) {
         pizza = new Pepperoni();
-    })
+    }
     pizza.prepare();
     pizza.bake();
     pizza.cut();
@@ -41,16 +41,16 @@ Pizza orderPizza(String type){
 ```java
 public class SimplePizzaFactory{
     public Pizza createPizza(String type){
-        Pizza pizza=null;
-        if (type.equals("cheese"){
+        Pizza pizza = null;
+        if (type.equals("cheese")) {
             pizza = new CheesePizza();
-        })
-        if (type.equals("greek"){
+        }
+        if (type.equals("greek")) {
             pizza = new GreekPizza();
-        })
-        if (type.equals("pepperoni"){
+        }
+        if (type.equals("pepperoni")) {
             pizza = new Pepperoni();
-        })
+        }
         return pizza;
     }
 }
@@ -78,7 +78,7 @@ public class PizzaStore{
     public PizzaStore(SimplePizzaFactory factory){
         this.factory = factory;
     }
-//  객체 생성의 책임은 Factory Class에 있다. Client는 단지 이를 이용하여 원하는 인스턴스를 만들어 낸다. 
+//  객체 생성의 책임은 Factory Class에 있다. Client는 단지 이를 이용하여 원하는 인스턴스를 만들어 낸다.
     public Pizza orderPizza(String type){
         Pizza pizza;
         pizza = factory.createPizza(type);
@@ -87,6 +87,7 @@ public class PizzaStore{
         pizza.bake();
         pizza.cut();
         pizza.box();
+        return pizza;
     }
 }
 ```

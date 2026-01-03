@@ -5,12 +5,12 @@ description: ""
 date: "2021-08-03 00:01:30"
 tags: ["Javascript"]
 ---
-<strong>Execution Context(실행 컨텍스트)</strong>는 <strong>코드를 실행할떄 필요한 환경 정보들을 담은 객체</strong>이다. 
+<strong>Execution Context(실행 컨텍스트)</strong>는 <strong>코드를 실행할 때 필요한 환경 정보들을 담은 객체</strong>이다. 
 
-- 동일한 환경에 있는 코드들을 실행할떄, 필요한 환경 정보들을 모아 context를 구성하고, 이를  <strong>call stack</strong>에 올렸다가, 가장 위에 쌓여있는 context와 관련있는 코드들을 실행하는 식으로 전체 코드의 환경과 순서를 보장한다. 
+- 동일한 환경에 있는 코드들을 실행할 때, 필요한 환경 정보들을 모아 context를 구성하고, 이를  <strong>call stack</strong>에 올렸다가, 가장 위에 쌓여있는 context와 관련있는 코드들을 실행하는 식으로 전체 코드의 환경과 순서를 보장한다. 
 (stack 자료구조에서 LIFO 을 생각하면 이해가 간편한다.)
 
-- <strong> execution context 는 함수를 실행할떄 구성된다. </strong>
+- <strong> execution context 는 함수를 실행할 때 구성된다. </strong>
 +) ES6 부터는 let,const block scope가 추가되었다. 
     
 
@@ -38,7 +38,7 @@ console.log(a); //
 
 ![](/images/call-stack.jpg)
 
-위의 코드에서 call stack은 다음과 같이 형성된다. javascript engine이 코드(함수)를 실행할떄 해당 환경에 대한 정보를 수집하여서 execution context를 만들고 call stack에 담는 형태이다. 
+위의 코드에서 call stack은 다음과 같이 형성된다. javascript engine이 코드(함수)를 실행할 때 해당 환경에 대한 정보를 수집하여서 execution context를 만들고 call stack에 담는 형태이다. 
 
 그렇다면 정확히 어떤 환경에 대한 정보들을 수집하여 call stack 에 담기게 되는 것일까?
 
@@ -65,7 +65,7 @@ VariableEnvironment는 <strong>최초 실행 시의 snapshot을 유지</strong>�
 
 
 ###  environmentRecord
-Lexical Environment의 environmentRecord에는 현재 context의 식별자 정보를 담는다. 이떄 현재 context의 식별자 정보를 담을떄, 이를 간편하게  hoisting 이라고 한다. 
+Lexical Environment의 environmentRecord에는 현재 context의 식별자 정보를 담는다. 이때 현재 context의 식별자 정보를 담을 때, 이를 간편하게  hoisting 이라고 한다. 
 
 정리를 하면 <strong>hoisting이란 식별자 정보를 실행 context의 맨 상단으로 끌어올리는 과정</strong>이다. 
 
@@ -117,7 +117,7 @@ c = function(){
 
 outerEnvironmentReference 는 <strong>현재 execution context의 외부 식별자 정보</strong>를 담는다. 
 
-예를 들면 inner context에서 outerEnvironmentReference는 outer의 Lexical Environment 를 가르키고, outer context에서 outerEnvironmentReference는 전역 context를 가르킨다. 
+예를 들면 inner context에서 outerEnvironmentReference는 outer의 Lexical Environment 를 가리키고, outer context에서 outerEnvironmentReference는 전역 context를 가르킨다. 
 
 <strong>outerEnvironmentReference는 scope(변수의 유효범위) chain 현상을 유도한다. </strong>
 

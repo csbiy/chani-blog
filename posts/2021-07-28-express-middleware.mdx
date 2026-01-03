@@ -5,7 +5,7 @@ description: ""
 date: "2021-07-28 19:23:57"
 tags: ["Nodejs", "express"]
 ---
-middleware 는 request, response 의 중간에 위치하며, requst,response에 필요한 작업을 수행한다. router,error handler 모두 middleware의 일종이다. 
+middleware 는 request, response 의 중간에 위치하며, request,response에 필요한 작업을 수행한다. router,error handler 모두 middleware의 일종이다. 
 
 ![](/images/express-middleware.png)
 
@@ -23,7 +23,7 @@ express는 middleware를 <strong>위에서 아래로 순차적으로 실행하�
 ```javascript
 //  기본 middleware 사용법 
 app.use((req,res,next)=>{
-    console.log("router exectued!");
+    console.log("router executed!");
     next();
 })
 ```
@@ -33,17 +33,17 @@ app.use((req,res,next)=>{
 ```javascript
 // GET,POST 
 app.use("/request-url",(req,res,next)=>{
-    console.log("router exectued!");
+    console.log("router executed!");
     next();
 })
 // POST
 app.post("/request-url",(req,res,next)=>{
-    console.log("router exectued!");
+    console.log("router executed!");
     next();
 })
 // GET
 app.get("/request-url",(req,res,next)=>{
-    console.log("router exectued!");
+    console.log("router executed!");
     next();
 })
 ```
@@ -56,12 +56,12 @@ app.get("/multiple-routers",router1,router2,final_router);
 ```
 
 
-보통 모든 middleware에서 요청 url을 찾을 수 없을떄를 대비하기 위해, 가장 아래 middleware에 error handling 용 middleware를 두어 처리한다.
+보통 모든 middleware에서 요청 url을 찾을 수 없을 때를 대비하기 위해, 가장 아래 middleware에 error handling 용 middleware를 두어 처리한다.
 ```javascript
 
 app.use((err,req,res,next)=>{
     console.log(`${err} occured !`);
     // error 처리 로직
-    res.send(404)
+    res.status(404).send('Not Found')
 })
 ```

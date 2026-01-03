@@ -29,14 +29,14 @@ Object 명세에 보면 다음과 같이 기술되어 있다.
 
 ```
 
-- Java HashMap은 hash함수 적용할떄, hashCode값을 사용함으로 다른 두 객체가 hashCode값이 같다면 두 객체는 같은 인덱스로 해쉬됨(collision)으로 성능상 단점이 있음. 
+- Java HashMap은 hash함수 적용할 때, hashCode값을 사용함으로 다른 두 객체가 hashCode값이 같다면 두 객체는 같은 인덱스로 해쉬됨(collision)으로 성능상 단점이 있음. 
 (Jdk 8 hashMap:해시 키 값 충돌 시 separtate chaining 방식 사용)
 
 
 
 ### hashCode 구현 방법 
 
-1. int 변수 result를 선언한 후 객체의 첫번쨰 핵심필드 (equals에서 값비교시 사용하는 첫필드)의 해시 코드 계산해 초기화 
+1. int 변수 result를 선언한 후 객체의 첫 번째 핵심필드 (equals에서 값비교시 사용하는 첫필드)의 해시 코드 계산해 초기화 
 
 2. 나머지 핵심 필드들도 타입별로 해시코드 계산 
 
@@ -139,7 +139,7 @@ public class PhoneNumber {
    // ...equals method 생략
     @Override
     public int hashCode() {
-       // hashCode 가 실제로 호출될떄 값이 default면 초기화 
+       // hashCode 가 실제로 호출될 때 값이 default면 초기화 
         int result = hashCode;
         if(result == 0){
             result = Short.hashCode(areaCode);
@@ -158,4 +158,4 @@ public class PhoneNumber {
   
 - 논리적으로 같은 객체인 경우, 무조건 같은 hashCode값을 반환해야 하나,
   
-- 논리적으로 다른 객체인 경우, 같은 hashCode값을 가질수도 있으나, hashMap등에서 사용할떄 collision이 발생해 최악의 경우 O(n) 시간복잡도를 가지게 성능을 떨어트린다.
+- 논리적으로 다른 객체인 경우, 같은 hashCode값을 가질수도 있으나, hashMap등에서 사용할 때 collision이 발생해 최악의 경우 O(n) 시간복잡도를 가지게 성능을 떨어트린다.

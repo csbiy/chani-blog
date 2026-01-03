@@ -7,7 +7,7 @@ tags: ["Java", "Effective Java 3/E"]
 ---
 코딩을 하다보면 close method를 통해 반환해주어야 하는 리소스가 많다(java.sql.Connection, java.io 관련 리소스 ex) InputStream,OutputStream )  , 개발자가 실수로 리소스 정리를 깜빡하는 경우가 있다.
 
-주로 자원을 반환할떄 사용하던 try- finally 구문은 다음과 같다. 
+주로 자원을 반환할 때 사용하던 try- finally 구문은 다음과 같다. 
 
 ```java
 
@@ -80,7 +80,7 @@ public static void main(String[] args) throws Exception {
 
 ![](/images/try_with_resource_02.jpg)
 
-또한 두번쨰예외에 의해 삼켜진 첫번쨰예외도 suppressed : First exception stack trace도 확인할수가 있어 디버깅이 휠씬 유리하다는 장점이 있다. 
+또한 두 번째예외에 의해 삼켜진 첫 번째예외도 suppressed : First exception stack trace도 확인할수가 있어 디버깅이 훨씬 유리하다는 장점이 있다. 
 
 
 또한 try안에 여러개의 리소스를 사용하여도 반환이 가능하다. 

@@ -1,12 +1,12 @@
 ---
 id: 106
-title: "Dao의 점진적인 Refactorying을 통해 알아보는 객체지향설계원칙"
+title: "Dao의 점진적인 Refactoring을 통해 알아보는 객체지향설계원칙"
 description: ""
 date: "2021-07-20 21:51:06"
 tags: ["spring", "토비의 spring"]
 ---
 ## 간단정리
-chapter1에서는 Spring FrameWork의 관심사인 Object 설계와 구현 및 동작원리에 초점을 두고 있다. Dao 설계를 이상적인 설계인 <strong>"변경이 용이한 구조"</strong>를 만들기 위해 순차적으로 코드를 Refactorying 하여서 가장 이상적인 설계를 설명하고 이와 밀접히 관련되어 있는 스프링의 주요 개념인<strong> IoC(Inversion of Control)</strong> 개념을 소개한다.
+chapter1에서는 Spring FrameWork의 관심사인 Object 설계와 구현 및 동작원리에 초점을 두고 있다. Dao 설계를 이상적인 설계인 <strong>"변경이 용이한 구조"</strong>를 만들기 위해 순차적으로 코드를 Refactoring 하여서 가장 이상적인 설계를 설명하고 이와 밀접히 관련되어 있는 스프링의 주요 개념인<strong> IoC(Inversion of Control)</strong> 개념을 소개한다.
 
 <hr/>
 
@@ -64,7 +64,7 @@ public class UserDao_V1 {
 2. 너무 많은 관심사가 하나의 method안에 있다.
    ex) DB Connection을 어떡할것인지, 리소스 처리를 어떡할것인지
 관심사의 분리는 별도의 class로 모듈화 함으로 분리될 수 있다. 
-책에서는 순차적으로 중복된 code를 제거하기 위해 method extraction 을 소개하고 있다. 
+책에서는 순차적으로 중복된 코드를 제거하기 위해 method extraction을 소개하고 있다. 
 
 ```java
 // UserDao_V2
@@ -75,7 +75,7 @@ public class UserDao_V1 {
     }
 ```
 method 추출을 통해 중복된 코드를 하나의 method로 분리하였다.
-중복된 코드를 줄임으로서 얻는 장점은 변경의 원인도 중복이 아닌 한곳이라는 것이다. 즉 변경이 생겼을떄 한곳만 변경하면 된다.
+중복된 코드를 줄임으로써 얻는 장점은 변경의 원인도 중복이 아닌 한곳이라는 것이다. 즉 변경이 생겼을 때 한곳만 변경하면 된다.
 
 여기서 나아가 변화에 용이한 구조를 만들기 위해 상속구조를 소개하였다. DB Connection 정보를 추상화하여, Client들 별로 사용하고 싶은 DB Connection을 구현한다.
 
@@ -261,6 +261,6 @@ public class UserDaoTest {
 <hr/>
 
 
-위와 같이 Dao를 v1~v5까지 refactorying 하면서 ocp를 준수하도록 설계하였다.
+위와 같이 Dao를 v1~v5까지 refactoring 하면서 ocp를 준수하도록 설계하였다.
 그렇다면 이와 관련되어있는 spring의 IoC개념은 무엇일까?
 간단하게 설명하면 program의 제어 흐름이 뒤바뀐 것이다. 자세한 내용은 다음 포스팅에서 살펴보도록 하겠다.

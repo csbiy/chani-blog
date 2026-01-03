@@ -23,16 +23,16 @@ public Class NutritionFacts{
     private final int sodium;
     private final int carbohydrate;
 
-    public NutritionFacts(int serviceSize, int servings){
+    public NutritionFacts(int servingSize, int servings){
         this(servingSize,servings,0);
     }
-    public NutritionFacts(int serviceSize, int servings,int calories){
+    public NutritionFacts(int servingSize, int servings,int calories){
         this(servingSize,servings,calories,0);
     }
-    public NutritionFacts(int serviceSize, int servings,int calories, int fat){
+    public NutritionFacts(int servingSize, int servings,int calories, int fat){
         this(servingSize,servings,calories,fat,0);
     }
-    public NutritionFacts(int serviceSize, int servings,int calories, int fat, int sodium , int carbohydrates ){
+    public NutritionFacts(int servingSize, int servings,int calories, int fat, int sodium , int carbohydrates ){
         this.servingSize = servingSize;
         this.servings = servings;
         this.calories = calories;
@@ -60,7 +60,7 @@ public Class NutritionFacts{
 // JavaBeansPattern
 public class NutritionFacts {
 
-    private  int serviceSize = -1;
+    private  int servingSize = -1;
     private  int servings = -1;
     private  int calories = 0;
     private  int fat = 0;
@@ -69,8 +69,8 @@ public class NutritionFacts {
 
     public NutritionFacts() {
     }
-    public void setServiceSize(int serviceSize) {
-        this.serviceSize = serviceSize;
+    public void setServingSize(int servingSize) {
+        this.servingSize = servingSize;
     }
     public void setServings(int servings) {
         this.servings = servings;
@@ -177,7 +177,7 @@ public class NutritionFacts {
 정리를 하면, 생성할 class의 static class로 builder를 만들고, builder 안에서 property 를 설정할 수 있는 메소드를 정의하고, 메소드의 반환값을 builder로 하여, 
 method들이 연쇄적으로 호출될 수 있게한다.
 
-이를 메소드 체이닝 또는 Fluent API 라고 부른다. 어쩄거나 위의 방식을 통해 생성한 객체는 다음과 같이 만들 수 있다. 
+이를 메소드 체이닝 또는 Fluent API 라고 부른다. 어쨌거나 위의 방식을 통해 생성한 객체는 다음과 같이 만들 수 있다. 
 
 ```java
     public static void main(String[] args) {

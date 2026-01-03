@@ -14,7 +14,7 @@ HTTP message --> WAS --> Filter --> dispatcher servlet
 - dispatcher servlet: Tomcat과 같은 servlet container 안에 HTTP 요청을 가장 먼저 받아, 적합한 controller에게 요청을 forwarding 해주는 일종의 front controller
   (https://docs.spring.io/spring-framework/docs/3.0.0.M4/spring-framework-reference/html/ch15s02.html)
 
-- 주로 logging, encryption , input validation 과 같은 공통 관심사에 기능을 적용하고자 할떄 활용된다. 
+- 주로 logging, encryption , input validation 과 같은 공통 관심사에 기능을 적용하고자 할 때 활용된다. 
 
 - Filter chain : Filter는 chain 형태로 구성되어, 여러개의 필터를 끼울 수 있다. 
 
@@ -63,9 +63,9 @@ public interface Filter {
 
 java.servlet.Filter interface는 3가지 method를 가지고 있다.
 
-1. init() : servlet container가 생성될떄 호출되는 filter 초기화 method이다.
+1. init() : servlet container가 생성될 때 호출되는 filter 초기화 method이다.
 
-2. destroy() : servlet contrainer가 종료될떄 호출되는 method
+2. destroy() : servlet container가 종료될 때 호출되는 method
 
 3. doFilter() : client 요청시마다, 해당 method가 호출된다.
 
@@ -113,7 +113,7 @@ Filter interface를 implement한 Filter는 다음과 같이 등록이 가능하�
       return registrationBean;
   }
 ```
-등록할떄 필터간에 실행될 순서도 조절할 수 있는데, Filter chain을 어떤 순서로 실행할지 설정할 수 있다. 
+등록할 때 필터간에 실행될 순서도 조절할 수 있는데, Filter chain을 어떤 순서로 실행할지 설정할 수 있다. 
 
 ```java
     @Bean
@@ -181,7 +181,7 @@ HTTP 요청 --> WAS --> servlet filter  --> dispatcher servlet --> spring interc
 
 2. 요청 url pattern 조절
 
-spring interceptor는 interceptor를 등록할떄 특정 url을 제외하고 spring interceptor를 적용가능하다
+spring interceptor는 interceptor를 등록할 때 특정 url을 제외하고 spring interceptor를 적용가능하다
 
 3. method 적용시점 
 

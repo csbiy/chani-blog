@@ -13,12 +13,12 @@ Router는 크게 아래와 같은 3가지 역할을 갖는다.
 -  Router는 최적의 경로를 얻어서 Routing table에 저장하고, 패킷이 Router로 들어오면 도착지 IP주소와 Routing table을 비교해 최적의 경로로 패킷을 내보낸다. 
 
 2. 브로드캐스트 컨트롤  
-- 패킷의 목적지 주소가 Rotuing table에 없는 경우 패킷을 버린다. 
+- 패킷의 목적지 주소가 Routing table에 없는 경우 패킷을 버린다. 
 - 멀티캐스트 정보를 습득하지 않고 브로드캐스트 패킷을 전달하지 않는다. (브로드캐스트가 다른 네트워크로 전파되는것을 막는다. )
 
 3. 프로토콜 변환 
 - 패킷 포워딩 과정에서 2계층 헤더를 변경할 수 있다.
-- 3계층에서 동작하는 장비이기 떄문에 2계층 헤더를 벗겨내고, 다시 2계층 헤더 정보를 새로 만들어 외부로 내보내는데, 이때 헤더 정보를 변경할 수 있다. 
+- 3계층에서 동작하는 장비이기 때문에 2계층 헤더를 벗겨내고, 다시 2계층 헤더 정보를 새로 만들어 외부로 내보내는데, 이때 헤더 정보를 변경할 수 있다. 
 ex) WAN : PPP protocol / LAN : ethernet protocol 
 
 
@@ -51,7 +51,7 @@ Next Hop 지정시에는 다음과 같은 3가지 방법이 사용된다.
 
 1. Directed Connected
 
-- IP주소와 Subnet mask로 해당 IP주소의 네트워크 주소 정보를 알 수 있다. 이 정보로 해당 네트워크에 대한 라우팅 테이블을 자동으로 만드는데, 이떄 이 경로 정보를 Direct Connected라고 부른다. 
+- IP주소와 Subnet mask로 해당 IP주소의 네트워크 주소 정보를 알 수 있다. 이 정보로 해당 네트워크에 대한 라우팅 테이블을 자동으로 만드는데, 이때 이 경로 정보를 Direct Connected라고 부른다. 
 
 - 해당 네트워크 설정이 삭제되거나 비활성화되야만 사라진다. 
 
@@ -112,7 +112,7 @@ Next Hop 지정시에는 다음과 같은 3가지 방법이 사용된다.
 3. Dynamic Routing 
 
 - SPoF와 같이 static routing으로 관리하기 복잡한 경우를 router끼리 경로 정보를 교환하도록 하여 관리
-( *SPoF(Single Point Of Failure, 단일 장애점) : 한 요소에서 장얘발생시, 전체 시스템에서 장얘가 발생하는 지점 )
+( *SPoF(Single Point Of Failure, 단일 장애점) : 한 요소에서 장애발생시, 전체 시스템에서 장애가 발생하는 지점 )
 - Dynmaic Routing 내에서도 Router 간에 경로 정보를 교환하는 여러 protocol 존재 
 
 ![](/images/network-ch05-01.jpg)

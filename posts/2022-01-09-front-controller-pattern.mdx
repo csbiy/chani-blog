@@ -29,7 +29,7 @@ Front controller pattern 은  MVC pattern과 함께 자주 쓰인다. 대표적�
 ![](/images/front-controller-uml.jpg)
 
 
-front controller pattern은 front controller와 요청을 위임할 class (controller) 로 구성된다. 이떄 요청을 위임할 class는 공통 abstract class 또는 interface를 상속하고 있다.
+front controller pattern은 front controller와 요청을 위임할 class (controller) 로 구성된다. 이때 요청을 위임할 class는 공통 abstract class 또는 interface를 상속하고 있다.
 
 
 
@@ -208,5 +208,5 @@ view resolver가 하는 일은 view name에 prefix,suffix 설정해준다 (경�
 ```java
 view.render(mv.getModelInternal(), request, response);
 ```
-실제 DispatcherServlet 내부구현은 휠씬복잡한데, 이중에서 adapter가 ModelAndView 객체를 반환해주고, 
+실제 DispatcherServlet 내부구현은 훨씬 복잡한데, 이중에서 adapter가 ModelAndView 객체를 반환해주고, 
 반환된 ModelAndView의 view 이름으로부터 view resolver가 실제 사용할 View 객체를 반환해서 model과 함께 rendering해주는 주요 코드부분을 가져왔다.

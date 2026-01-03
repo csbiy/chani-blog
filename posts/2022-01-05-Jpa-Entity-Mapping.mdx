@@ -145,7 +145,7 @@ IDENTITY 전략은 기본 키 생성을 데이터베이스에 위임하는 전�
         primary key (id)
     ) engine=InnoDB
 ```
-기본적으로 entity가 영속 상태가 되려면 식별자가 필요한데 IDENTITY 전략은 식별자의 생성 주체가 DB이기 때문에 DB에 entity를 저장하고 나서, 식별자를 조회할 수 있다. 때문에 식별자가 바로 필요하기 떄문에 em.persist(entity)로 저장을 하면 write buffering 이 일어나지 않고, 바로 query가 나가고 조회된 식별자로 영속성 컨텍스트에 entity를 보관한다. 
+기본적으로 entity가 영속 상태가 되려면 식별자가 필요한데 IDENTITY 전략은 식별자의 생성 주체가 DB이기 때문에 DB에 entity를 저장하고 나서, 식별자를 조회할 수 있다. 때문에 식별자가 바로 필요하기 때문에 em.persist(entity)로 저장을 하면 write buffering 이 일어나지 않고, 바로 query가 나가고 조회된 식별자로 영속성 컨텍스트에 entity를 보관한다. 
 
 ```java
     @Test
@@ -175,7 +175,7 @@ IDENTITY 전략은 기본 키 생성을 데이터베이스에 위임하는 전�
 
 ![](/images/jpa-entity-mapping-01.png)
 
-- JDBC3 에서 추가된 Statement.getGeneratedKeys() API를 사용하면 데이터 저장과 동시에 생성된 기본키를 가지고 올 수 있는데 hibernate는 이 method를 사용하기 떄문에 entity를 저장한 직후에 식별자를 다시 조회하더라도 SELECT Query가 나가지 않는다 (DB와 한번만 요청을 주고 받는다.)
+- JDBC3 에서 추가된 Statement.getGeneratedKeys() API를 사용하면 데이터 저장과 동시에 생성된 기본키를 가지고 올 수 있는데 hibernate는 이 method를 사용하기 때문에 entity를 저장한 직후에 식별자를 다시 조회하더라도 SELECT Query가 나가지 않는다 (DB와 한번만 요청을 주고 받는다.)
 
 ## 기본키 매핑 전략  - SEQUENCE
 
@@ -311,7 +311,7 @@ public class Member {
 
 ## DB 스키마 자동 생성 전략
 
-마지막으로 spring.jpa.hibernate.ddl-auto 속성에 따라 application이 실행될떄 DB 스키마 자동 생성 전략을 지정할 수 있다. 
+마지막으로 spring.jpa.hibernate.ddl-auto 속성에 따라 application이 실행될 때 DB 스키마 자동 생성 전략을 지정할 수 있다. 
 
 ```java
 // application.yaml

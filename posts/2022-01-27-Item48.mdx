@@ -38,7 +38,7 @@ limit을 다룰때 CPU 코어개수가 남는다면 원소를 몇 개 더 처리
 - 원하는 크기로 정확하게 손쉽게 나눌 수 있다. 즉 다수의 thread에게 일을 분배하기 좋다는 특징이 있다. 
 
 - 참조 지역성(locality of reference)이 뛰어나다. 이웃한 원소의 참조들이 메모리에 연속해서 저장되어 있다 (공간 지역성)
-  만약 참조 지역성이 낮으면 Thread는 데이터가 메모리로 전송될떄까지 대기하게 된다. 
+  만약 참조 지역성이 낮으면 Thread는 데이터가 메모리로 전송될 때까지 대기하게 된다. 
   따라서 참조지역성은 다량의 데이터를 처리하는 벌크 연산을 병렬화할때 아주 중요한 요소로 작동하는데, 참조 지역성이 가장 뛰어난 자료구조는 기본 타입 배열이다. 
 (참조 지역성이란 기억 장치(SSD,HDD)로부터 데이터가 참조될때, 시간적/공간적/순차적으로 분포가 집중되는 성질 )
 
@@ -53,7 +53,7 @@ Stream pipeline에서는 종단 연산의 동작 방식 역시 병렬 수행 효
 
 - anyMatch,allMatch,noneMatch 처럼 조건에 맞으면 바로 반환되는 method 
 
-반면 가변 축소를 수행하는 Stream의 collect method는 병렬화에 적합치 않은데, collection을 합치는 부담이 크기 떄문이다. 
+반면 가변 축소를 수행하는 Stream의 collect method는 병렬화에 적합치 않은데, collection을 합치는 부담이 크기 때문이다. 
 
 추가로 병렬화 성능을 높이고 싶다면 spliterator를 overriding 하고, 결과 stream의 병렬화 성능을 테스트하는 방안이 있다. 
 
@@ -61,7 +61,7 @@ Stream pipeline에서는 종단 연산의 동작 방식 역시 병렬 수행 효
 
 stream을 잘못 병렬화하면 성능 뿐 아니라 결과 자체도 원하지 않는 결과가 나올 수 있는데, 결과가 잘못되거나 오작동 하는 것을 안전 실패라고 한다. 
 
-안전 실패는 병렬화한 pipeline이 사용하는 mapper , filter 혹은 programmer가 제공한 다른 함수 객체가 명세대로 동작하지 않을떄 벌어질 수 잇다. 따라서 Stream 명세에 적힌 함수 객체에 대한 규칙을 지켜서 제공해야 한다. 
+안전 실패는 병렬화한 pipeline이 사용하는 mapper , filter 혹은 programmer가 제공한 다른 함수 객체가 명세대로 동작하지 않을 때 벌어질 수 잇다. 따라서 Stream 명세에 적힌 함수 객체에 대한 규칙을 지켜서 제공해야 한다. 
 
 예를 들면 Stream의 reduce 연산에 건내지는 accumulator , combiner 함수는 반드시 아래와 같은 규칙을 만족해야한다.
 
@@ -94,4 +94,4 @@ static long pi(long n){
 }
 ```
 
-추가로 무작위로 이루어진 stream을 병렬화할떄는 ThreadLocalRandom,Random 보다는 SplittableRandom 을 사용하면 병렬화시 성능적 장점을 가질 수 있다.
+추가로 무작위로 이루어진 stream을 병렬화할 때는 ThreadLocalRandom,Random 보다는 SplittableRandom 을 사용하면 병렬화시 성능적 장점을 가질 수 있다.

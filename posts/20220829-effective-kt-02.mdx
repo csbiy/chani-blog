@@ -49,7 +49,7 @@ val user:User = if(hasValue){
 }
 ```
 
-위 코드에서처럼 2번과 같이 선언과 동시에 초기화하는것이 좋다. 만약 여러 프로펕치를 한꺼번에 설정해야 한다면 구조분해 선언을 활용하는게 좋다. 
+위 코드에서처럼 2번과 같이 선언과 동시에 초기화하는 것이 좋다. 만약 여러 프로퍼티를 한꺼번에 설정해야 한다면 구조분해 선언을 활용하는 게 좋다. 
 
 
 ```java
@@ -65,7 +65,7 @@ fun updateWeather(degrees: Int) {
 
 ## 변수 스코프와 Capturing 
 
-- Kotlin에서는 자바와 다르게 람다에서 람다 밖에 있는 final 이 아닌 변수를 접근 및 변경이 가능하다. 이러한 변수를 captured variable 이라고 하는데, 이 경우에는 capture한 변수의가 위치한 함수가 끝난 뒤에도 람다 본문 코드는 여전히 capture한 변수를 사용할 수 있다. 
+- Kotlin에서는 자바와 다르게 람다에서 람다 밖에 있는 final 이 아닌 변수를 접근 및 변경이 가능하다. 이러한 변수를 captured variable 이라고 하는데, 이 경우에는 capture한 변수가 위치한 함수가 끝난 뒤에도 람다 본문 코드는 여전히 capture한 변수를 사용할 수 있다. 
 
 - 내부 동작은 final이 아닌 변수를 capture한 경우에는 kotlin은 이를 특별한 Wrapper class로 감싸고, Wrapper class에 대한 참조값을 람다에 저장하는 형태로 구현되어 있다. 
 
@@ -78,13 +78,13 @@ val primes :Sequence<Int> =  sequence {
     while (true){
         prime = numbers.first()
         yield(prime)
-        numbers = numbers.drop(1)..filter { it  % prime != 0 }
+        numbers = numbers.drop(1).filter { it % prime != 0 }
     }
 }
 ```
 
 ## 정리 
 
-- 이해하기 쉽고, 오류 발생시키기 적은 코드를 위해 변수 스코프는 가능한 좁게 하지
+- 이해하기 쉽고, 오류 발생시키기 적은 코드를 위해 변수 스코프는 가능한 좁게 하자
 - 프로퍼티 여러개라면 , 구조분해 문법을 활용하자
 - 람다의 경우에는 variable capturing을 염두하자

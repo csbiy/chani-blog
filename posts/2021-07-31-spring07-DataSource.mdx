@@ -27,7 +27,7 @@ public interface DataSource  extends CommonDataSource, Wrapper {
 
 ```
 
-spring 이 제공해주는 DataSource interface를 구현한 구체 class 중에서 test환경에서 간단히 사용할 수 있는 SimpleDriverDataSource를 사용하여, Dao Class를 refactorying 하였다. 
+spring 이 제공해주는 DataSource interface를 구현한 구체 class 중에서 test환경에서 간단히 사용할 수 있는 SimpleDriverDataSource를 사용하여, Dao Class를 refactoring 하였다. 
 
 ```java
  org.springframework.jdbc.datasource.SimpleDriverDataSource
@@ -100,7 +100,7 @@ xml 기반의 설정파일을 이용함으로 Application Cotext interface의 �
 ```java
 public static void main(String[] args) {
 
-    ApplicationContext context = new GenericXmlApplicationContext(DaoFactory.class);
+    ApplicationContext context = new GenericXmlApplicationContext("applicationContext.xml");
     UserDao userDao = context.getBean("userDao", UserDao.class);
     System.out.println("userDao = " + userDao);
 

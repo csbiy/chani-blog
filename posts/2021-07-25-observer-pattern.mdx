@@ -20,17 +20,16 @@ WeatherData 객체가 이 데이터를 여러 Display장비에 온도,습도,압
 <br/>
 
 observer pattern의 핵심 Class Diagram을 살펴보면
-- 상태가 계속 변하는 subject객체에 interface를 두어, observer를 등록,해제, oberser에게 상태변화를 알리는 공통적인 method를 둔다.
+- 상태가 계속 변하는 subject 객체에 interface를 두어, observer를 등록, 해제, observer에게 상태변화를 알리는 공통적인 method를 둔다.
 - subject 객체의 상태를 알림받는 observer 객체에서 interface를 두어, observer의 변화시, 변화에 따른 logic을 처리하는 method를 둔다.
-- subject,observer는 인터페이스 추상화 계층을 통해서 coupling되어 있다. 즉 , 하위 구현 class가 어떻게 구현 되었는지는 관심도 없고 알 필요도 없다. (=loose coupling)
+- subject, observer는 인터페이스 추상화 계층을 통해서 coupling되어 있다. 즉, 하위 구현 class가 어떻게 구현되었는지는 관심도 없고 알 필요도 없다. (=loose coupling)
 
 
 책에서  Observer Pattern 을 이해하기 쉽게 든 예는 신문사와 구독자간의 관계이다. 특정 주제를 계속해서 업데이트하는 신문사는 구독자에게 정보를 알려준다. 특정 신문사는 여러 구독자를 가진다 (One-to-Many relationship)
 
 이 상황에서는 신문사가 Subject 객체, 구독자가 Observer 객체 라고 볼 수 있을 것이다.
 
-어쩄거나 위의 기상 시스템  app을 예시로 observer pattern 을 
-살펴보면 다음과 같다. 
+어쨌거나 위의 기상 시스템 app을 예시로 observer pattern을 살펴보면 다음과 같다. 
 
 ```java
 public interface Subject {
@@ -114,7 +113,7 @@ public class CurrentConditionsDisplay implements Observer,DisplayElement{
 
     @Override
     public void display() {
-        System.out.println(" Current Condtioins : " + temperature + "/"+ humidity + "/"+ pressure);
+        System.out.println(" Current Conditions : " + temperature + "/"+ humidity + "/"+ pressure);
     }
     
     @Override
@@ -141,9 +140,9 @@ public class TestWeatherStation {
         weatherData.setMeasurements(60,75,29.4f);
     }
     // --------output--------
-    // Current Condtioins : 80.0/65.0/30.4
-    // Current Condtioins : 40.0/25.0/20.4
-    // Current Condtioins : 60.0/75.0/29.4
+    // Current Conditions : 80.0/65.0/30.4
+    // Current Conditions : 40.0/25.0/20.4
+    // Current Conditions : 60.0/75.0/29.4
 }
 
 ```

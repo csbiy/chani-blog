@@ -41,7 +41,7 @@ Collections.sort(words,(s1,s2)->Integer.compare(s1.length(),s2.length()));
 주의사항 :  compiler가 람다식의 매개변수 타입을 추론할때, generic raw type 을 사용하면 추론이 불가능해짐으로, 꼭 타입매개변수를 적어주어야 함. 
 
 - 메소드 참조 표현식 ( method reference expression )
-  method reference 는 람다식에서 기존에 존재하던 하나의 정적,인스턴스 method를 호출만할떄, 불필요한 매개변수를 제거하고 람다식을 더 간결하게 사용할 수 있게 해줌   
+  method reference 는 람다식에서 기존에 존재하던 하나의 정적,인스턴스 method를 호출만할 때, 불필요한 매개변수를 제거하고 람다식을 더 간결하게 사용할 수 있게 해줌   
   (ref - https://docs.oracle.com/javase/tutorial/java/javaOO/methodreferences.html) 
 
 
@@ -56,7 +56,7 @@ method reference 의 종류는 다음과 같다, 다음 Item 43에서 자세한 
 Collections.sort(words,comparingInt(String::length));
 ```
 
-- Item34에서 소개했던 Enum 상수값별로 동작이 달라질떄 Enum type내 추상 method를 정의하고 상수별로 class 몸체를 만드는 방식도 람다를 적용하면 더 간결하게 표현이 가능하다
+- Item34에서 소개했던 Enum 상수값별로 동작이 달라질 때 Enum type내 추상 method를 정의하고 상수별로 class 몸체를 만드는 방식도 람다를 적용하면 더 간결하게 표현이 가능하다
 
 ```java
 public enum Operation {

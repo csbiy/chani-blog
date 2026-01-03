@@ -143,7 +143,7 @@ CREATE OR REPLACE PACKAGE ch12_var IS
 END ch12_var;
 
 CREATE OR REPLACE PACKAGE BODY ch12_var IS 
-    /*외부에서 접근 불가능한 변수를 선언하고자할떄는 바디에 데이터를 선언한다. */
+    /*외부에서 접근 불가능한 변수를 선언하고자할 때는 바디에 데이터를 선언한다. */
     c_test_body CONSTANT VARCHAR2(10):= "CONSTANT_BODY";
     v_test_body VARCHAR2(10);
 END ch12_var;
@@ -212,7 +212,7 @@ BEGIN
 END;
 ```
 
-- 이때 헤더에 커서타입만을 명시할때는 커서가 반환하는 데이터 타입을 RETURN 절에 명시해야 하는데, 이떄는 사용자 정의 record 타입 또는 %ROWTYPE 구문을 사용할 수 있다. 
+- 이때 헤더에 커서타입만을 명시할때는 커서가 반환하는 데이터 타입을 RETURN 절에 명시해야 하는데, 이때는 사용자 정의 record 타입 또는 %ROWTYPE 구문을 사용할 수 있다. 
   
 ```SQL
 /*패키지 헤더에는 타입만 선언하고 , 바디에 구현부까지 선언 */
@@ -294,7 +294,7 @@ END ch12_col_pkg;
 
 - 1세션당 1 UGA 메모리 공간이 할당된다. 
   
-- 만약 DB 사용자수가 많아져서 세션 수가 증가하면 UGA 메모리 공간을 많이 차지한다. 따라서 불필요하게 패키지 데이터를 세션별로 공유하고 싶지 않을때 , PRAGMA SERIALLY_REUSABLE 옵션을 주어 호출이 시작되고 끝날떄까지만 패키지 데이터의 생명주기를 관리할 수 있다. 
+- 만약 DB 사용자수가 많아져서 세션 수가 증가하면 UGA 메모리 공간을 많이 차지한다. 따라서 불필요하게 패키지 데이터를 세션별로 공유하고 싶지 않을때 , PRAGMA SERIALLY_REUSABLE 옵션을 주어 호출이 시작되고 끝날 때까지만 패키지 데이터의 생명주기를 관리할 수 있다. 
 
 ## 세션이 아닌 호출 단위별로 패키지 데이터 사용 - PRAGMA SERIALLY_REUSABLE 옵션
 

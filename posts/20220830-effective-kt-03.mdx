@@ -21,7 +21,7 @@ public class Sample {
 
 만약 annotation이 붙어있지 않다면 , Kotlin은 해당 타입을 nullable인지 아닌지 판단할 방법이 없다. 따라서 Kotlin은 해당 타입을 ```Platform Type```으로 간주한다. Platform Type은 타입 이름뒤에 ! 기호를 붙여서 표기한다 (String!)
 
-Platform Type은 코틀린이 Null 관련 정보를 알 수 없기 떄문에, 컴파일러는 Nullable 타입으로 처리하든, 아니든 모든 연산을 허용한다 하지만 개발자에게 전적으로 NPE을 처리할 책임이 넘어간다. 
+Platform Type은 코틀린이 Null 관련 정보를 알 수 없기 때문에, 컴파일러는 Nullable 타입으로 처리하든, 아니든 모든 연산을 허용한다 하지만 개발자에게 전적으로 NPE을 처리할 책임이 넘어간다. 
 
 ## JSR-Annotation 
 - java와 코틀린을 같이 사용할때에는 Java 코드를 만약 직접 변경할 수 있다면, 가능한 @Nullable , @NotNull annotation을 붙이는 게 안전하다. 

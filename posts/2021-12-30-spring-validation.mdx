@@ -96,7 +96,7 @@ public class FieldError extends ObjectError{}
 ![](/images/binding-result-01.jpg)
 
 field Error와 object error는 2개의 생성자를 overloading 하고 있는데 
-첫번쨰는 defaultMessage (view에 보여줄 메시지) 를 바로 명시하는 생성자 방식이 있고, 
+첫 번째는 defaultMessage (view에 보여줄 메시지) 를 바로 명시하는 생성자 방식이 있고, 
 두번째는 messageCodeResolver에 의해 설정파일로부터 값을 읽어와 view에 보여줄 수 있는 생성자 방식이 있다. 
 두 방식에서 공통 매개변수는 객체와 해당 객체에 오류를 가졌다고 명시할 필드이다.  
 
@@ -232,7 +232,7 @@ public interface Validator {
 위 interface를 만든 예제에 적용하면 다음과 같다. 
 
 ```java
-@Component // 굳이 검증기를 client요청시마다 생성할 이유가 없다, 동시성 이슈가 있는 것도 아니기 떄문에 싱글톤으로 관리하는게 적합하다고 한다. 
+@Component // 굳이 검증기를 client요청시마다 생성할 이유가 없다, 동시성 이슈가 있는 것도 아니기 때문에 싱글톤으로 관리하는게 적합하다고 한다. 
 public class MemberValidator implements Validator {
     @Override
     public boolean supports(Class<?> clazz) {
@@ -331,7 +331,7 @@ public class WebConfig implements WebMvcConfigurer {
 
 ## 정리
 
-spring 이 제공하는 binding result를 활용하면 간결하게 검증 로직을 추가할 수 있다. 오류 메시지는 하드코딩하지말고 messages.propeties 에 설정정보를 가져오는 messageCodeResolver를 활용하면 오류 메시지 변경이 생길떄 빠르게 대처할 수 있다. spring 외에 다른 framework 적용시에도 위와 같은 흐름으로 오류 처리를 하면 좋을 것같다. 
+spring 이 제공하는 binding result를 활용하면 간결하게 검증 로직을 추가할 수 있다. 오류 메시지는 하드코딩하지말고 messages.propeties 에 설정정보를 가져오는 messageCodeResolver를 활용하면 오류 메시지 변경이 생길 때 빠르게 대처할 수 있다. spring 외에 다른 framework 적용시에도 위와 같은 흐름으로 오류 처리를 하면 좋을 것같다. 
 
 ## 참고자료 
 

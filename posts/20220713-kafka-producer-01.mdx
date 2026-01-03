@@ -18,8 +18,8 @@ tags: ["Kafka"]
 - Partitioner에 의해 Topic의 어떤 Partition으로 보낼지가 결정되면 Accumulator에 데이터를 Buffer에 쌓아놓고 배치 전송한다. 
 
 ## Partitioner 종류
-UniformStickyPartitioner , RoundRobinPartitioner가 있는데 둘 다 KEY가 존재하는 경우에는 KEY의 해시값을 통해 partition을 매칭시킨다. KEY가 존재하지 않을떄 동작이 다르다.
-- UniformStickyPartitioner : Accumulator에서 데이터가 배치로 모두 묶일떄까지 대기하였다가, 모두 동일한 파티션에 전송
+UniformStickyPartitioner , RoundRobinPartitioner가 있는데 둘 다 KEY가 존재하는 경우에는 KEY의 해시값을 통해 partition을 매칭시킨다. KEY가 존재하지 않을 때 동작이 다르다.
+- UniformStickyPartitioner : Accumulator에서 데이터가 배치로 모두 묶일 때까지 대기하였다가, 모두 동일한 파티션에 전송
 - RoundRobinPartitioner : 데이터가 들어오는 대로 Partition을 Round-Robin 방식으로 순회하며 전송한다. 
 
 성능적인 측면에서는 UniformStickyPartitioner가 낮은 리소스 사용률,높은 처리량을 가진다. 
@@ -127,7 +127,7 @@ producer.send(record,new ProducerCallBack()); // INFO ProducerCallBack - test-0@
 
 ## Custom Partitioner 구현
 
-특정 데이터를 특정 파티션으로 보내고 싶을떄는 Partitioner를 구현해서 등록하면 된다. 
+특정 데이터를 특정 파티션으로 보내고 싶을 때는 Partitioner를 구현해서 등록하면 된다. 
 
 ```java
 public class CustomPartitioner implements Partitioner {
@@ -136,7 +136,7 @@ public class CustomPartitioner implements Partitioner {
         if (keyBytes == null){
             throw new InvalidRecordException("메시지키 필수");
         }
-        // 특정 키값일떄는 0번 파티션에만 적재 
+        // 특정 키값일 때는 0번 파티션에만 적재 
         if (((String) key).equals("ZERO_PARTITION_KEY")){
             return 0;
         }

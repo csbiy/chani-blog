@@ -34,7 +34,7 @@ running state에서는 3가지 state로 분기할 수 있다.
 2. waiting state : process가 I/O 요청시 I/O응답이 오기전까지 CPU는 다른 process를 실행한다. I/O 작업 완료전까지는 waiting state가 되고, I/O 작업이 완료되면 다시 ready state가 된다. 
 3. termination state: process가 time quantuam이내에 정상 수행 종료된다. 
 
-정상 상태는 아니지만 예외적인 process 상태가 있다. UNIX system 에서는 zombie process 라고 부르는데 부모 process 가 fork() system call을 통해 부모 process와 동일한 code를 가진 자식 process를 생성하면 , 자식 process 는 exec() system call을 통해 새로운 code로 덮어씌워진 뒤 실행된다. 부모 process는 자식 process가 종료될떄까지 기다리고 자식 process 가 사용한 resource를 os에게 회수를 요청한다 (reaping)
+정상 상태는 아니지만 예외적인 process 상태가 있다. UNIX system 에서는 zombie process 라고 부르는데 부모 process 가 fork() system call을 통해 부모 process와 동일한 code를 가진 자식 process를 생성하면 , 자식 process 는 exec() system call을 통해 새로운 code로 덮어씌워진 뒤 실행된다. 부모 process는 자식 process가 종료될 때까지 기다리고 자식 process 가 사용한 resource를 os에게 회수를 요청한다 (reaping)
 
 부모 process , 자식 process 종료가 비정상적으로 일어났을때 나타날수 있는 process 상태는 다음과 같다.
 
@@ -58,8 +58,8 @@ PCB 에 포함된 필드들은 다음과 같다.
 
 0. PID (process id)
 1. process state
-2. program counter : process의 다음에 실행할 명령어를 가르키는 pointer 
-3. cpu registers : process가 cpu에 의해 실행중일떄 cpu register 의 상태값을 저장해둔다. interrupt 되고나서 다시 rescheduling되었을때 process context를 복구하기 위해서 저장한다. 
+2. program counter : process의 다음에 실행할 명령어를 가리키는 pointer 
+3. cpu registers : process가 cpu에 의해 실행중일 때 cpu register 의 상태값을 저장해둔다. interrupt 되고나서 다시 rescheduling되었을때 process context를 복구하기 위해서 저장한다. 
 4. CPU-scheduling information : process priority나 scheduling parameter 등을 저장한다.
 5. Memory-management information : base,limit register 값이나 page table 또는 segment table에 대한 참조값을 저장한다. 
 6. I/O status information : 해당 process가 열고 있는 file 이나, process에 할당된 I/O Device 정보등을 저장한다. 

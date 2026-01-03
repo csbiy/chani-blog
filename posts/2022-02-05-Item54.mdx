@@ -24,7 +24,7 @@ if(cheese != null){
 }
 ```
 
-collection이나 배열같은 container가 비었을 떄 null을 반환하는 method를 사용할 때면 항상 이와 같은 방어 코드를 넣어주어야 한다. 
+collection이나 배열같은 container가 비었을 때 null을 반환하는 method를 사용할 때면 항상 이와 같은 방어 코드를 넣어주어야 한다. 
 
 null을 반환하는 족에서는 빈 container 를 만드는데도 비용이 드니 null을 반환하는게 낫다는 주장도 있지만 이는 잘못된 주장이다. 빈 container를 만드는데는 성능 차이가 미미하며, 굳이 빈 collection 과 배열은 새로 할당하지 않고도 반환할 수 있다. 
 

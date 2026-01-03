@@ -21,7 +21,7 @@ method 몸체가 실행되기 전에 매개변수를 확인한다면, 잘못된 
 
 
 ## 매개변수 검사 관련 문서화 
-public 과 protected method는 매개변수 값이 잘못됬을 떄 던지는 예외를 문서화해야한다. (@throws javadoc 이용)
+public 과 protected method는 매개변수 값이 잘못됐을 때 던지는 예외를 문서화해야한다. (@throws javadoc 이용)
 예를 들면 다음과 같다. 
 ```java
 /***
@@ -43,10 +43,10 @@ public BigInteger mod(BigInteger m){
 
 
 만약 개별 method에 적용되는 사항이 아니라 전체 public method에 적용된다면 class애 기입하면 된다. 
-위의 예에서도  매개변수가 null일떄, NullPointerException을 던진다는 설명은 class 수준에 기입되어 있다.
+위의 예에서도  매개변수가 null일 때, NullPointerException을 던진다는 설명은 class 수준에 기입되어 있다.
 
 
-jdk 7부터 추가된 java.util.Objects.requireNonNull method는 null검사를 수동으로 하지 않게 해주며, 원할경우 예외 메시지도 두번쨰 매개변수로 넘겨줄 수 있다. 
+jdk 7부터 추가된 java.util.Objects.requireNonNull method는 null검사를 수동으로 하지 않게 해주며, 원할경우 예외 메시지도 두 번째 매개변수로 넘겨줄 수 있다. 
 ```java
 this.strategy = Objects.requireNonNull(strategy,"전략");
 ```
@@ -76,6 +76,6 @@ method가 직접 사용하진 않으나, 나중에 쓰기 위해 저장하는 �
 
 - 유효성검사 비용이 지나치게 높은 경우, 실용적이지 않은 경우와 계산 과정에서 암묵적으로 검사가 수행될 때 
   
-예를 들어 Collections.sort(List)의 List내 모든 객체는 상호 비교될 수 있어야 하며, 그렇지 않을 경우에는 해당 객체와 비교할떄 classCastException을 던진다. 따라서 method호출이전에 유효성검증을 하더라도 실효성이 없다. 
+예를 들어 Collections.sort(List)의 List내 모든 객체는 상호 비교될 수 있어야 하며, 그렇지 않을 경우에는 해당 객체와 비교할 때 classCastException을 던진다. 따라서 method호출이전에 유효성검증을 하더라도 실효성이 없다. 
 
 추가로 던지기로 한 예외와 API문서 예외가 다르다면 예외 번역 (exception translate)관용구를 사용하여 API에 기재된 문서로 번역해주어야 하는데 이 부분은 Item 73에서 다룬다.

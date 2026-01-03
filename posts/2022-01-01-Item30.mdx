@@ -33,19 +33,19 @@ public static <E> Set<E> union(Set<E> s1,Set<E> s2){
 
 ## Generic Singleton Factory 
 
-- 요청 타입 매개변수에 맞게 매번 그 객체의 타입을 바꾸주는 정적 팩토리 method
+- 요청 타입 매개변수에 맞게 매번 그 객체의 타입을 바꿔주는 정적 팩토리 메소드
 
 Generic은 Runtime에 type정보가 소거된다. (Type erasure) 따라서 하나의 객체를 어떤 타입으로든 매개변수화 할 수 있다. 
 
 ```java
 private static UnaryOperator<Object> IDENTITY_FN = (t)->t;
-// Generic Sinlgeton Factory method 
+// Generic Singleton Factory method 
 public static <T> UnaryOperator<T> identityFunction(){
     return (UnaryOperator<T>) IDENTITY_FN;
 }
 ```
 
- Generic Sinlgeton Factory method 인 identityFunction 는 항등함수로 string이 들어오면 string으로 number가 들어오면 number type으로 반환타입을 바꿔준다. 
+Generic Singleton Factory 메소드인 identityFunction은 항등함수로 string이 들어오면 string으로, number가 들어오면 number 타입으로 반환타입을 바꿔준다. 
 
 ```java
 String[] strings = {"a","b","c"};

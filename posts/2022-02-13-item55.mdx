@@ -164,9 +164,9 @@ streamOfOptionals
 ```
 
 collection과 같은 container 타입은 optional로 감싸면 안된다. 
-빈 optional을 반환하기 보다 빈 List를 반환하는게 client가 optional 처리 코드를 넣지 않아도 되기 떄문이다. 
+빈 optional을 반환하기 보다 빈 List를 반환하는게 client가 optional 처리 코드를 넣지 않아도 되기 때문이다. 
 
-추가적으로 박싱된 기본 타입을 담는 optional은 값을 2번 담기 떄문에 기본 타입보다 당연히 무거울 수 밖에 없는데, 
+추가적으로 박싱된 기본 타입을 담는 optional은 값을 2번 담기 때문에 기본 타입보다 당연히 무거울 수 밖에 없는데, 
 Optional API 는 기본적으로 int,long,double 전용 Optional class들인 OptionalInt, OptionalLong, OptionalDouble을 제공한다.
 
 ## 예외

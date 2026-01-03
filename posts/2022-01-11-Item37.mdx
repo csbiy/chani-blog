@@ -73,12 +73,12 @@ System.out.println("plantsByLifeCycle = " + plantsByLifeCycle);
 Map<Plant.LifeCycle, List<Plant>> result 
         = garden.stream().collect(Collectors.groupingBy(Plant::getLifeCycle));
 ```
-groupBy의 2번쨰 parameter인 결과가 삼입될 map을 다음과 같이 EnumMap 객체를 생성해주는 람다식을 넣어주면 EnumMap 객체의 장점을 활용할 수 있다. 
+groupBy의 2번째 parameter인 결과가 삽입될 map을 다음과 같이 EnumMap 객체를 생성해주는 람다식을 넣어주면 EnumMap 객체의 장점을 활용할 수 있다. 
 ```java
 garden.stream().collect(groupingBy(Plant::getLifeCycle,()->new EnumMap<>(LifeCycle.class),toSet()));
 ```
 
-- 추가로 3개의 parameter 를 받는 groupBy Function의 1번쨰 parameter는 분류 방식, 2번쨰 parameter는 결과가 삼입될 빈 Map 객체를 반환해주는 supplier , 3번째 parameter는 결과를 집계해줄 collector를 받는다. 
+- 추가로 3개의 parameter 를 받는 groupBy Function의 1번째 parameter는 분류 방식, 2번째 parameter는 결과가 삽입될 빈 Map 객체를 반환해주는 supplier , 3번째 parameter는 결과를 집계해줄 collector를 받는다. 
 
 ```java
 Collector<T, ?, M> groupingBy(Function<? super T, ? extends K> classifier,
@@ -160,7 +160,7 @@ groupBy method에서 이전 상태를 기준으로 묶고, 이를 결과로 받�
 )
 ```
 
-toMap method api 설명을 보면 첫번쨰 parameter는 key를 생성해주는 함수, 두번쨰는 value를 생성해주는 함수 , 세번째는 같은 key 를 가지는 value를 어떻게 merge 할지에 대한 처리로직, 네번쨰는 결과가 삼입될 빈 map 객체를 만들어주는 함수를 작성하면 된다고 한다. 
+toMap method api 설명을 보면 첫 번째 parameter는 key를 생성해주는 함수, 두 번째는 value를 생성해주는 함수 , 세번째는 같은 key 를 가지는 value를 어떻게 merge 할지에 대한 처리로직, 네번째는 결과가 삽입될 빈 map 객체를 만들어주는 함수를 작성하면 된다고 한다. 
 
 ![](/images/Item37-toMap.jpg)
 

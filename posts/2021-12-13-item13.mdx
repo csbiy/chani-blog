@@ -5,7 +5,7 @@ description: ""
 date: "2021-12-12 15:26:47"
 tags: ["Java", "Effective Java 3/E"]
 ---
-Object class에는 clone() method가 protected로 선언되어 있고, 객체를 복사하려면 java.langCloneable Interface를 implement하여 복사할 수 있다. 
+Object class에는 clone() method가 protected로 선언되어 있고, 객체를 복사하려면 java.lang.Cloneable 인터페이스를 구현하여 복사할 수 있다. 
 
 ```java
 package java.lang;
@@ -15,9 +15,9 @@ public interface Cloneable {
 (https://docs.oracle.com/javase/7/docs/api/java/lang/Cloneable.html)
 
 
-Cloneable은 아무 method도 없는 marker interface지만 ,Object의 clone method의 동작 방식을 결정한다. 
+Cloneable은 아무 메소드도 없는 마커 인터페이스지만, Object의 clone 메소드의 동작 방식을 결정한다. 
 
-Cloeanble을 구현한 class에서부터 만들어진 객체에서 clone을 호출하면 객체의 필드들을 복사한 객체를 반환하도록 하고, 그렇지 않은 객체에서는 CloneNotSupportedException을 던진다. 
+Cloneable을 구현한 class에서부터 만들어진 객체에서 clone을 호출하면 객체의 필드들을 복사한 객체를 반환하도록 하고, 그렇지 않은 객체에서는 CloneNotSupportedException을 던진다. 
 
 
 
@@ -36,9 +36,9 @@ java Object 명세에 적혀있는 clone method에서 지켜야할 규약은 다
 반환된 객체와 원본 객체는 독립적이여야 한다. 
 ```
 
-super.clone을 통해 method를 부모쪽으로 재귀적으로 호출해서 받으므로, 강제성이 없는 생성자 연쇄와 비슷한 방식이다. 
+super.clone을 통해 메소드를 부모쪽으로 재귀적으로 호출해서 받으므로, 강제성이 없는 생성자 연쇄와 비슷한 방식이다. 
 
-##### 문제는 clone() method를 통해 생성된 객체가 , 가변 객체를 참조하는 경우이다.
+##### 문제는 clone() 메소드를 통해 생성된 객체가 가변 객체를 참조하는 경우이다.
 
 예를 들어 다음과 같은 Hotel 객체가 있는데, 이 객체의 필드 중에 가변필드인 guests 필드가 있다고 가정하자. 
 
@@ -100,13 +100,13 @@ public class Hotel implements Cloneable {
 }
 ```
 
-위 객체를 그대로 clone(얇은 복사) 한뒤 원본객체에서 투숙객 정보를 바꾸면 어떻게 될까?
+위 객체를 그대로 clone(얕은 복사) 한뒤 원본객체에서 투숙객 정보를 바꾸면 어떻게 될까?
 
 ```java
 class HotelTest {
 
     @Test
-    @DisplayName("가변 객체를 얇은 복사를 사용하면 안됩니다.")
+    @DisplayName("가변 객체를 얕은 복사를 사용하면 안됩니다.")
     void testClone() {
 
         Hotel hotel = new Hotel();
@@ -118,7 +118,7 @@ class HotelTest {
         hotel.addGuest(personB);
         hotel.addGuest(personC);
 
-        // 얇은 복사
+        // 얕은 복사
         Hotel copyedHotel = hotel.clone();
 
         // 물리적으로 다른 주소를 가지지만, 논리적으로는 동일한 copyedHotel
@@ -198,7 +198,7 @@ public class HashTable implements Cloneable{
     }
 ```
 
-복제본은 자신만의 copy본을 갖지만 원본과 동일한 연결 리스트를 참조한다. 즉 복제본의 entry의 next가 원본의 entry를 가르킬수도 있는 가능성이 있다. 
+복제본은 자신만의 버킷 배열을 갖지만 원본과 동일한 연결 리스트를 참조한다. 즉 복제본의 entry의 next가 원본의 entry를 가리킬 수도 있는 가능성이 있다. 
 
 따라서 각 버킷을 구성하는 연결리스트 자체도 복사해야 한다. 
 

@@ -36,7 +36,7 @@ tags: ["spring", "Batch"]
 2. Step : Job을 구성하는 독립된 작업 단위로 병렬처리가 가능하다, tasklet 기반의 step 과 chunk 기반의 step 두 가지로 나뉜다. 
 
 tasklet Step
-- step이 중단될떄까지 execute method 가 계속해서 실행된다  (=> 매번 execute마다 독립적인 transaction이 얻어진다. )
+- step이 중단될 때까지 execute method 가 계속해서 실행된다  (=> 매번 execute마다 독립적인 transaction이 얻어진다. )
 
 Chunk Step
 - tasklet step 보다 복잡하며 주로 db tuple이나, file entry와 같은 item을 처리하는데 사용된다.
@@ -102,7 +102,7 @@ public class JobInstance extends Entity implements javax.batch.runtime.JobInstan
 
 6. JobExecution
 
-- spring batch Job의 실제 실행 , 즉 Job을 구동할떄마다 매번 새로운 JobExecution instance 가 생성된다. 
+- spring batch Job의 실제 실행 , 즉 Job을 구동할 때마다 매번 새로운 JobExecution instance 가 생성된다. 
 - Job을 처음 실행하게 되면 JobInstance 와 JobExecution instance가 생성된다, 만약 해당 Job이 실패해서 재실행하면 동일한 JobInstance를 사용하고, JobExecution instance는 새롭게 생성된다.
 따라서 Job과 JobInstance JobExecution은 다음과 같은 관계를 가진다. (Job 1: JobInstance N ,JobInstance 1 : JobExecution N relationship)
 

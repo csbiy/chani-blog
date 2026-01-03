@@ -103,15 +103,15 @@ tags: []
 
 - pom.xml 파일에서 dependency 코드를 보면 \<scope> 를 포함하는 경우가 있는데, \<scope>는 의존하는 모듈이 언제 사용되는지 설명한다. 
 
-  - compile : default값으로 컴파일할 떄 필요하다. 테스트 및 런타임에도 포함된다. 
-  - runtime : compile할떄 필요하진 않지만, runtime에만 필요한 경우로, 배포 시 포함된다. ex) JDBC 드라이버 
-  - provided  : compile할떄는 필요하지만,  실제 runtime떄에는 WAS container에서 기본적으로 제공해서 배포시에는 제외된다. ex) Servlet , lombok
+  - compile : default값으로 컴파일할 때 필요하다. 테스트 및 런타임에도 포함된다.
+  - runtime : compile할 때 필요하진 않지만, runtime에만 필요한 경우로, 배포 시 포함된다. ex) JDBC 드라이버
+  - provided  : compile할 때는 필요하지만,  실제 runtime 때에는 WAS container에서 기본적으로 제공해서 배포시에는 제외된다. ex) Servlet , lombok
   - test : 테스트 코드를 컴파일 할 때 필요로 한다. 배포 시에는 당연히 제외된다. 
 
 
 ## 원격 repository와 로컬 repository
 
-- maven은 compile이나 packageing 등 작업을 수행할떄 필요한 plugin이나 depedency 에 기입된 라이브러리를 메이븐 중앙 repository (원격 repository)에서 다운받는다. 
+- maven은 compile이나 packageing 등 작업을 수행할 때 필요한 plugin이나 depedency 에 기입된 라이브러리를 메이븐 중앙 repository (원격 repository)에서 다운받는다. 
 
 (중앙 repository : https://repo1.maven.org/maven2/)
 
@@ -125,9 +125,9 @@ tags: []
 
 ![](/images/mvn-01.jpg)
 
-- lifeCycle의 특정단계를 수행하려면 mvn test , mvn clean과 같이 수행할 수 있다. 이떄 특정 단계를 수행하면 그 앞 단계의 모든 단계를 실행한다. 예를 들면 mvn test를 수행하면 validate 과정부터 prepare-package 과정까지 순서대로 실행한다. 
+- lifeCycle의 특정단계를 수행하려면 mvn test , mvn clean과 같이 수행할 수 있다. 이때 특정 단계를 수행하면 그 앞 단계의 모든 단계를 실행한다. 예를 들면 mvn test를 수행하면 validate 과정부터 prepare-package 과정까지 순서대로 실행한다. 
 
-- plugin으로 직접 단계를 수행할수 있다. 이떄는 앞 단계가 전부 수행되는게 아니라 특정 plugin에서 특정 기능을 수행하는 형태로 돌아간다. 
+- plugin으로 직접 단계를 수행할수 있다. 이때는 앞 단계가 전부 수행되는게 아니라 특정 plugin에서 특정 기능을 수행하는 형태로 돌아간다. 
 
 ```
 mvn surefire:test  // mvn plugin지정:수행할기능

@@ -102,7 +102,7 @@ public class ExecutionContextTasklet1 implements Tasklet {
 
 ## TaskletStep
 - ```RepeatTemplate```을 사용해서 Tasklet 코드 block을 트랜잭션 경계 내(성공시 커밋,실패시 롤백)에서 반복해서 실행합니다.
-언제까지 반복해서 실행할것인가에 대한 판단은 Tasklet 객체에서 반환하는 ```RepeatStatus```값에 의해 결정됩니다. ```RepeatStatus.FINISHED``` 와 같이 특정 ```RepeatStatus```를 반환할떄까지 계속해서 실행합니다.
+언제까지 반복해서 실행할것인가에 대한 판단은 Tasklet 객체에서 반환하는 ```RepeatStatus```값에 의해 결정됩니다. ```RepeatStatus.FINISHED``` 와 같이 특정 ```RepeatStatus```를 반환할 때까지 계속해서 실행합니다.
 - TaskletStep은 아래와 같은 tasklet 인터페이스를 구현하는 tasklet 구현체를 멤버변수로 가지고 있습니다.
 ```java
 /**
@@ -220,12 +220,12 @@ public Step taskStep(){
 
 ### startLimit API 
 
-- step 실패시 step이 재수행될 수 있는데, 이떄 재수행횟수를 제한하는 API입니다. 
+- step 실패시 step이 재수행될 수 있는데, 이때 재수행횟수를 제한하는 API입니다. 
 - 예를 들어서 ```startLimit``` 값을 3으로 주게 되면 3번까지만 step 재시작이 허용됩니다. 이후에는 ```org.springframework.batch.core.StartLimitExceededException``` 예외가 터집니다.
 - default값은 ```Integer.MAX_VALUE```로 사실상 제한이 없습니다.
 
 ### 설정 예시
-- 아래 테스트 케이스는 startLimit을 3으로 주었을떄입니다.
+- 아래 테스트 케이스는 startLimit을 3으로 주었을 때입니다.
 ```java
 public Step step(){
     return stepBuilderFactory.get("step")
@@ -257,13 +257,13 @@ org.springframework.batch.core.StartLimitExceededException: Maximum start limit 
 
 ### allowStartIfComplete API
 
-- step 실패시 step이 재시작될 수 있는데, 이떄 기존에 완료된 step은 재시작할지 말지를 결정하는 api입니다.
+- step 실패시 step이 재시작될 수 있는데, 이때 기존에 완료된 step은 재시작할지 말지를 결정하는 api입니다.
 - 기본값은 false로 완료된 step은 재시작을 수행하지 않습니다. 만약 true로 주게 된다면 이미 ```COMPLETE```된 step이더라도 항상 재시작합니다. 
 
 
 ### 설정 예시
-- 아래 테스트 케이스는 ```Job```을 첫번쨰 step은 ```allowStartIfComplete```값을 ```true```로 준 step이고, 두번째 step은 항상 실패하는 step입니다. 
-   즉 두번쨰 step에서 항상 실패함으로 step1은 ```allowStartIfComplete```값이 ```true```라면 같이 재시작됩니다.
+- 아래 테스트 케이스는 ```Job```을 첫 번째 step은 ```allowStartIfComplete```값을 ```true```로 준 step이고, 두번째 step은 항상 실패하는 step입니다. 
+   즉 두 번째 step에서 항상 실패함으로 step1은 ```allowStartIfComplete```값이 ```true```라면 같이 재시작됩니다.
 ```java
 @Bean
 public Job batchJob() {
@@ -290,8 +290,8 @@ public Step alwaysFailStep(){
 }
 ```
 
-- 5번 Job을 재시작해보면 ```allowStartIfComplete```을 ```true```로 준 첫번쨰 step은 이미 step이 완료되었음에도 불구하고 항상 재시작 되는 것을 확인할 수 있습니다.
-- 항상 실패하는 두번쨰 step은 ```startLimit``` 값을 초과하게 되면 재시작되지 않고, 첫번쨰 step만 계속해서 재시작됩니다.
+- 5번 Job을 재시작해보면 ```allowStartIfComplete```을 ```true```로 준 첫 번째 step은 이미 step이 완료되었음에도 불구하고 항상 재시작 되는 것을 확인할 수 있습니다.
+- 항상 실패하는 두 번째 step은 ```startLimit``` 값을 초과하게 되면 재시작되지 않고, 첫 번째 step만 계속해서 재시작됩니다.
 <figure>
   <img src="/images/BATCH_STEP_05.png"></img>
         <figcaption> allowStartIfComplete값을 true로 설정하고 STEP 재시작시 BATCH_STEP_EXECUTION 테이블 상태</figcaption>
@@ -345,7 +345,7 @@ public Step jobStep(JobLauncher jobLauncher) {
 
 
 - Spring Batch에서는  ```parametersExtractor``` 인터페이스의 구현체인 ```DefaultJobParametersExtractor```를 제공합니다.
-- ```DefaultJobParametersExtractor```는 부모 Job의 parameter와 Step의 parameter를 가져올 수 있습니다. 이떄 가져올 parameter의 key값을 설정해줄 수 있습니다. 
+- ```DefaultJobParametersExtractor```는 부모 Job의 parameter와 Step의 parameter를 가져올 수 있습니다. 이때 가져올 parameter의 key값을 설정해줄 수 있습니다. 
 - 위 예시 코드에서는 ```StepExecutionListener```에서 JobStep이 실행되기전에 ```name``` parameter를 설정해서 넘겨주고 있습니다. 이럴때는 아래와 같이 key를 ```name```으로 주면 설정된 value값을 들고 올 수 있습니다. 
 ```java
 // stepExecutionContext에 있는 key를 찾아서 job에게 값을 넘겨줄 수 있습니다.

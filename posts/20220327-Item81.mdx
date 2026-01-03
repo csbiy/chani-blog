@@ -35,9 +35,9 @@ java.util.concurrent 의 고수준 utility는 세 범주로 나눌 수 있는데
 
 - collection 내부적으로 동기화를 수행한다. 따라서 동기화를 무력화할수없으며, 외부에서 lock을 사용하게 되면 오히려 성능이 느려진다.
 
-- 동시성 collection에서 동기화를 무력화하지 못하므로 여러 method를 원자적으로 묶어 호출하는 일 역시 불가능하다. 따라서 여러 기본 동작을 하나의 원자적 동작으로 묶는 "상태 의존적 수정" method들이 추가됬다.
+- 동시성 collection에서 동기화를 무력화하지 못하므로 여러 method를 원자적으로 묶어 호출하는 일 역시 불가능하다. 따라서 여러 기본 동작을 하나의 원자적 동작으로 묶는 "상태 의존적 수정" method들이 추가됐다.
 
-상태 의존적 수정 method의 예를 들면 Map의 putIfAbsent(key,value) method는 주어진 키에 매핑된 값이 없을떄만 새 값을 집어넣고 기존값이 있었다면 그 값을 반환하고 없었다면 null을 반환한다.  이 method를 사용해서 thread safe한 map을 쉽게 구현할 수 있다. 
+상태 의존적 수정 method의 예를 들면 Map의 putIfAbsent(key,value) method는 주어진 키에 매핑된 값이 없을 때만 새 값을 집어넣고 기존값이 있었다면 그 값을 반환하고 없었다면 null을 반환한다.  이 method를 사용해서 thread safe한 map을 쉽게 구현할 수 있다. 
 
 ```java
 public static final ConcurrentMap<String,String> map = new ConcurrentHashMap<>();
@@ -48,7 +48,7 @@ public static String intern(String s){
 }
 ```
 
-이를 조금 더 최적화하여 get를 먼저 호출하고 필요할떄만 putIfAbsent method를 호출하면 더 빠르다. 
+이를 조금 더 최적화하여 get를 먼저 호출하고 필요할 때만 putIfAbsent method를 호출하면 더 빠르다. 
 
 ```java
 public static String intern(String s){
@@ -62,9 +62,9 @@ public static String intern(String s){
 }
 ```
 
-- 동시성 Collection(ConcurrentHashMap)을 사용하는게 동기화한 Collection (Collections.synchronizedMap) 을 사용하는 것 보다 휠씬 좋다. 
+- 동시성 Collection(ConcurrentHashMap)을 사용하는게 동기화한 Collection (Collections.synchronizedMap) 을 사용하는 것 보다 훨씬 좋다. 
 
-- Collection interface 중에 일부는 작업이 성공적으로 완료될 떄까지 기다리도록 확장되었다. 예를 들면 Queue를 호가장한 BlockingQueue 에 추가된 method중 take는 queue의 첫 원소를 꺼내는데 만약 queue가 비었다면 새로운 원소가 추가될떄까지 기다린다. 
+- Collection interface 중에 일부는 작업이 성공적으로 완료될 때까지 기다리도록 확장되었다. 예를 들면 Queue를 확장한 BlockingQueue 에 추가된 method중 take는 queue의 첫 원소를 꺼내는데 만약 queue가 비었다면 새로운 원소가 추가될 때까지 기다린다. 
 
 이러한 특성 덕분에 BlockingQueue는 작업 큐 (생산자-소비자 queue)에 쓰기에 적합하다고 한다. 실제로 ThreadPoolExecutor를 포함한 대부분의 실행자 서비스 구현체에서 BlockingQueue를 사용한다고 한다. 
 

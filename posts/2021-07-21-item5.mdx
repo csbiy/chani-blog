@@ -72,19 +72,19 @@ public class SpellChecker {
 
 Dictionary를 상속 계층구조로 잡고 하위 계층구조로 여러가지 종류의 사전이 있었을때, 외부 사전 class를 주입받을 때, 상위 type에 의존하도록 주입하는 방식이다. 
 
-이처럼 구현하면 instance를 생성하려고 할떄 원하는 하위 type으로 넘겨받아서 객체를 생성하면된다.
+이처럼 구현하면 instance를 생성하려고 할 때 원하는 하위 type으로 넘겨받아서 객체를 생성하면 된다.
 
 ```java 
 SpellChecker spellChecker1 = new SpellChecker(koreanDictionary);
 SpellChecker spellChecker2 = new SpellChecker(englishDictionary);
 //예시코드
 spellChecker1.translate('...')// 안녕하세요
-spellChekcer2.translate('...')// Hello
+spellChecker2.translate('...')// Hello
 ```
 
 책에서 사용하고 있는 말을 그대로 강조하여 쓰면, 다음과 같다.
 
-#### 의존 객체주입(Dependency Injection) 방식 : 인스턴스를 생성할 떄,생성자에 필요한 자원을 넘겨주는 방식
+#### 의존 객체주입(Dependency Injection) 방식 : 인스턴스를 생성할 때, 생성자에 필요한 자원을 넘겨주는 방식
 
 - 의존 객체 주입 방식은 생성자, 정적팩터리,빌더패턴에 똑같이 응용이 가능하다. 
 
@@ -93,7 +93,7 @@ spellChekcer2.translate('...')// Hello
 -  DI 패턴을 이용한 Framework 는 대표적으로 Spring이 매우 매우 유명하다. 
 
 
-*Factory란 호출할떄마다 특정타입의 인스턴스를 반복해서 만들어주는 객체를 말하며, 디자인패턴을 말한다. 자세한 내용 참조 ([Design Pattern/Factory method Pattern](https://devcs96.github.io/2021/07/20/2021-07-20-item4/#more],참조))
+*Factory란 호출할 때마다 특정 타입의 인스턴스를 반복해서 만들어주는 객체를 말하며, 디자인패턴을 말한다. 자세한 내용 참조 ([Design Pattern/Factory method Pattern](https://devcs96.github.io/2021/07/20/2021-07-20-item4/#more],참조))
 
 Java 8 에서 나온 `Supplier<T>` Interface가 Factory Method를 표현한 예다.
 

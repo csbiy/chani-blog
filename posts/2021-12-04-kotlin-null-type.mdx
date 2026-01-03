@@ -15,7 +15,7 @@ fun test() {
 }
 ```
 
-변수에 null을 할당 가능하게 하려면 다음과 같이 변수의 타입을 정의할떄, 물음표를 추가하면 된다.
+변수에 null을 할당 가능하게 하려면 다음과 같이 변수의 타입을 정의할 때, 물음표를 추가하면 된다.
 
 ```kotlin
 class Person ( val first: String ,
@@ -66,7 +66,7 @@ if(person.middle != null){
 
 (안전 호출 연산자 사용 -> null or Int 값임으로 Int?로 결과 추론 )
 
-이떄는 엘비스 연산자를 사용하면 조금 더 유동적으로 코딩이 가능하다.
+이때는 엘비스 연산자를 사용하면 조금 더 유동적으로 코딩이 가능하다.
 
 ![](/images/kotlin-null-type_img_3.png)
 
@@ -77,7 +77,7 @@ if(person.middle != null){
 person.middle?.length ?: 0
 // 안전연산자 -> null or int 
 // 엘비스 연산자 -> null이나오면 0을반환 , 아니라면 int 반환
-// 어쩄거나 둘다 int 값임
+// 어쨌거나 둘다 int 값임
 ```
 
 

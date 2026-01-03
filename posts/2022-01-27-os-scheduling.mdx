@@ -24,9 +24,9 @@ FIFO에서 가지는 convoy-effect문제를 해결할 수 있으나, 모든 작�
 
 ![](/images/os-scheduling-03.jpg)
 
-예를 들면 위처럼 작업시간이 긴 A라는 process가 먼저 도착했고, 그 뒤에 작업 시간이 짧은 B,C가 도착하였다. SJF는 비선점형이므로, A가 끝날떄까지 기다려야 한다. 
+예를 들면 위처럼 작업시간이 긴 A라는 process가 먼저 도착했고, 그 뒤에 작업 시간이 짧은 B,C가 도착하였다. SJF는 비선점형이므로, A가 끝날 때까지 기다려야 한다. 
 
-위의 FIFO와 SJF는 비선점형 scheduler로 각 작업이 종료될떄까지 계속 수행된다. 이제부터 정리할 스케쥴링 알고리즘은 선점형 방식으로 작업이 종료되기 전에 다른 작업으로 전환이 가능하다 
+위의 FIFO와 SJF는 비선점형 scheduler로 각 작업이 종료될 때까지 계속 수행된다. 이제부터 정리할 스케쥴링 알고리즘은 선점형 방식으로 작업이 종료되기 전에 다른 작업으로 전환이 가능하다 
 
 
 
@@ -48,11 +48,11 @@ STCF 방식은 스케쥴링 평가 기준이 단지 반환 시간 하나라면 �
   
 ## Round Robin 
 
-응답 시간 문제를 해결하기 위해서 Round Robin 스케쥴링 알고리즘이 도입되었다. Round Robin 방식은 마찬가지로 선점형 스케쥴러로 일정시간 동안 작업을 실행 한후에 다음 작업으로 전환한다. 이떄 작업이 실행되는 일정 시간을 time slice , scheduling quantum이라 부른다. 
+응답 시간 문제를 해결하기 위해서 Round Robin 스케쥴링 알고리즘이 도입되었다. Round Robin 방식은 마찬가지로 선점형 스케쥴러로 일정시간 동안 작업을 실행 한후에 다음 작업으로 전환한다. 이때 작업이 실행되는 일정 시간을 time slice , scheduling quantum이라 부른다. 
 
 ![](/images/os-scheduling-05.jpg)
 
-위 figure와 같이 SJF 방식은 응답시간이 좋지 않다 반면 Round robin 방식은 매 time slice 마다 context switching을 통해서 응답시간을 빠르게 해준다. 하지만 반환 시간이라는 기준으로 보았을떄, round robin은 SJF 방식보다 좋지 않다. 
+위 figure와 같이 SJF 방식은 응답시간이 좋지 않다 반면 Round robin 방식은 매 time slice 마다 context switching을 통해서 응답시간을 빠르게 해준다. 하지만 반환 시간이라는 기준으로 보았을 때, round robin은 SJF 방식보다 좋지 않다. 
 
 time slice의 길이가 round robin 성능에 중요한 영향을 끼치는데, 너무 짧게 설정하면 context switching overhead가 커지나, 응답시간은 빨리질것이다. 
 
@@ -84,7 +84,7 @@ MLFQ는 process가 I/O작업을 많이 수행하는 I/O bound process 인지 또
 
 예를 들면 i/o bound process는 응답시간이 중요한데, time quantuam값을 소진하기 전에 cpu를 양도하면 같은 queue에 배치된다. 즉 우선순위가 높은 상태로 유지가 되는 반면, cpu bound process는 점차적으로 time quantuam값을 소진하고 낮은 우선순위를 가진 queue에 배치된다. 
 
-그렇다고 cpu bound process가 starvation되는 것은 아니다. 규칙 5번쨰를 보면 일정 주기 S가 지난 후에는 cpu-bound process나 i/o bound process모두 최상위 queue로 이동되기 떄문이다.
+그렇다고 cpu bound process가 starvation되는 것은 아니다. 규칙 5번째를 보면 일정 주기 S가 지난 후에는 cpu-bound process나 i/o bound process모두 최상위 queue로 이동되기 때문이다.
 
 위와 같이 MLFQ를 사용하는 경우에 사용자 작업은 가장 높은 우선순위를 얻지 못하게 하고 중요한 운영체제 작업을 위해 높은 우선순위는 예약해둔다. 
 

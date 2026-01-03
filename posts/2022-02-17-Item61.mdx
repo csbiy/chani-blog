@@ -28,7 +28,7 @@ public static void main(String[] args) {
     System.out.println(result1 == result2); // false
 }
 ```
-참조타입은 값이 같더라도 다른 메모리주소에 올라가기 때문에 == 연산자로 메모리 주소를 비교했을떄 false가 나온다. 
+참조타입은 값이 같더라도 다른 메모리주소에 올라가기 때문에 == 연산자로 메모리 주소를 비교했을 때 false가 나온다. 
 
 이를 정상적으로 작동하게 수정하려면 기본타입으로 다시 언박싱해주어야 한다
 ```java
@@ -39,7 +39,7 @@ Comparator<Integer> naturalOrder = (iBoxed,jBoxed)-> {
 };
 ```
 
-또한 참조타입은 기본값으로 null을 가지기 떄문에 다음과 같이 int 타입과 비교하였을떄 언박싱되면서 NullPointerException이 터진다
+또한 참조타입은 기본값으로 null을 가지기 때문에 다음과 같이 int 타입과 비교하였을 때 언박싱되면서 NullPointerException이 터진다
 
 ```java
 static Integer i;
@@ -64,5 +64,5 @@ System.out.println(" 수행시간 :  " +( System.currentTimeMillis() - startTime
 
 ## boxing 된 기본 타입의 용도
 
-1. collection의 타입매개변수로 사용 (java 언어 자체가 primtive type을 타입매개변수로 받지 않기 떄문임 )
+1. collection의 타입매개변수로 사용 (java 언어 자체가 primtive type을 타입매개변수로 받지 않기 때문임 )
 2. Reflection을 통한 method 호출

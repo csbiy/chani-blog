@@ -15,7 +15,7 @@ Git branch는 commit 사이를 이동할 수 있는 포인터와 비슷한 개�
 
 ## branch 생성하기 
 
-git branch 는 git branch \<branch명> 명령어로 만들 수 있다. branch를 새로 만들면 가장 마지막 commit을 가르키게 된다. 
+git branch 는 git branch \<branch명> 명령어로 만들 수 있다. branch를 새로 만들면 가장 마지막 commit을 가리키게 된다. 
 
 ```bash
 C:\Users\katd6\OneDrive\바탕 화면\hello-git>git branch testbranch
@@ -23,7 +23,7 @@ C:\Users\katd6\OneDrive\바탕 화면\hello-git>git branch testbranch
  
 그럼 두 branch중에 현재 working directory에서 작업중인 branch를 어떻게 나눌까?
 
-Git은 HEAD라고 하는 로컬 Branch를 가르키는 특수한 pointer가 존재한다. 
+Git은 HEAD라고 하는 로컬 Branch를 가리키는 특수한 pointer가 존재한다. 
 
 ```bash
 C:\Users\katd6\OneDrive\바탕 화면\hello-git>git branch -a
@@ -39,7 +39,7 @@ C:\Users\katd6\OneDrive\바탕 화면\hello-git>git branch -a
 <pre>
 git checkout [이동할 branch명]
 </pre>
-git branch 는 checkout 명령어로 이동할 수 있다. 아까 정리했던것처럼 Git은 HEAD라고 하는 현재 작업중인 Local branch를 가르키는 pointer인 HEAD가 존재한다고 하였다. git checkout 명령어로 로컬 branch를 바꾼다는 것은 결국에 이 pointer가 가르키는 branch를 변경하겠다는 말이랑 동일하다.
+git branch 는 checkout 명령어로 이동할 수 있다. 아까 정리했던것처럼 Git은 HEAD라고 하는 현재 작업중인 Local branch를 가리키는 pointer인 HEAD가 존재한다고 하였다. git checkout 명령어로 로컬 branch를 바꾼다는 것은 결국에 이 pointer가 가리키는 branch를 변경하겠다는 말이랑 동일하다.
 
 
 
@@ -78,14 +78,14 @@ C:\Users\katd6\OneDrive\바탕 화면\hello-git>git commit -m "update from testb
 
 ![](/images/git-capture-01.jpg)
 
-이전까지 master , testbranch는 가장 최근 commit 을 동일하게 가르켰지만, 이젠 testbranch는 방금전 수행한 commit을 가르키고 , master branch 는 master branch에서 가장 최근에 수행한 commit을 가르키고 있다. 
+이전까지 master , testbranch는 가장 최근 commit 을 동일하게 가르켰지만, 이젠 testbranch는 방금전 수행한 commit을 가리키고 , master branch 는 master branch에서 가장 최근에 수행한 commit을 가리키고 있다. 
 
 master branch에서 또다른 commit을 수행하고 각각 두 branch에서 git log 를 찍어보았다.
 
 ![](/images/git-capture-02.jpg)
 
 
-test branch , master branch가 분기해서 각각의 최근 commit을 가르키는 것을 볼 수 있으며, 이는 HEAD pointer에 의해 가르켜진다. 
+test branch , master branch가 분기해서 각각의 최근 commit을 가리키는 것을 볼 수 있으며, 이는 HEAD pointer에 의해 가르켜진다. 
 
 ![](/images/git-advance-master.png)
 
@@ -122,7 +122,7 @@ Switched to a new branch "iss53"
 
 ![](/images/git-capture-03.jpg)
 
-이떄 도중에 다른 긴급한 이슈가 생겼다고 하면 먼저 master branch로 이동하고, 해당 issue에 대한 branch를 또하나파서 작업한다. 
+이때 도중에 다른 긴급한 이슈가 생겼다고 하면 먼저 master branch로 이동하고, 해당 issue에 대한 branch를 또하나파서 작업한다. 
 
 ![](/images/git-capture-04.jpg)
 
@@ -130,7 +130,7 @@ Switched to a new branch "iss53"
 
 ![](/images/git-basic-branching-4.png)
 
-고친 issue를 master branch 와 병합하고 싶으면 git merge \<병합할branch명> 명령어를 통해서 두 branch를 합칠 수 있다. 이떄 두 branch가 공동 선상에 있다면 fast-forward 방식으로 HEAD pointer를 이동시켜줄 수 있다. 
+고친 issue를 master branch 와 병합하고 싶으면 git merge \<병합할branch명> 명령어를 통해서 두 branch를 합칠 수 있다. 이때 두 branch가 공동 선상에 있다면 fast-forward 방식으로 HEAD pointer를 이동시켜줄 수 있다. 
 
 ![](/images/git-capture-05.jpg)
 
@@ -142,7 +142,7 @@ issue 가 모두 종료되어 master branch에 해당 issue도 merge 한다고 �
 
 ![](/images/git-capture-07.jpg)
 
-이떄는 아까처럼 fast-forward 방식이 아니다. 그 이유는 두 branch가 동일 선상에 있는기 떄문에 두 branch간 공통조상 하나를 사용해서 3way merge를 한다. 
+이때는 아까처럼 fast-forward 방식이 아니다. 그 이유는 두 branch가 동일 선상에 있는기 때문에 두 branch간 공통조상 하나를 사용해서 3way merge를 한다. 
 3way merge 방법은 단순히 branch pointer (HEAD)를 최신 commit으로 이동시키는 방법이 아니다, 3way merge 병합 결과 자체를 새로운 commit으로 만들어서 두 branch 모두를 부모로 갖게 만든다. 
 
 - Merge commit :  3 way merge 방식에 의해 2 branch를 부모로 갖는 commit 

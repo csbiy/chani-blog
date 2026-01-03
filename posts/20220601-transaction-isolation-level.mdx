@@ -8,7 +8,7 @@ tags: []
 ## Transaction 격리성
 
 - Transaction은 ACID 라 하는 원자성 (Atomicity) , 일관성 (Consistency) , 격리성 (Isolation) , 지속성 (Durability) 을 보장해야 한다. 
-- 이중에 Transaction 격리 수준에 관련된 ACID 특성인 격리성만 간략하게 정리하면 , 동시에 실행되는 트랜잭션이 서로에게 영향을 미치도록 격리한다는 뜻이다. 
+- 이중에 Transaction 격리 수준에 관련된 ACID 특성인 격리성만 간략하게 정리하면 , 동시에 실행되는 트랜잭션이 서로에게 영향을 미치지 않도록 격리한다는 뜻이다. 
 
 ## 왜 격리 수준을 나누어서 관리하는가?
 
@@ -37,7 +37,7 @@ tags: []
 
 - 커밋한 데이터만 읽을 수 있다. 
 - Dirty Read가 발생하지 않는다. 
-- 만약 Transaction A 가 데이터를 수정하고 Commit하면 , Transaction B가 Transaction A가 변경하기 전의 데이터를 읽고, Transaction A가 변경하고 나서 커밋한 뒤에 데이터를 다시 읽었을때, 값이 다르다. 즉 Tranascation B가 실행되는 도중에 Transaction A 가 값을 변경하고 커밋해버리면 다시 읽었을떄 값이 달라지는 문제이다. (NON-REPEATABLE READ) 
+- 만약 Transaction A 가 데이터를 수정하고 Commit하면 , Transaction B가 Transaction A가 변경하기 전의 데이터를 읽고, Transaction A가 변경하고 나서 커밋한 뒤에 데이터를 다시 읽었을때, 값이 다르다. 즉 Transaction B가 실행되는 도중에 Transaction A 가 값을 변경하고 커밋해버리면 다시 읽었을 때 값이 달라지는 문제이다. (NON-REPEATABLE READ) 
 - 보통 데이터베이스는 READ COMMITED 격리 수준을 기본으로 제공한다. 
 
 ## REPEATABLE READ
