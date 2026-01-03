@@ -1,6 +1,12 @@
 "use client";
 import { motion } from "framer-motion";
 import Link from "next/link";
+import dynamic from "next/dynamic";
+
+const FloatingIcons = dynamic(() => import("./FloatingIcons"), {
+  ssr: false,
+  loading: () => null,
+});
 
 export default function Hero() {
   return (
@@ -20,6 +26,9 @@ export default function Hero() {
 
       {/* 글로우 효과 */}
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-96 h-96 bg-accent/20 rounded-full blur-3xl" />
+
+      {/* 3D 플로팅 아이콘 */}
+      <FloatingIcons />
 
       <div className="relative z-10 text-center px-6 max-w-4xl mx-auto">
         <motion.div
