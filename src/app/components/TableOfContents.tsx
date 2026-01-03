@@ -21,7 +21,8 @@ export default function TableOfContents({ headings }: { headings: Heading[] }) {
           return (
             <li
               key={heading.id}
-              className={`relative ml-${(heading.level - 2) * 4}`}
+              className="relative"
+              style={{ marginLeft: `${(heading.level - 2) * 1}rem` }}
             >
               <a
                 href={`#${heading.id}`}
