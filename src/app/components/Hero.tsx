@@ -74,7 +74,7 @@ export default function Hero() {
         >
           <Link
             href="#posts"
-            className="px-6 py-3 bg-accent hover:bg-accent-hover text-white rounded-lg font-medium transition-all hover:scale-105"
+            className="px-6 py-3 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg font-medium transition-all hover:scale-105"
           >
             글 둘러보기
           </Link>
