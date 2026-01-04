@@ -1,251 +1,438 @@
 ---
 id: 19
-title: "Vue3 Data Method와 Rendering Directives"
-description: ""
+title: "Vue 3 핵심 개념: Composition API와 Reactivity"
+description: "Vue 3의 Composition API, ref vs reactive, 디렉티브"
 date: "2024-01-01 13:12:06"
-tags: ["Vue3"]
+tags: ["vue", "vue3", "composition-api", "frontend", "javascript"]
 ---
-## Vue의 data() method
 
-- data method가 반환하는 객체는 모두 proxy로 래핑됩니다.
+## Vue 3의 두 가지 API 스타일
+
+Vue 3는 컴포넌트를 작성하는 두 가지 방식을 제공합니다.
+
+### Options API
+
+Vue 2에서 사용하던 방식입니다. data, methods, computed 등 옵션별로 코드를 분리합니다.
 
 ```javascript
-Vue.createApp({
-    name : "App",
-    data() {
-        return {
-            contracts : [
-            ] // ES6 Proxy 객체로 Wrapping됨.
-        };
-    },
-})
-```
-
-- 위 contracts 배열은 proxy 로 래핑되서 반환되며, 이때 배열의 데이터를 변경하는 method들(`push()`,`splice()`,`sort()`)도 같이 래핑하고 있습니다. 즉 배열의 데이터가 변경되면 Watcher에게 변경을 알려서 다시 렌더링이 일어나도록 합니다.
-
-<figure>
-  <img src="/images/vue-01.png"></img>
-        <figcaption>https://vuejs.org/v2/guide/reactivity.html</figcaption>
-</figure>
-
-- 때문에 데이터를 변경하고자 하면 항상 Proxy 객체를 통해서 변경시켜야 합니다. Vue 인스턴스 외부에서 배열을 직접 변경하면 Vue에서 제공하는 반응성이 동작하지 않습니다.
-
-## Vue Rendering 관련 디렉티브
-
-
-1. v-text 디렉티브 사용 : HTML 태그를 escape 처리하여 문자열 그대로 노출합니다.
-- 내부적으로 innerText 속성에 연결됩니다.
-```html
-<div id="app">
-    <h2 v-text="message"></h2>
-</div>
-```
-2. v-html 디렉티브 사용 : HTML 태그를 파싱해서 노출합니다.
-
-- 태그가 치환되어 노출되며, 내부적으로 innerHtml 속성에 연결됩니다.
-```html
-<div id="app">
-    <h2 v-html="message"></h2>
-</div>
-```
-
-3. v-bind 디렉티브 사용 : DOM의 특정 속성값을 데이터 바인딩할 수 있습니다.
-- v-bind:value 는 :value와 같이 v-bind 디렉티브를 생략하고 사용가능합니다.
-- v-bind 디렉티브는 ```단방향 데이터 바인딩```입니다. 즉 model값의 변경이 View에 바인딩되지만, View의 변경이 model에 바인딩되지는 않습니다.
-```javascript
-<input type="text" :value="message" />
-<img v-bind:src="imgPath" />
-// ---
-const model = {
-            message : "hello Vue3!",
-            imgPath : "https://cdn.pixabay.com/photo/2016/03/02/13/59/bird-1232416_1280.png",
-        };
-const vm = Vue.createApp({
-    name : "App",
-    data(){
-        return model;
+export default {
+  data() {
+    return { count: 0 }
+  },
+  methods: {
+    increment() {
+      this.count++
     }
-})
+  },
+  computed: {
+    doubled() {
+      return this.count * 2
+    }
+  }
+}
 ```
 
+### Composition API
 
+Vue 3에서 도입된 방식입니다. 관련 로직을 함께 모아서 작성할 수 있습니다.
 
-4. v-model 디렉티브 : v-bind와 유사한 역할을 수행하나, 양방향 데이터 바인딩입니다.
-
-- 아래 input 에 사용자가 값을 입력하면 model의 message값 역시 변경됩니다.
 ```javascript
-<input type="text" v-model="message">
+import { ref, computed } from 'vue'
+
+export default {
+  setup() {
+    const count = ref(0)
+    const doubled = computed(() => count.value * 2)
+
+    function increment() {
+      count.value++
+    }
+
+    return { count, doubled, increment }
+  }
+}
 ```
 
-- v-model을 통한 양방향 데이터 바인딩은 CheckBox,Select,Radio Button에도 적용이 가능합니다.
-```javascript
-<div id="app">
-    <div>
-        <h2>개발자</h2>
-        <input type="checkbox" id="devA" value="A" v-model="developer">
-        <label for="devA">찬수</label>
-        <input type="checkbox" id="devB" value="B" v-model="developer">
-        <label for="devB">준영</label>
-        <input type="checkbox" id="devC" value="C" v-model="developer">
-        <label for="devC">강호</label>
-    </div>
-    <div>
-        <h3>Domain</h3>
-        <select v-model="domain">
-            <option value="C1">의료</option>
-            <option value="C2">금융</option>
-            <option value="C3">커머스</option>
-        </select>
-    </div>
-</div>
+Composition API의 장점은 관련 기능을 한 곳에 모을 수 있다는 것입니다. Options API에서는 하나의 기능이 data, methods, computed에 흩어져 있지만, Composition API에서는 하나의 함수로 묶을 수 있습니다.
 
- <script type="text/javascript">
-    const vm  = Vue.createApp({
-        name : "App",
-        data() {
-            return {
-                developer : [],
-                domain : "",
-            };
-        }
-    }).mount("#app")
-</script>
+참고로 두 API는 한 프로젝트에서 혼용할 수 있어서, 기존 Options API 프로젝트에 Composition API를 점진적으로 도입하는 것도 가능합니다.
+
+
+## ref vs reactive
+
+Vue 3를 처음 접할 때 가장 헷갈리는 게 ref와 reactive입니다.
+
+### ref()
+
+기본값(primitive)이나 단일 값을 반응형으로 만들 때 사용합니다.
+
+```javascript
+import { ref } from 'vue'
+
+const count = ref(0)
+const name = ref('Vue')
+const isVisible = ref(true)
+
+// 값 접근/변경 시 .value 필요
+console.log(count.value)  // 0
+count.value++
 ```
 
-### Modifier(수식어)
+템플릿에서는 `.value` 없이 사용합니다.
 
-- `Modifier`는 디렉티브에 기능을 추가하는 Vue.js 디렉티브의 문법 요소로 v-model 디렉티브에는 다음과 같은 디렉티브를 사용할 수 있습니다.
-- 예를 들어 `number` 디렉티브는 input에 입력되는 사용자 입력값중에 형변환이 가능한 부분만 숫자로 치환하는 역할을 수행합니다.
-```javascript
-<input type="text" v-model.number="num">
-```
-
-- 한번에 여러 개의 디렉티브를 적용할 수 있습니다. (`v-model.number.trim`)
-
-### 조건 렌더링 디렉티브
-
-- 특정 조건에 따라 화면에 보여줄지 말지를 결정하는 디렉티브입니다.
-
-1. v-show
-
-- 렌더링은 수행하지만, `display: none;` 으로 화면상에서는 보이지 않습니다.
-```javascript
-<p v-show="hasChild > 0">father</p>
-```
-
-2. v-if
-
-- v-show와 다르게 렌더링 자체가 수행되지 않습니다.
-- v-else-if, v-else로 분기를 지어서 렌더링될 DOM을 결정할 수 있습니다.
-```javascript
-<p v-if="hasChild > 0">father</p>
-<p v-else-if="hasChild == 0 ">solo</p>
-<p v-else>error</p>
-```
-
-### 반복 렌더링 디렉티브
-
-- 말그대로 기본 for문과 유사하다. 단 객체의 경우는 Key(속성)도 같이 가져올 수 있습니다.
-```javascript
-// array
-<div v-for="(name,index) in names" >
-    <p>{{ name }}</p>
-</div>
-// object
-<div v-for="(v,k,index) in names">
-    <p>{{ k }} : {{ v }}</p>
-</div>
-```
-
-- `template` 태그를 활용하면 v-for 에 사용되는 반복문 변수들을 그룹으로 묶어 사용이 가능합니다.
-
-```javascript
-<template v-for="(contract,index) in contracts">
-    <tr>
-        <td>{{ contract.name }}</td>
-        <td>{{ contract.age  }}</td>
-    </tr>
-    <hr v-show="index % 2 === 0">
+```html
+<template>
+  <p>{{ count }}</p>  <!-- .value 불필요 -->
 </template>
 ```
 
-- DOM요소를 변경하는 케이스가 존재한다면, key 속성을 추가하면 변경되는 DOM 요소에 대해서만 렌더링을 수행합니다. 즉 변경되지 않은 요소에 대해서는 렌더링을 수행하지 않으므로 더 좋은 성능을 낼 수 있습니다.
+### reactive()
 
-  - key에는 항상 고유한 값만을 부여해야만 의도한 성능 향상 효과가 일어날 수 있습니다.
-  - key값이 바뀌게 되면 모두 다시 Rendering을 수행되기 때문에 반복문의 index를 key로 두면 안되고, 데이터베이스의 PK와 같은 고유한 값을 주어야만 변경 요소에 대해서만 렌더링하는 작업과 요소의 위치만 변경해주는 reflow 작업만을 수행합니다.
-  - 가급적 key 특성을 부여하고, index가 아닌 고유한 값을 사용해야 합니다.
+객체를 반응형으로 만들 때 사용합니다. `.value` 없이 직접 접근합니다.
 
-
-## 기타 디렉티브
-
-1. v-pre 디렉티브 : HTML 요소에 대해 컴파일을 수행하지 않습니다. 즉 템플릿 문자열 그대로 출력됩니다.
 ```javascript
-<span v-pre>{{message}}</span>
+import { reactive } from 'vue'
+
+const state = reactive({
+  count: 0,
+  user: {
+    name: 'Vue',
+    age: 3
+  }
+})
+
+// .value 없이 직접 접근
+state.count++
+state.user.name = 'Vue 3'
 ```
 
-2. v-once 디렉티브 : 최초에만 렌더링을 수행합니다. 이후에 데이터가 변경되도 렌더링을 수행하지 않습니다.
+### 언제 뭘 써야 하나?
+
+| 상황 | 추천 |
+|------|------|
+| 단일 값 (숫자, 문자열, 불리언) | `ref()` |
+| 객체나 배열 | `ref()` 또는 `reactive()` |
+| 기본값으로 | `ref()` 사용 |
+
+실무에서도 ref()를 기본으로 쓰는 편이고, Vue 공식 문서도 **ref()를 기본으로 사용**하는 것을 권장합니다. 이유는:
+
+1. `ref()`는 모든 타입에서 동작합니다
+2. `reactive()`는 구조분해 시 반응성이 깨집니다
+3. 일관성 있게 `.value`를 사용하면 혼란이 줄어듭니다
 
 ```javascript
-<span v-once>{{message}}</span>
+// reactive()의 함정: 구조분해 시 반응성 손실
+const state = reactive({ count: 0 })
+const { count } = state  // 반응성 손실!
+count++  // UI 업데이트 안됨
+
+// 해결: toRefs() 사용
+import { toRefs } from 'vue'
+const { count } = toRefs(state)  // 반응성 유지
 ```
 
-3. v-cloak : 화면 초기에 컴파일 되지 않은 템플릿은 출력되지 않도록 방지해주는 역할을 수행하는 디렉티브입니다.
+
+## Vue의 Reactivity 시스템
+
+### Proxy 기반 반응성
+
+Vue 3는 JavaScript Proxy를 사용해 반응성을 구현합니다. data()가 반환하는 객체는 Proxy로 래핑됩니다.
 
 ```javascript
+Vue.createApp({
+  data() {
+    return {
+      items: []  // ES6 Proxy 객체로 래핑됨
+    }
+  }
+})
+```
+
+배열의 데이터를 변경하는 메서드들(`push()`, `splice()`, `sort()`)도 함께 래핑되어, 변경 시 자동으로 UI가 업데이트됩니다.
+
+데이터를 변경할 때는 항상 Proxy 객체를 통해서 변경해야 합니다. Vue 인스턴스 외부에서 원본 배열을 직접 변경하면 반응성이 동작하지 않습니다.
+
+
+## 렌더링 디렉티브
+
+### 텍스트 렌더링
+
+**v-text**: HTML 태그를 이스케이프 처리하여 문자열로 출력합니다.
+
+```html
+<h2 v-text="message"></h2>
+<!-- 내부적으로 innerText에 연결 -->
+```
+
+**v-html**: HTML 태그를 파싱하여 렌더링합니다. XSS 공격에 주의해야 합니다.
+
+```html
+<div v-html="htmlContent"></div>
+<!-- 내부적으로 innerHTML에 연결 -->
+```
+
+### 데이터 바인딩
+
+**v-bind**: 단방향 바인딩입니다. 모델 → 뷰 방향으로만 동기화됩니다.
+
+```html
+<!-- 전체 문법 -->
+<input type="text" v-bind:value="message" />
+<img v-bind:src="imgPath" />
+
+<!-- 축약 문법 -->
+<input type="text" :value="message" />
+<img :src="imgPath" />
+```
+
+**v-model**: 양방향 바인딩입니다. 폼 요소에서 사용합니다.
+
+```html
+<input type="text" v-model="message" />
+```
+
+사용자가 입력하면 `message`가 자동으로 업데이트됩니다.
+
+```html
+<!-- 체크박스, 셀렉트, 라디오에도 사용 가능 -->
+<div id="app">
+  <h2>개발자</h2>
+  <input type="checkbox" id="devA" value="A" v-model="developer" />
+  <label for="devA">찬수</label>
+  <input type="checkbox" id="devB" value="B" v-model="developer" />
+  <label for="devB">준영</label>
+
+  <h3>도메인</h3>
+  <select v-model="domain">
+    <option value="C1">의료</option>
+    <option value="C2">금융</option>
+    <option value="C3">커머스</option>
+  </select>
+</div>
+
+<script>
+const vm = Vue.createApp({
+  data() {
+    return {
+      developer: [],  // 체크박스는 배열로
+      domain: ""      // 셀렉트는 문자열로
+    }
+  }
+}).mount("#app")
+</script>
+```
+
+### v-model 수식어 (Modifiers)
+
+```html
+<!-- .number: 숫자로 자동 변환 -->
+<input type="text" v-model.number="age" />
+
+<!-- .trim: 앞뒤 공백 제거 -->
+<input type="text" v-model.trim="name" />
+
+<!-- .lazy: change 이벤트 시에만 동기화 (input 아님) -->
+<input type="text" v-model.lazy="message" />
+
+<!-- 여러 개 조합 가능 -->
+<input type="text" v-model.number.trim="value" />
+```
+
+
+## 조건부 렌더링
+
+### v-if vs v-show
+
+```html
+<!-- v-if: 조건이 false면 DOM에서 제거 -->
+<p v-if="isVisible">보임</p>
+<p v-else-if="isPending">대기중</p>
+<p v-else>숨김</p>
+
+<!-- v-show: 조건이 false면 display:none -->
+<p v-show="isVisible">보임</p>
+```
+
+| 특성 | v-if | v-show |
+|------|------|--------|
+| 렌더링 | 조건이 true일 때만 | 항상 렌더링 |
+| DOM | 조건 변경 시 생성/제거 | CSS로 숨김 처리 |
+| 초기 비용 | 낮음 | 높음 |
+| 토글 비용 | 높음 | 낮음 |
+| 추천 상황 | 거의 바뀌지 않는 조건 | 자주 토글되는 경우 |
+
+
+## 반복 렌더링 (v-for)
+
+### 기본 사용법
+
+```html
+<!-- 배열 -->
+<div v-for="(item, index) in items" :key="item.id">
+  {{ index }}: {{ item.name }}
+</div>
+
+<!-- 객체 -->
+<div v-for="(value, key, index) in object" :key="key">
+  {{ key }}: {{ value }}
+</div>
+```
+
+### key 속성의 중요성
+
+```html
+<!-- 나쁜 예: index를 key로 사용 -->
+<div v-for="(item, index) in items" :key="index">
+  {{ item.name }}
+</div>
+
+<!-- 좋은 예: 고유한 ID를 key로 사용 -->
+<div v-for="item in items" :key="item.id">
+  {{ item.name }}
+</div>
+```
+
+`key`에는 고유한 값(DB의 PK 등)을 사용해야 합니다. index를 사용하면:
+- 항목 순서가 바뀔 때 불필요한 리렌더링 발생
+- 입력 필드의 상태가 꼬일 수 있음
+
+### template으로 그룹화
+
+```html
+<template v-for="(item, index) in items" :key="item.id">
+  <tr>
+    <td>{{ item.name }}</td>
+    <td>{{ item.age }}</td>
+  </tr>
+  <hr v-show="index % 2 === 0" />
+</template>
+```
+
+
+## 기타 유용한 디렉티브
+
+```html
+<!-- v-pre: 컴파일하지 않고 그대로 출력 -->
+<span v-pre>{{ message }}</span>
+<!-- 출력: {{ message }} -->
+
+<!-- v-once: 최초 한 번만 렌더링 -->
+<span v-once>{{ timestamp }}</span>
+
+<!-- v-cloak: 컴파일 전까지 숨김 (깜빡임 방지) -->
 <style>
-    [v-cloak] {
-        display: none;
-    }
+  [v-cloak] { display: none; }
 </style>
-
 <div id="app" v-cloak>
-    {{ message }}
+  {{ message }}
 </div>
 ```
 
-## Dynamic Argument
 
-- 디렉티브에 연결하고자 하는 특성의 이름을 속성에 바로 연결할 수 있도록 해주는 문법입니다.
-- [] 안에서는 연산식이나, 대문자를 사용할수 없습니다.
-```javascript
-<div v-bind:[속성명] = "속성값"></div>
-<div :[속성명] = "속성값"></div>
+## 동적 인자 (Dynamic Arguments)
+
+디렉티브의 인자를 동적으로 지정할 수 있습니다.
+
+```html
+<!-- 동적 속성 바인딩 -->
+<img v-bind:[attrName]="attrValue" />
+<img :[attrName]="attrValue" />
+
+<!-- 동적 이벤트 바인딩 -->
+<button v-on:[eventName]="handler">클릭</button>
+<button @[eventName]="handler">클릭</button>
 ```
-```javascript
-<div v-on:[이벤트명] = "이벤트 핸들러"></div>
-<div @[이벤트명] = "이벤트 핸들러"></div>
-```
-
-예시를 들면 아래와 같이 model의 속성명,값을 각각 매핑시켜서 사용할 수 있습니다.
 
 ```javascript
-<div id="app" v-cloak>
-    <img v-bind:[image.srcattr]="image.src" :[image.titleatrr]="image.title"/>
-</div>
-//Vue 인스턴스
 data() {
   return {
-    image: {
-      srcattr: "src",
-      src:"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTbmy5coC0UlI8Z_2hPuBzTJpB6b6Y7ST3zFQ&usqp=CAU",
-      titleatrr: "title" ,
-      title: "cs"
+    attrName: 'src',
+    attrValue: 'https://example.com/image.png',
+    eventName: 'click'
+  }
+}
+```
+
+여러 속성을 한 번에 바인딩할 수도 있습니다.
+
+```html
+<img v-bind="imageAttrs" />
+```
+
+```javascript
+data() {
+  return {
+    imageAttrs: {
+      src: 'https://example.com/image.png',
+      alt: '이미지 설명',
+      width: 200
     }
   }
 }
 ```
 
-- 다음과 같이 여러개의 data를 한번에 속성으로 전달하고자 하는 경우 간단히 특성이름없이 바인딩할 수 있습니다.
+
+## Lifecycle Hooks
+
+컴포넌트의 생명주기에 맞춰 로직을 실행할 수 있습니다. API 호출이나 이벤트 리스너 등록처럼 특정 시점에 실행해야 하는 코드가 있을 때 유용합니다.
+
+### Options API
 
 ```javascript
-<img v-bind="image"/>
-//Vue 인스턴스
-data() {
-  return {
-    image: {
-      src:"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTbmy5coC0UlI8Z_2hPuBzTJpB6b6Y7ST3zFQ&usqp=CAU",
-      title: "cs"
-    }
+export default {
+  created() {
+    console.log('컴포넌트 생성됨')
+  },
+  mounted() {
+    console.log('DOM에 마운트됨')
+  },
+  updated() {
+    console.log('데이터 변경으로 리렌더링됨')
+  },
+  unmounted() {
+    console.log('컴포넌트 제거됨')
   }
 }
 ```
+
+### Composition API
+
+```javascript
+import { onMounted, onUpdated, onUnmounted } from 'vue'
+
+export default {
+  setup() {
+    onMounted(() => {
+      console.log('DOM에 마운트됨')
+    })
+
+    onUpdated(() => {
+      console.log('리렌더링됨')
+    })
+
+    onUnmounted(() => {
+      console.log('컴포넌트 제거됨')
+    })
+  }
+}
+```
+
+| Options API | Composition API | 시점 |
+|-------------|-----------------|------|
+| beforeCreate | setup() 시작* | 인스턴스 초기화 직후 |
+| created | setup() 끝* | 반응성 설정 완료 |
+| beforeMount | onBeforeMount | DOM 마운트 직전 |
+| mounted | onMounted | DOM 마운트 완료 |
+| beforeUpdate | onBeforeUpdate | 리렌더링 직전 |
+| updated | onUpdated | 리렌더링 완료 |
+| beforeUnmount | onBeforeUnmount | 언마운트 직전 |
+| unmounted | onUnmounted | 언마운트 완료 |
+
+*Composition API의 setup()은 beforeCreate와 created 사이에 실행됩니다. 별도의 훅 함수 없이 setup() 안에서 직접 코드를 작성하면 됩니다.
+
+
+## Reference
+
+- [Vue.js 공식 문서 - Reactivity Fundamentals](https://vuejs.org/guide/essentials/reactivity-fundamentals.html)
+- [Vue.js 공식 문서 - Composition API FAQ](https://vuejs.org/guide/extras/composition-api-faq.html)
+- [Vue 3 Composition API: ref() vs. reactive()](https://markus.oberlehner.net/blog/vue-3-composition-api-ref-vs-reactive)
