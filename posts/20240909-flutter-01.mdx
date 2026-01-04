@@ -1,148 +1,633 @@
 ---
 id: 4
 title: "Flutter 빠르게 파헤치기"
-description: ""
+description: "Flutter의 아키텍처, Widget 시스템, 상태관리 패턴, 네비게이션까지 크로스 플랫폼 개발의 핵심을 정리합니다."
 date: "2024-09-09 22:19:47"
-tags: []
+tags: ["flutter", "dart", "mobile", "cross-platform"]
 ---
+
 ## Flutter란?
 
-- 앱 개발하는 방식에는 네이티브 앱 개발 방식과 크로스 플랫폼 앱 개발 방식 이렇게 2가지로 나뉩니다. 플러터는 이 중에서 크로스 플랫폼 앱 개발 방식에 속합니다.
-    - 네이티브 앱 개발 방식은 각 운영체제에 종속적으로 개발하는 방식으로, 각 운영체제의 모든 기능에 대해 공식 지원과 문서화가 잘 되어 있습니다. 
-    - 크로스 플랫폼 앱 개발 방식은 말 그대로 여러 플랫폼에 동시에 사용될 수 있는 방식입니다. 대신 단점으로 느린 속도와 UI 커스터마이징 제한을 가지고 있다는 단점을 가지고 있습니다. 
+앱 개발 방식은 크게 네이티브와 크로스 플랫폼으로 나뉩니다. Flutter는 구글에서 만든 크로스 플랫폼 프레임워크인데요, Dart 언어를 사용합니다.
 
-- 구글에서 개발한 크로스 플랫폼 프레임워크로 Dart언어를 사용합니다.
-- Flutter 3.0버전부터는 윈도우, 맥, 리눅스, iOS, Android, Web 까지 총 6개의 플랫폼을 모두 공식적으로 지원합니다. 
+- **네이티브**: 각 OS에 종속적으로 개발 (iOS는 Swift, Android는 Kotlin)
+- **크로스 플랫폼**: 하나의 코드베이스로 여러 플랫폼 지원
 
-즉 플러터는 하나의 언어로 모바일앱, 데스크톱 앱, 웹사이트, 임베디드 시스템까지 개발이 가능합니다! :o
+Flutter 3.0부터는 iOS, Android, Web, Windows, macOS, Linux까지 6개 플랫폼을 공식 지원합니다. 하나의 코드로 모바일앱, 데스크톱 앱, 웹사이트까지 만들 수 있다는 거죠. (이 글은 Flutter 3.24 / Dart 3.5 기준입니다)
 
 ![6개의 플랫폼 스톤을 모두 모은 플러터 타노스](/images/flutter_01_00.jpg)
 
+### Flutter의 특징
 
+**1. UI와 로직 모두 Dart로 작성**
 
-### 어떤 특징을 가지고 있나요?
+React Native는 UI는 JSX, 로직은 JavaScript로 나뉘지만, Flutter는 모든 것을 Dart로 작성합니다. 언어가 통일되어 있어서 학습 곡선이 완만하죠.
 
-1. UI와 비즈니스 로직을 모두 Dart 언어로 작성합니다. 반면 React Native는 UI는 JSX로 작성하고, 로직은 JavaScript로 작성합니다.
+**2. 픽셀 단위 직접 렌더링**
 
-2. 픽셀 단위로 직접 화면을 그립니다. 
-시스템 UI 라이브러리에 의존하지 않고, Material & Cupertino 등의 내장 위젯을 픽셀 단위로 직접 그립니다. Dart 코드는 SKia에 의해 렌더링되는 네이티브 코드로 변환됩니다. 
+Flutter는 시스템 UI 컴포넌트를 사용하지 않습니다. Skia 엔진으로 픽셀 단위로 직접 그리기 때문에 플랫폼 간 UI 일관성이 뛰어나요. 반면 React Native는 네이티브 컴포넌트를 브릿지로 연결하는 방식입니다.
 
-3. Hot Reload 
-앱을 재시작하지 않고, 코드 변경사항을 반영할 수 있습니다. 즉 매번 UI 수정시마다 App을 재시작할 필요 없습니다. 
+**3. Hot Reload**
 
-### Flutter와 Dart
+코드 변경 시 앱을 재시작하지 않고 즉시 반영됩니다. UI 개발 속도가 확 빨라지죠.
 
-Flutter는 프로그래밍 언어가 아닙니다, 자바의 Spring 처럼 Dart의 프레임워크입니다. 
+## Flutter 아키텍처
 
-#### Dart 문법 빠르기 훑기
+Flutter는 3개의 레이어로 구성됩니다.
 
-기본 내용은 스킵하고, 독특한 점만 담았습니다. class, 상속, 반복문, 조건문 등등 기초적인 내용은 Java와 매우 유사합니다. 
+![Flutter 아키텍처](/images/flutter_architecture.png)
+*Flutter의 레이어 구조 [1]*
 
-- dynamic 
-Flutter는 기본적으로 Type-Safe한 언어지만 `dynamic`변수를 쓰면 javascript처럼 Type-Safe하지 않게 돌 수도 있습니다. 
+**Framework (Dart)**
+- 개발자가 직접 사용하는 레이어
+- Material, Cupertino 위젯, 애니메이션, 제스처 등
+
+**Engine (C++)**
+- Skia 그래픽 엔진
+- Dart 런타임
+- 플랫폼 채널 (Dart ↔ 네이티브 코드 통신)
+
+**Embedder (Platform-specific)**
+- 각 플랫폼(iOS, Android 등)과의 연결
+- 렌더링 서피스, 입력 이벤트 처리
+
+개발자는 Framework 레이어만 신경 쓰면 되고, 나머지는 Flutter가 알아서 처리합니다.
+
+참고로 **Platform Channel**은 Dart 코드에서 네이티브(Swift/Kotlin) 코드를 호출할 때 사용합니다. 카메라, GPS 같은 하드웨어 기능이나 네이티브 SDK 연동 시 필요한데요, 대부분의 경우 이미 만들어진 플러그인(패키지)이 있어서 직접 작성할 일은 드뭅니다.
+
+### 빌드 모드
+
+| 모드 | 용도 | 특징 |
+|------|------|------|
+| Debug | 개발 | Hot Reload, 디버깅 정보, 느림 |
+| Profile | 성능 분석 | 일부 디버깅 + 성능 측정 |
+| Release | 배포 | 최적화, 빠름, 디버깅 불가 |
+
+```bash
+flutter run              # Debug 모드
+flutter run --profile    # Profile 모드
+flutter run --release    # Release 모드
+```
+
+## Dart 문법 빠르게 훑기
+
+Java/Kotlin 개발자라면 금방 적응할 수 있습니다. 독특한 부분만 짚어볼게요.
+
+### Null Safety
+
+Dart는 기본적으로 Non-nullable입니다. Nullable 타입은 `?`를 붙여야 해요.
+
+```dart
+String name = "Flutter";    // Non-nullable
+String? nickname = null;    // Nullable
+
+// Null check 연산자
+print(nickname?.length);    // null이면 null 반환
+print(nickname ?? "없음");   // null이면 "없음" 반환
+print(nickname!);           // null 아님을 단언 (위험!)
+```
+
+### dynamic vs var vs Object
 
 ```dart
 dynamic x = 1;
-x = "abc";
+x = "abc";      // OK - 타입 체크 안함
+
+var y = 1;
+// y = "abc";   // 컴파일 에러! - 첫 할당으로 타입 결정
+
+Object z = 1;
+z = "abc";      // OK - 모든 타입의 부모
+// z.length;    // 컴파일 에러! - Object에 length 없음
 ```
 
-또한 Kotlin처럼 기본적으로 타입은 Not Nullable 타입이며, Nullable인 경우는 `?`키워드를 붙여야 합니다. 
+`dynamic`은 타입 체크를 포기하는 거라서, 가급적 피하세요.
+
+### Record Type (Dart 3.0+)
+
+튜플 같은 불변 자료형입니다. 여러 타입의 값을 하나로 묶을 수 있어요.
+
 ```dart
-String? nickname = null;
+// 위치 기반 + 이름 기반 혼합 가능
+(String, bool, {int a, int b}) record = ("first", true, a: 2, b: 3);
+
+print(record.$1);  // "first" (위치 기반)
+print(record.a);   // 2 (이름 기반)
+
+// 구조 분해 할당
+var (name, isActive, a: valueA, b: valueB) = record;
 ```
 
-var언어를 사용하면 처음 할당되는 변수가 그 변수의 타입이 됩니다.
+### 생성자 문법
 
-- record type
-
-tuple 자료형입니다. record 타입은 불변입니다. 즉 크기와 변수 타입을 생성 후에는 변경할 수 없습니다. 또한 record type은 하나의 변수에 여러 타입의 값을 할당 할 수 있습니다. 
-```dart
-(String, bool, {int a, int b}) record = ("first", a: 2, b: 2, true);
-
-print(record.$1); // first
-print(record.a); // 2
-
-```
-특이하게 \$1,\$2등의 번호로 호출하거나, 구조분해할당 문법도 사용 가능합니다. 
-
-- class type
-
-클래스 생성시 특이한점은 생성자 문법이 Java에 비해 훨씬 간결하며,  직관적입니다. 예를 들어 id 타입 변수를 초기화하려면 생성자에 동일한 이름의 매개변수를 넣어주면 됩니다. 
+Dart의 생성자는 Java보다 훨씬 간결합니다.
 
 ```dart
-class Cat {
+class User {
   final String id;
+  final String name;
+  final int age;
 
-  Cat({
-    required this.id,
-  });
+  // 기본 생성자 - this로 바로 초기화
+  User({required this.id, required this.name, this.age = 0});
+
+  // Named 생성자
+  User.guest() : id = "guest", name = "Guest", age = 0;
+
+  // Factory 생성자 - 캐싱이나 서브타입 반환 시 사용
+  factory User.fromJson(Map<String, dynamic> json) {
+    return User(id: json['id'], name: json['name']);
+  }
 }
-
 ```
 
-## Flutter의 UI 단위, Widget!
+## Widget 시스템
 
-Widget은 Flutter에서 UI를 구성하는 기본 단위입니다, 개발자가 UI를 세부적으로 직접 변경하기보다 Widget을 마치 레고처럼 조립해서 만들어내고, 변경될 수 있는 변수는 상태를 사용해서 표현합니다.
-이를 Flutter에서는 선언형 UI(`Declarative UI`)라고 합니다.
+Widget은 Flutter UI의 기본 단위입니다. 모든 것이 Widget이에요. 텍스트, 버튼, 패딩, 심지어 앱 자체도 Widget입니다.
 
-React와 비교해보면 Flutter Widget은 다음과 같은 특징을 가집니다.
+Flutter는 **선언형 UI(Declarative UI)** 방식을 사용합니다. "이 상태일 때 UI는 이렇게 생겼다"를 선언하면, 상태가 바뀔 때 Flutter가 알아서 UI를 업데이트합니다.
 
-| 특징              | React 컴포넌트                                    | Flutter 위젯                              |
-|-------------------|-------------------------------------------------|------------------------------------------|
-| **프레임워크**     | React                                           | Flutter                                  |
-| **언어**           | JavaScript/TypeScript                           | Dart                                     |
-| **UI 구조**        | 가상 DOM을 사용하여 UI를 업데이트               | 위젯 트리 구조로 UI를 구성               |
-| **상태 관리**      | `useState`, `useEffect` 등 Hook을 사용          | `setState()`, `Provider` 등 사용          |
-| **렌더링 방식**    | 가상 DOM에서 실제 DOM으로 변환 후 렌더링         | 직접 화면에 그려서 렌더링 (Skia 엔진 사용)|
-| **플랫폼 지원**    | 웹, 모바일 (React Native), 데스크톱              | 웹, 모바일(Android, iOS), 데스크톱, 임베디드|
-| **컴포넌트 분리**  | 클래스형/함수형 컴포넌트로 분리                  | 모든 것이 위젯으로 분리 (Stateful, Stateless)|
-| **성능**           | 성능은 가상 DOM과 브라우저 성능에 의존           | 네이티브 성능에 가까운 렌더링 제공        |
-| **스타일링**       | CSS 또는 스타일 객체를 사용하여 스타일링         | 위젯 기반으로 스타일링 (예: `Container`)  |
+내부적으로 Flutter는 3개의 트리를 관리합니다:
+- **Widget 트리**: 개발자가 작성하는 불변 설정(configuration)
+- **Element 트리**: Widget의 인스턴스, 생명주기 관리
+- **RenderObject 트리**: 실제 레이아웃과 페인팅 담당
 
-Flutter 에서 Widget은 두 종류가 있습니다.
+Widget은 매번 새로 생성되지만, Element와 RenderObject는 재사용됩니다. 그래서 `setState()`를 호출해도 전체를 다시 그리는 게 아니라 변경된 부분만 효율적으로 업데이트할 수 있어요.
 
-| 특징              | Stateful 위젯                                  | Stateless 위젯                             |
-|-------------------|-----------------------------------------------|-------------------------------------------|
-| **상태 관리**      | 내부 상태를 가질 수 있으며, 상태 변경 가능      | 상태를 가질 수 없고, 불변 데이터만 렌더링  |
-| **라이프사이클**    | 위젯의 상태에 따라 라이프사이클이 변화          | 라이프사이클이 단순, 한 번만 렌더링 됨    |
-| **사용 목적**      | 동적인 UI를 구현할 때 사용                      | 고정된 UI, 상태가 변하지 않는 UI에 사용   |
-| **상태 변경 방법**  | `setState()`를 호출하여 상태를 변경 및 재렌더링 | 상태 변경 불가, 재렌더링은 데이터가 변할 때만 |
-| **예시**           | 폼 입력, 애니메이션, 카운터 등                  | 텍스트, 아이콘, 단순 레이아웃 등          |
-| **성능**           | 상태 변경 시마다 다시 렌더링되어 성능 부담 있음  | 한 번만 렌더링되어 성능에 유리             |
+### Stateless vs Stateful
 
-
-### Flutter에서 상태관리, Stateful Widget
-
-앱 내에는 고정된 텍스트 뿐 만 아니라 사용자와 상호작용에 의해 변화하는 텍스트도 있습니다. 데이터가 변경됨에 따라 화면을 갱신하게 되는 데이터를 상태(State)라고 부르고, 말 그대로 상태 값을 관리하는 것을 상태 관리라고 합니다. 
-
-Flutter에서는 변수를 상태로 관리하려면 2가지 조건을 만족해야 합니다. 
-
-1. State 를 상속받은 클래스 내부에서 선언되어야 합니다. 
-2. 변수의 값을 변경할때, Flutter에서 제공하는 방식으로 변경해야 합니다.
-
+| 특징 | StatelessWidget | StatefulWidget |
+|------|-----------------|----------------|
+| 상태 | 없음 (불변) | 있음 (가변) |
+| 재빌드 | 부모가 rebuild할 때만 | setState() 호출 시 |
+| 사용처 | 고정 UI (텍스트, 아이콘) | 동적 UI (폼, 카운터) |
 
 ```dart
+// Stateless - 상태 없음
+class GreetingText extends StatelessWidget {
+  final String name;
+  const GreetingText({super.key, required this.name});
 
-class _DetailScreenState extends State<DetailScreen> {
-  bool isLiked = false; // 1. state 상속받은 클래스 내부에서 선언
   @override
   Widget build(BuildContext context) {
-    //...
-      IconButton(
-          onPressed: () {
-            setState(() {
-              isLiked = !isLiked; // 2. 상태값을 갱신
-            });
-          }    
-    //...
-      )
+    return Text('Hello, $name!');
+  }
+}
+
+// Stateful - 상태 있음
+class Counter extends StatefulWidget {
+  const Counter({super.key});
+
+  @override
+  State<Counter> createState() => _CounterState();
+}
+
+class _CounterState extends State<Counter> {
+  int _count = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextButton(
+      onPressed: () => setState(() => _count++),
+      child: Text('Count: $_count'),
+    );
+  }
+}
 ```
 
-### Flutter에서 라이브러리
+### Widget 생명주기
 
-플러터에서 사용되는 라이브러리들은 [pub.dev](https://pub.dev/) 에서 확인이 가능하며, 독특한점은 라이브러리에 점수를 매깁니다. 
+StatefulWidget의 State는 다음 생명주기를 가집니다.
 
-별도로 인증받은 라이브러리는 인증 마크까지 별도로 표기하고 있습니다. 
+```dart
+class _MyWidgetState extends State<MyWidget> {
+  @override
+  void initState() {
+    super.initState();
+    // 초기화 - API 호출, 컨트롤러 생성 등
+  }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // InheritedWidget 의존성 변경 시
+  }
+
+  @override
+  void didUpdateWidget(MyWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 부모에서 전달된 설정이 변경되었을 때
+  }
+
+  @override
+  void dispose() {
+    // 정리 - 컨트롤러 해제, 구독 취소 등
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container();
+  }
+}
+```
+
+### BuildContext란?
+
+`BuildContext`는 Widget 트리에서 현재 위젯의 위치를 나타냅니다. 상위 위젯에 접근하거나 Theme, MediaQuery 등을 가져올 때 사용해요.
+
+```dart
+// Theme 가져오기
+final theme = Theme.of(context);
+
+// 화면 크기 가져오기
+final size = MediaQuery.of(context).size;
+
+// Navigator 접근
+Navigator.of(context).push(...);
+```
+
+## 상태 관리
+
+작은 앱은 `setState()`로 충분하지만, 앱이 커지면 상태 관리 패턴이 필요합니다.
+
+### Provider
+
+Flutter 팀에서 공식 추천하는 상태 관리 패키지예요. InheritedWidget(위젯 트리 상위에서 데이터를 하위로 전달하는 위젯)을 래핑해서 사용하기 쉽게 만들었습니다.
+
+```dart
+// 1. 상태 클래스 정의
+class CartModel extends ChangeNotifier {
+  final List<Item> _items = [];
+  List<Item> get items => _items;
+
+  void add(Item item) {
+    _items.add(item);
+    notifyListeners();  // 구독자들에게 알림
+  }
+}
+
+// 2. Provider 등록 (main.dart)
+void main() {
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => CartModel(),
+      child: MyApp(),
+    ),
+  );
+}
+
+// 3. 상태 사용
+class CartIcon extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    // watch: 값이 바뀌면 rebuild
+    final cart = context.watch<CartModel>();
+    return Badge(
+      label: Text('${cart.items.length}'),
+      child: Icon(Icons.shopping_cart),
+    );
+  }
+}
+
+// 4. 상태 변경 (rebuild 필요 없을 때)
+TextButton(
+  onPressed: () {
+    // read: 값만 읽기, rebuild 안함
+    context.read<CartModel>().add(item);
+  },
+  child: Text('Add to Cart'),
+)
+```
+
+### Riverpod
+
+Provider의 개선 버전입니다. 컴파일 타임 안전성이 좋고, BuildContext 없이도 상태에 접근할 수 있어요.
+
+```dart
+// 1. Provider 정의 (전역)
+final counterProvider = StateProvider<int>((ref) => 0);
+
+// 2. 사용
+class CounterPage extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final count = ref.watch(counterProvider);
+    return Text('Count: $count');
+  }
+}
+
+// 3. 상태 변경
+ref.read(counterProvider.notifier).state++;
+```
+
+### BLoC (Business Logic Component)
+
+이벤트 기반 상태 관리입니다. 대규모 앱에 적합하지만 보일러플레이트가 많아요.
+
+```dart
+// Event
+abstract class CounterEvent {}
+class Increment extends CounterEvent {}
+
+// State
+class CounterState {
+  final int count;
+  CounterState(this.count);
+}
+
+// BLoC
+class CounterBloc extends Bloc<CounterEvent, CounterState> {
+  CounterBloc() : super(CounterState(0)) {
+    on<Increment>((event, emit) {
+      emit(CounterState(state.count + 1));
+    });
+  }
+}
+```
+
+### 상태 관리 선택 가이드
+
+| 규모 | 추천 |
+|------|------|
+| 소규모 (1-2 화면) | setState, ValueNotifier |
+| 중규모 | Provider, Riverpod |
+| 대규모 (팀 개발) | Riverpod, BLoC |
+
+개인적으로는 Riverpod을 추천합니다. Provider보다 타입 안전하고, BLoC보다 간결하거든요.
+
+## 네비게이션
+
+### Navigator 1.0 (명령형)
+
+전통적인 push/pop 방식입니다. 간단한 앱에 적합해요.
+
+```dart
+// 화면 이동
+Navigator.of(context).push(
+  MaterialPageRoute(builder: (_) => DetailPage()),
+);
+
+// 데이터와 함께 이동
+Navigator.of(context).push(
+  MaterialPageRoute(
+    builder: (_) => DetailPage(id: itemId),
+  ),
+);
+
+// 뒤로 가기
+Navigator.of(context).pop();
+
+// 결과 받기
+final result = await Navigator.of(context).push<String>(
+  MaterialPageRoute(builder: (_) => SelectPage()),
+);
+```
+
+### Named Routes
+
+라우트에 이름을 붙여서 관리하는 방식입니다.
+
+```dart
+// main.dart에서 정의
+MaterialApp(
+  routes: {
+    '/': (_) => HomePage(),
+    '/detail': (_) => DetailPage(),
+    '/settings': (_) => SettingsPage(),
+  },
+);
+
+// 사용
+Navigator.pushNamed(context, '/detail');
+```
+
+### go_router (선언형)
+
+Navigator 2.0 기반의 라우팅 패키지입니다. 딥링크, 웹 URL 지원이 필요하면 이걸 쓰세요.
+
+```dart
+final router = GoRouter(
+  routes: [
+    GoRoute(
+      path: '/',
+      builder: (_, __) => HomePage(),
+      routes: [
+        GoRoute(
+          path: 'detail/:id',
+          builder: (_, state) => DetailPage(
+            id: state.pathParameters['id']!,
+          ),
+        ),
+      ],
+    ),
+  ],
+);
+
+// 사용
+context.go('/detail/123');
+context.push('/detail/123');  // 스택에 쌓기
+```
+
+## 성능 최적화
+
+### const 생성자 활용
+
+`const` 위젯은 컴파일 타임에 생성되어 재사용됩니다.
+
+```dart
+// Bad - 매번 새 인스턴스 생성
+Container(
+  child: Text('Hello'),
+)
+
+// Good - const로 재사용
+const SizedBox(height: 16),
+const Text('Hello'),
+```
+
+### 불필요한 rebuild 방지
+
+```dart
+// Bad - 전체가 rebuild
+class MyPage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final user = context.watch<UserModel>();
+    return Column(
+      children: [
+        Text(user.name),        // 이것만 user 사용
+        HeavyWidget(),          // user와 무관한데 rebuild됨
+        AnotherHeavyWidget(),
+      ],
+    );
+  }
+}
+
+// Good - Consumer로 범위 제한
+class MyPage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Consumer<UserModel>(
+          builder: (_, user, __) => Text(user.name),
+        ),
+        HeavyWidget(),          // rebuild 안됨
+        AnotherHeavyWidget(),
+      ],
+    );
+  }
+}
+```
+
+### ListView 최적화
+
+```dart
+// Bad - 모든 아이템을 한번에 빌드
+ListView(
+  children: items.map((item) => ItemWidget(item)).toList(),
+)
+
+// Good - 보이는 것만 빌드
+ListView.builder(
+  itemCount: items.length,
+  itemBuilder: (_, index) => ItemWidget(items[index]),
+)
+```
+
+### 이미지 캐싱
+
+```dart
+// cached_network_image 패키지 사용
+CachedNetworkImage(
+  imageUrl: url,
+  placeholder: (_, __) => CircularProgressIndicator(),
+  errorWidget: (_, __, ___) => Icon(Icons.error),
+)
+```
+
+## 테스트
+
+Flutter는 3가지 레벨의 테스트를 지원합니다.
+
+### Unit Test
+
+```dart
+// counter.dart
+class Counter {
+  int value = 0;
+  void increment() => value++;
+}
+
+// counter_test.dart
+test('Counter increments', () {
+  final counter = Counter();
+  counter.increment();
+  expect(counter.value, 1);
+});
+```
+
+### Widget Test
+
+```dart
+testWidgets('Counter increments when tapped', (tester) async {
+  await tester.pumpWidget(MyApp());
+
+  expect(find.text('0'), findsOneWidget);
+
+  await tester.tap(find.byIcon(Icons.add));
+  await tester.pump();  // rebuild 트리거
+
+  expect(find.text('1'), findsOneWidget);
+});
+```
+
+### Integration Test
+
+실제 디바이스나 에뮬레이터에서 앱 전체를 테스트합니다.
+
+```dart
+void main() {
+  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+
+  testWidgets('Full app test', (tester) async {
+    app.main();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Login'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Welcome'), findsOneWidget);
+  });
+}
+```
+
+## 자주 쓰는 패키지
+
+실무에서 거의 필수로 사용하는 패키지들입니다.
+
+### HTTP 통신
+
+```dart
+// dio 패키지 - 인터셉터, 타임아웃 등 기능 풍부
+final dio = Dio();
+final response = await dio.get('https://api.example.com/users');
+
+// http 패키지 - 가볍고 단순
+final response = await http.get(Uri.parse('https://api.example.com/users'));
+```
+
+### 로컬 저장소
+
+```dart
+// shared_preferences - 간단한 키-값 저장
+final prefs = await SharedPreferences.getInstance();
+await prefs.setString('token', 'abc123');
+final token = prefs.getString('token');
+
+// sqflite - SQLite DB (복잡한 데이터)
+// hive - NoSQL, 빠름 (오프라인 앱에 적합)
+```
+
+### 기타 필수 패키지
+- `freezed`: 불변 클래스 생성 (DTO, 상태 클래스)
+- `json_serializable`: JSON 직렬화/역직렬화
+- `flutter_hooks`: React Hooks 스타일 상태 관리
+- `get_it`: 의존성 주입 (Service Locator)
+
+## 라이브러리 관리
+
+Flutter 라이브러리는 [pub.dev](https://pub.dev/)에서 관리됩니다. 독특하게도 점수 시스템이 있어서 라이브러리 품질을 쉽게 판단할 수 있어요.
 
 ![flutter open source - pub.dev](/images/flutter_01_01.png)
+
+```yaml
+# pubspec.yaml
+dependencies:
+  flutter:
+    sdk: flutter
+  provider: ^6.0.0
+  go_router: ^12.0.0
+  cached_network_image: ^3.3.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+```
+
+## 마무리
+
+Flutter는 하나의 코드베이스로 6개 플랫폼을 지원하면서도 네이티브에 가까운 성능을 제공합니다. 핵심 포인트를 정리하면:
+
+- **Widget 트리**: 모든 것이 Widget, 선언형 UI
+- **상태 관리**: 규모에 맞게 선택 (setState → Provider → Riverpod)
+- **성능**: const 활용, 불필요한 rebuild 방지, ListView.builder 사용
+
+다만 네이티브 기능에 깊이 접근해야 하거나, 플랫폼별 UI가 필요하다면 네이티브 개발이 더 나을 수 있습니다. 목적에 맞게 선택하세요.
+
+## 참고문헌
+- [1] Flutter 공식 문서 - [Flutter Documentation](https://docs.flutter.dev/)
+- [2] Dart 공식 문서 - [Dart Documentation](https://dart.dev/guides)
+- [3] pub.dev - [Dart packages](https://pub.dev/)
