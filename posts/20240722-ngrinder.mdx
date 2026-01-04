@@ -1,88 +1,282 @@
 ---
 id: 160
-title: "nGrinder"
-description: ""
+title: "nGrinder로 부하 테스트 시작하기"
+description: "nGrinder 설치부터 Groovy 스크립트 작성 정리"
 date: "2024-07-22 21:07:51"
-tags: ["Load Testing"]
+tags: ["ngrinder", "load-testing", "performance", "groovy"]
 ---
-## nGrinder란? 
 
-nGrinder는 네이버에서 만든 오픈소스 부하 테스트 도구입니다.
+## 부하 테스트가 필요한 이유
 
-nGrinder에서는 아래의 load parameter를 통해 performace test 결과를 보여줍니다. 
+서비스 출시 전에 "우리 서버가 동시 접속자 1만 명을 버틸 수 있을까?"라는 질문에 답하려면 부하 테스트가 필요합니다. 실제 트래픽이 몰리기 전에 병목 지점을 찾고, 서버 스펙을 결정하는 데 근거가 되죠.
 
-테스트 결과를 바탕으로 target server가 동시 접속자 수 x명(`vUser`)일때, 서버가 적절한 response time으로 응답하는지 peak TPS는 어떻게 되는지, MTT는 어떻게 되는지 등을 판단할 수 있습니다. 
+부하 테스트로 확인할 수 있는 것들:
+- 최대 처리량 (Peak TPS)
+- 응답 시간 분포
+- 병목 지점 (DB, 외부 API, CPU, 메모리 등)
+- 장애 발생 임계점
 
+## nGrinder란?
 
-| 매개변수               | 설명                                                                                      |
-|-----------------------|-------------------------------------------------------------------------------------------|
-| TPS                   | 초당 처리한 요청 수를 나타냅니다.                                                          |
-| Peak TPS              | TPS가 가장 높을 때, 즉 초당 처리 가능한 최대 요청 수를 나타냅니다.                            |
-| MTT (Mean Test Time)  | 개별 테스트의 평균 수행 시간으로, API 호출 외의 시간이 포함될 수 있습니다. [nGrinder QNA](http://ngrinder.373.s1.nabble.com/ngrinder-user-kr-vuer-증가와-MTT에-대한-문의-td1127.html)에서 평균 API 응답시간이라고 설명됩니다. |
-| MTTFB (Mean Time to First Byte) | 테스트 이후 테스트 타겟 서버로부터 첫 번째 바이트를 응답받기까지의 평균 시간입니다. (평균 API 응답시간과 동일) |
-| Executed Tests        | 실행한 테스트 수를 나타냅니다.                                                             |
+네이버에서 만든 오픈소스 부하 테스트 도구입니다. Grinder를 기반으로 웹 UI와 분산 테스트 기능을 추가했어요.
 
+**다른 도구와 비교**
 
-## nGrinder Architecture
+| 도구 | 언어 | 특징 |
+|------|------|------|
+| nGrinder | Groovy/Jython | 웹 UI, 분산 테스트, 스크립트 버전 관리 |
+| JMeter | XML (GUI) | 가장 널리 사용, 플러그인 풍부, GUI 무거움 |
+| Gatling | Scala | 코드 기반, 고성능, 리포트 예쁨 |
+| k6 | JavaScript | 가볍고 빠름, 클라우드 연동 좋음 |
 
-nGrinder는 2개의 주요 구성 요소로 구성됩니다:
+웹 UI에서 테스트를 관리하고, Agent 여러 대를 붙이면 대규모 분산 테스트도 어렵지 않게 돌릴 수 있어요.
 
-- **Controller**: 성능 테스트를 위한 웹 UI를 제공하며, 테스트 결과를 시각화하고 에이전트 풀을 관리하며, 테스트 스크립트를 생성, 수정, 삭제합니다.
-- **Agent**: 테스트 대상 서버에 실제 부하를 주는 서버로, API 사용자 역할을 합니다.
+## 아키텍처
+
+nGrinder는 2개의 구성 요소로 이루어집니다.
 
 ![nGrinder Architecture](/images/nGrinder-01.png)
 
-Controller와 Agent는 12001~120XX 포트를 사용하여 통신합니다.
+**Controller**
+- 웹 UI 제공 (테스트 생성, 실행, 결과 확인)
+- Agent 관리 및 할당
+- 스크립트 버전 관리 (내장 SVN)
+- 테스트 결과 저장 및 시각화
 
+**Agent**
+- 실제 부하를 발생시키는 워커
+- Controller에서 스크립트를 받아 실행
+- 여러 대를 붙여 분산 테스트 가능
 
+Controller와 Agent는 12001~120XX 포트로 통신합니다.
 
-## 테스트 스크립트 실행시..
+## 설치하기
 
-- Controller는 내장 SVN 서버를 포함하여 스크립트 코드를 버전 관리합니다.
-- Controller UI에서 테스트 스크립트를 실행하거나 예약할 수 있으며, 사용 가능한 에이전트를 풀에서 동적으로 할당하여 테스트 스크립트를 실행합니다.
-- Agent 서버가 대상 서버에 부하를 줍니다.
+### Docker로 설치 (권장)
 
+가장 간편한 방법입니다.
 
-## test configuration parameters
+```bash
+# Controller 실행
+docker run -d --name ngrinder-controller \
+  -p 80:80 -p 16001:16001 -p 12000-12009:12000-12009 \
+  ngrinder/controller
 
-![nGrinder test configuration](/images/nGrinder-03.png)
-
-| 필드            | 설명                                                        |
-|-----------------|-------------------------------------------------------------|
-| Agent           | 사용할 Agent 개수를 설정합니다.                                |
-| Vuser per agent | Agent 당 생성할 가상 사용자(vUser) 수로, Process * Thread 개수로 결정됩니다. |
-| Script          | Agent에서 실행할 테스트 스크립트를 선택합니다.                    |
-| Target Host     | 모니터링할 대상 서버를 설정합니다.                               |
-| Duration        | 각 테스트의 실행 시간을 설정합니다.                              |
-| Run Count       | 수행할 테스트 개수를 설정합니다. (API 호출 개수와 동일)               |
-
-전체 vUser는 아래와 같이 계산됩니다.
-
-```math
-vUser = Agent * Process * Thread
+# Agent 실행 (Controller IP로 변경)
+docker run -d --name ngrinder-agent \
+  ngrinder/agent CONTROLLER_IP:80
 ```
 
-duration으로 부하 테스트를 지정 시간동안 돌릴 수 있고, Run Count로 테스트 개수별로 threshold를 주어 돌릴 수도 있습니다.
+### 직접 설치
 
+```bash
+# Controller
+wget https://github.com/naver/ngrinder/releases/download/ngrinder-3.5.9-p1-20240624/ngrinder-controller-3.5.9-p1.war
+java -jar ngrinder-controller-3.5.9-p1.war --port=8080
 
-## nGrinder Agent 설정
-
-nGrinder Agent는 Controller에서 다운로드하여 실행할 수 있습니다. 
-
+# Agent (Controller UI에서 다운로드 가능)
+# 압축 해제 후 run_agent.sh 실행
+```
 
 ![nGrinder Agent Download](/images/nGrinder-02.png)
 
-설정 파일 (`ngrinder_agent/agent.conf`)을 통해 Agent의 설정 값을 지정할 수 있습니다.
+Agent 설정 파일 (`agent.conf`):
 
 ```bash
 common.start_mode=agent
-agent.controller_host=X.X.X.X ## Controller IP 주소
-agent.controller_port=160XXX ## Controller와 통신할 포트 번호
-agent.region=XXXX ## Agent의 지역 설정
-agent.host_id=test_agent_name ## Agent 이름 설정
+agent.controller_host=192.168.1.100  # Controller IP
+agent.controller_port=16001
+agent.region=Seoul
+agent.host_id=agent-01
 ```
 
-**Reference**
+### 초기 접속
 
-- [nGrinder Releases](https://github.com/naver/ngrinder/releases)
-- [nGrinder Architecture](https://github.com/naver/ngrinder/wiki/Architecture)
+- URL: `http://localhost:80` (또는 설정한 포트)
+- 기본 계정: `admin` / `admin`
+
+## 테스트 스크립트 작성
+
+nGrinder는 Groovy 또는 Jython으로 스크립트를 작성합니다. Groovy를 추천해요.
+
+### 기본 구조
+
+nGrinder 스크립트는 JUnit 스타일로 작성합니다. `@BeforeProcess`는 프로세스당 1회, `@BeforeThread`는 스레드당 1회 실행돼요. Process 2, Thread 5 설정이면 `@BeforeProcess`는 2번, `@BeforeThread`는 10번 호출됩니다.
+
+```groovy
+import static net.grinder.script.Grinder.grinder
+import static org.junit.Assert.*
+import net.grinder.script.GTest
+import net.grinder.scriptengine.groovy.junit.GrinderRunner
+import net.grinder.scriptengine.groovy.junit.annotation.BeforeProcess
+import net.grinder.scriptengine.groovy.junit.annotation.BeforeThread
+import org.junit.Test
+import org.junit.runner.RunWith
+import HTTPClient.HTTPRequest
+import HTTPClient.HTTPResponse
+import HTTPClient.NVPair
+
+@RunWith(GrinderRunner)
+class TestRunner {
+
+    public static GTest test
+    public static HTTPRequest request
+
+    @BeforeProcess
+    public static void beforeProcess() {
+        // 프로세스 시작 시 1회 실행
+        test = new GTest(1, "API Test")
+        request = new HTTPRequest()
+    }
+
+    @BeforeThread
+    public void beforeThread() {
+        // test 메서드의 실행 시간을 측정하도록 등록
+        test.record(this, "test")
+        // 테스트 완료 후 통계를 한 번에 리포트 (정확한 측정을 위해)
+        grinder.statistics.delayReports = true
+    }
+
+    @Test
+    public void test() {
+        // 실제 테스트 로직
+        HTTPResponse response = request.GET("http://api.example.com/users")
+
+        if (response.statusCode == 200) {
+            grinder.logger.info("Success")
+        } else {
+            grinder.logger.error("Failed: ${response.statusCode}")
+            fail("Status code is not 200")
+        }
+    }
+}
+```
+
+### POST 요청 with JSON
+
+```groovy
+// 클래스 상단에 토큰 변수 정의
+public static String token = "your-api-token"
+
+@Test
+public void testCreateUser() {
+    def headers = [
+        new NVPair("Content-Type", "application/json"),
+        new NVPair("Authorization", "Bearer ${token}")
+    ] as NVPair[]
+
+    def body = '{"name": "홍길동", "email": "hong@example.com"}'
+
+    HTTPResponse response = request.POST(
+        "http://api.example.com/users",
+        body.getBytes(),
+        headers
+    )
+
+    assertEquals(201, response.statusCode)
+}
+```
+
+### 동적 데이터 사용
+
+```groovy
+import java.util.Random
+
+@BeforeThread
+public void beforeThread() {
+    // 스레드별로 다른 사용자 ID 사용
+    grinder.threadNumber  // 0, 1, 2, ...
+}
+
+@Test
+public void test() {
+    def userId = grinder.threadNumber + 1
+    def response = request.GET("http://api.example.com/users/${userId}")
+}
+```
+
+### 파일에서 테스트 데이터 읽기
+
+```groovy
+// resources 폴더에 users.csv 파일 준비
+// user_id,name
+// 1,홍길동
+// 2,김철수
+
+public static List<String[]> testData = []
+
+@BeforeProcess
+public static void beforeProcess() {
+    def csvFile = new File(System.getProperty("user.dir") + "/resources/users.csv")
+    csvFile.eachLine { line, index ->
+        if (index > 1) {  // 헤더 스킵
+            testData.add(line.split(","))
+        }
+    }
+}
+
+@Test
+public void test() {
+    def row = testData[grinder.threadNumber % testData.size()]
+    def userId = row[0]
+    def userName = row[1]
+    // userId, userName으로 테스트
+}
+```
+
+## 테스트 설정
+
+![nGrinder test configuration](/images/nGrinder-03.png)
+
+| 설정 | 설명 |
+|------|------|
+| Agent | 사용할 Agent 수 |
+| Vuser per agent | Agent당 가상 사용자 수 (Process × Thread) |
+| Script | 실행할 테스트 스크립트 |
+| Duration | 테스트 실행 시간 |
+| Run Count | 테스트 실행 횟수 (Duration과 택1) |
+| Ramp-Up | 점진적 부하 증가 설정 |
+
+**vUser 계산**
+
+```
+Total vUser = Agent × Process × Thread
+```
+
+예: Agent 2대, Process 2, Thread 5 → 총 20 vUser
+
+**Process vs Thread 선택 기준**
+
+- **Thread 우선**: 가벼운 HTTP 요청 위주라면 Thread를 늘리는 게 효율적
+- **Process 우선**: 스크립트가 무겁거나 메모리를 많이 쓰면 Process를 늘려서 격리
+- 일반적으로 Process 1~2, Thread 10~50 조합을 많이 씁니다
+
+### Ramp-Up 전략
+
+처음부터 전체 부하를 주면 서버가 즉시 다운될 수 있어요. Ramp-Up으로 점진적으로 늘려가면서 임계점을 찾는 게 좋습니다.
+
+```
+예시: 10분 동안 vUser를 10 → 100으로 증가
+- Initial vUser: 10
+- Increment: 10
+- Interval: 1분
+```
+
+## 결과 분석
+
+### 주요 지표
+
+| 지표 | 설명 | 좋은 값 기준 |
+|------|------|------------|
+| TPS | 초당 처리 요청 수 | 높을수록 좋음 |
+| Peak TPS | 최대 TPS | 목표치 이상 |
+| MTT (Mean Test Time) | 평균 테스트 시간 | 낮을수록 좋음 |
+| MTTFB | 첫 바이트까지 평균 시간 | API 응답 시간과 유사 |
+| Errors | 에러 발생 수 | 0에 가까울수록 |
+
+
+## 참고문헌
+- [1] nGrinder GitHub - [nGrinder Repository](https://github.com/naver/ngrinder)
+- [2] nGrinder Wiki - [Architecture](https://github.com/naver/ngrinder/wiki/Architecture)
+- [3] nGrinder Wiki - [Script Guide](https://github.com/naver/ngrinder/wiki/Groovy-Script-Samples)
+- [4] nGrinder Releases - [Latest Release](https://github.com/naver/ngrinder/releases)
