@@ -453,66 +453,6 @@ flow.conflate()        // 최신 값만 유지, 중간 값 버리기
 flow.collectLatest {}  // 새 값 오면 이전 처리 취소
 ```
 
-## 실무 팁
-
-### 1. 코루틴 스코프 관리
-
-```kotlin
-// Android ViewModel
-class MyViewModel : ViewModel() {
-    // viewModelScope는 ViewModel이 clear될 때 자동 취소
-    fun loadData() {
-        viewModelScope.launch {
-            val data = repository.fetchData()
-            _uiState.value = data
-        }
-    }
-}
-
-// 커스텀 스코프
-class MyService : CoroutineScope {
-    private val job = SupervisorJob()
-    override val coroutineContext = Dispatchers.IO + job
-
-    fun close() {
-        job.cancel() // 모든 코루틴 취소
-    }
-}
-```
-
-### 2. 동시 요청 처리
-
-```kotlin
-suspend fun fetchAllData(): AllData = coroutineScope {
-    val userDeferred = async { api.fetchUser() }
-    val ordersDeferred = async { api.fetchOrders() }
-    val settingsDeferred = async { api.fetchSettings() }
-
-    AllData(
-        user = userDeferred.await(),
-        orders = ordersDeferred.await(),
-        settings = settingsDeferred.await()
-    )
-}
-```
-
-### 3. 타임아웃 처리
-
-```kotlin
-try {
-    withTimeout(3000L) {
-        val result = api.slowRequest()
-    }
-} catch (e: TimeoutCancellationException) {
-    println("타임아웃!")
-}
-
-// null 반환 버전
-val result = withTimeoutOrNull(3000L) {
-    api.slowRequest()
-}
-```
-
 ### 4. 재시도 로직
 
 ```kotlin
