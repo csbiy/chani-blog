@@ -1,11 +1,18 @@
 ---
 id: 134
 title: "헥사고날 아키텍처"
-description: ""
+description: "포트와 어댑터 패턴으로 비즈니스 로직을 외부 기술로부터 분리하는 헥사고날 아키텍처"
 date: "2024-04-07 20:27:51"
-tags: ["architecture"]
+tags: ["architecture", "hexagonal", "ports-and-adapters", "clean-architecture"]
 ---
-## 헥사고날 아키텍처를 왜 사용해야 할까요? 
+
+## 헥사고날 아키텍처란?
+
+헥사고날 아키텍처는 2005년 Alistair Cockburn이 제안한 아키텍처 패턴입니다. "포트와 어댑터(Ports and Adapters)" 아키텍처라고도 불러요. 핵심 아이디어는 비즈니스 로직을 중심에 두고, 외부 세계(UI, DB, 외부 API 등)와의 통신을 포트와 어댑터로 분리하는 겁니다.
+
+육각형 모양으로 그리는 건 특별한 이유가 있는 게 아니라, "여러 방향에서 접근 가능하다"는 걸 표현하기 위해서예요.
+
+## 왜 사용해야 할까요? 
 
 - 포트와 어댑터라는 컴포넌트를 두어 비즈니스 코드를 기술 코드로부터 분리 하여 즉 외부 기술이 변경되더라도 비즈니스 코드에 영향을 주지 않고도 기술 코드를 변경할 수 있습니다 (`Change-Tolerant`)
 - 도메인 규칙이 변할 경우에는 유일하게 도메인 헥사곤만 변경합니다. 만약 새로운 프로토콜을 사용하는 기능이 추가되면 프레임워크 헥사곤에서 사용하는 새로운 어댑터만 추가하면 됩니다. (`Maintainability`)
@@ -28,8 +35,7 @@ tags: ["architecture"]
 
 ### 애플리케이션 헥사곤 (Application Hexagon)
 
-- 도메인 헥사곤에서 나오는 비즈니스 규칙을 사용, 처리하고 조정하는 역할을 수행합니다. 비즈니스 측면과 기술 측면 사이에 상호 작용하는 역할 수행합니다.
-- 애플리케이션 헥사곤은 유스케이스, 입력포트, 출력포트로 구분됩니다.
+도메인의 비즈니스 규칙을 조합해서 실제 기능을 만드는 곳이에요. 비즈니스와 기술 사이에서 중재자 역할을 합니다. 유스케이스, 입력 포트, 출력 포트로 구성됩니다.
 
 #### 유스케이스
 
@@ -45,10 +51,9 @@ public interface RouterViewUseCase {
 
 ```
 
-#### 입력 포트 
+#### 입력 포트
 
-- 유스케이스가 인터페이스라면 유스케이스의 구현체가 입력 포트의 역할입니다.
-- 책에서는 "유스케이스에 서술된 소프트웨어의 의도를 만족시키는 입력 포트를 구현한다"라고 표현합니다.
+유스케이스 인터페이스의 구현체가 입력 포트입니다. "그냥 Service/ServiceImpl이랑 뭐가 다르냐?"고 물을 수 있는데, 차이점은 입력 포트가 출력 포트에만 의존한다는 거예요. Repository 같은 구체적인 기술에 직접 의존하지 않습니다.
 
 ```java
 public class RouterViewInputPort implements RouterViewUseCase {
@@ -70,7 +75,7 @@ public class RouterViewInputPort implements RouterViewUseCase {
 #### 출력 포트 
 
 - 유스케이스는 목표를 달성하기 위해 외부 리소스에서 데이터를 가져와야 하는 상황이 있습니다. 이때 출력 포트가 외부에서 데이터를 제공하는 인터페이스 역할을 수행합니다. 
-- 이때 출력 포트는 특정 기술에 종속되지 않습니다. 즉 데이터가 RDB로부터 오던 API부터로 오던 세분화된 책임은 출력 어댑터에 할당됩니다.
+- 이때 출력 포트는 특정 기술에 종속되지 않습니다. 즉 데이터가 RDB로부터 오든 API로부터 오든 세분화된 책임은 출력 어댑터에 할당됩니다.
 
 ```java
 public interface RouterViewOutputPort {
@@ -83,8 +88,10 @@ public interface RouterViewOutputPort {
 
 ### 프레임워크 헥사곤 (Framework Hexagon)
 
-- 외부 인터페이스를 제공합니다. 즉 애플리케이션 기능의 노출 방법을 결정할 수 있는 곳입니다. 
-- 헥사고날에서는 소프트웨어의 통신 방식을 2가지로 봅니다. 첫번째는 `Driving` 방식이고, 두번째는 `Driven` 방식입니다. 
+외부와 실제로 통신하는 어댑터들이 사는 곳입니다. 통신 방식은 크게 두 가지로 나뉘어요:
+
+- **Driving (Primary)**: 외부 → 우리 시스템 (예: REST Controller, CLI)
+- **Driven (Secondary)**: 우리 시스템 → 외부 (예: DB Repository, 외부 API Client) 
 
 #### Driving Operation 
 
@@ -122,7 +129,7 @@ public class RouterViewCLIAdapter {
 
 ```java
 public class RouterViewFileAdapter implements RouterViewOutputPort {
-    
+
     @Override
     public List<Router> fetchRouters() {
         return readFileAsString();
@@ -134,3 +141,91 @@ public class RouterViewFileAdapter implements RouterViewOutputPort {
 
 }
 ```
+
+## 의존성 방향
+
+헥사고날 아키텍처에서 의존성은 항상 바깥에서 안쪽으로 향합니다.
+
+```
+프레임워크 헥사곤 → 애플리케이션 헥사곤 → 도메인 헥사곤
+```
+
+도메인 헥사곤은 아무것도 의존하지 않고, 애플리케이션 헥사곤은 도메인만 알고, 프레임워크 헥사곤이 나머지를 다 알아요. 이게 의존성 역전 원칙(DIP)을 자연스럽게 따르는 구조입니다.
+
+## 레이어드 아키텍처와 비교
+
+| 구분 | 레이어드 | 헥사고날 |
+|------|---------|---------|
+| 의존성 방향 | 위 → 아래 (Presentation → Business → Data) | 바깥 → 안쪽 |
+| DB 의존성 | Business 레이어가 Data 레이어에 의존 | 도메인이 DB를 모름 (출력 포트로 추상화) |
+| 테스트 용이성 | DB Mocking 필요 | 포트만 Mocking하면 됨 |
+| 복잡도 | 단순 | 상대적으로 복잡 |
+
+레이어드 아키텍처가 나쁜 건 아닙니다. 단순한 CRUD 앱이라면 레이어드가 더 적합할 수 있어요. 헥사고날은 비즈니스 로직이 복잡하고, 외부 의존성이 자주 바뀌는 경우에 빛을 발합니다.
+
+## 적용 예시
+
+- 아래 예시는 참고일 뿐 이렇게 구성해야만 한다는 아닙니다!
+
+### Spring Boot 패키지 구조 예시
+
+```
+com.example.order/
+├── adapter/
+│   ├── in/
+│   │   └── web/
+│   │       └── OrderController.java
+│   └── out/
+│       └── persistence/
+│           ├── OrderJpaEntity.java
+│           ├── OrderJpaRepository.java
+│           └── OrderPersistenceAdapter.java
+├── application/
+│   ├── port/
+│   │   ├── in/
+│   │   │   └── CreateOrderUseCase.java
+│   │   └── out/
+│   │       └── SaveOrderPort.java
+│   └── service/
+│       └── CreateOrderService.java
+└── domain/
+    └── Order.java
+```
+
+### JPA Entity 분리는 필수인가요?
+
+엄격하게 적용하면 도메인 `Order`와 JPA `OrderJpaEntity`를 분리해야 해요. 도메인 객체에 `@Entity` 같은 JPA 어노테이션이 붙으면 기술에 종속되니까요.
+
+하지만 실무에서는 trade-off가 있습니다:
+- **분리하면**: 순수한 도메인, 하지만 매핑 코드 증가
+- **합치면**: 코드 간결, 하지만 도메인이 JPA에 종속
+
+팀 상황에 맞게 선택하면 됩니다. 개인적으로는 복잡한 도메인이면 분리하고, 단순하면 합치는 편이에요.
+
+### 언제 쓰면 좋을까?
+
+- 비즈니스 로직이 복잡한 도메인
+- DB나 외부 API가 자주 바뀔 가능성이 있을 때
+- 테스트 커버리지를 높이고 싶을 때
+- MSA에서 각 서비스의 독립성을 높이고 싶을 때
+
+### 주의할 점
+
+- 단순 CRUD에는 오버엔지니어링이 될 수 있음
+- 팀원들이 패턴을 이해해야 일관성 유지 가능
+- 초기 설계 시간이 더 필요함
+
+## 마무리
+
+헥사고날 아키텍처의 핵심은 "비즈니스 로직을 보호하자"입니다.
+
+- **포트**: 애플리케이션이 외부와 통신하는 인터페이스
+- **어댑터**: 포트를 실제 기술로 구현한 것
+- **의존성 방향**: 항상 바깥에서 안쪽으로
+
+처음엔 복잡해 보이지만, 익숙해지면 "DB를 MySQL에서 PostgreSQL로 바꿔야 해"라는 요청이 와도 출력 어댑터만 수정하면 됩니다. 비즈니스 로직은 건드릴 필요가 없어요.
+
+## 참고문헌
+- [1] Alistair Cockburn - [Hexagonal Architecture](https://alistair.cockburn.us/hexagonal-architecture/)
+- [2] Netflix Tech Blog - [Ready for changes with Hexagonal Architecture](https://netflixtechblog.com/ready-for-changes-with-hexagonal-architecture-b315ec967749)
+- [3] 만들면서 배우는 헥사고날 아키텍처 설계와 구현 - 다닐로 코우티뉴
