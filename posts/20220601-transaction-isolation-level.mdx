@@ -1,58 +1,255 @@
 ---
 id: 63
-title: "Transaction 과 격리 수준"
-description: ""
+title: "Transaction 격리 수준 - 동시성과 정합성 사이의 트레이드오프"
+description: "트랜잭션 격리 수준의 개념, Dirty Read/Non-Repeatable Read/Phantom Read 문제, MVCC 동작 원리, DB별 기본 격리 수준과 Spring에서의 설정"
 date: "2022-06-01 14:33:02"
-tags: []
+tags: ["Database", "Transaction", "IsolationLevel", "MVCC", "Concurrency"]
 ---
-## Transaction 격리성
 
-- Transaction은 ACID 라 하는 원자성 (Atomicity) , 일관성 (Consistency) , 격리성 (Isolation) , 지속성 (Durability) 을 보장해야 한다. 
-- 이중에 Transaction 격리 수준에 관련된 ACID 특성인 격리성만 간략하게 정리하면 , 동시에 실행되는 트랜잭션이 서로에게 영향을 미치지 않도록 격리한다는 뜻이다. 
+## 왜 격리 수준이 필요한가
 
-## 왜 격리 수준을 나누어서 관리하는가?
+Transaction은 ACID 특성 중 **Isolation(격리성)**을 보장해야 한다. 동시에 실행되는 트랜잭션이 서로에게 영향을 미치지 않아야 한다는 뜻이다.
 
-- 격리성이란 트랜잭션이 서로에게 영향을 미치지 않도록 해야 한다는 성질인데, 이를 완벽하게 100% 보장하려면 동시성과 관련된 성능 저하가 야기된다. 예를 들면 모든 트랜잭션이 순차적으로 실행되고 끝나야만 이를 보장할 수 있다. 
+그런데 격리성을 100% 보장하려면? 모든 트랜잭션을 순차적으로 실행해야 한다. 동시성이 0이 되는 거다. 성능이 바닥을 친다.
 
-## ANSI 표준 Transaction 격리 수준 
+```text
+완벽한 격리 ←────────────────────────────→ 완벽한 동시성
+   (성능 ↓)                                    (정합성 ↓)
+```
 
-- ANSI 표준에서는 트랜잭션 격리 수준을 4단계로 나누어서 정의하고 있다. 
+그래서 **격리 수준**이라는 개념이 생겼다. 어느 정도까지 격리할지 레벨을 나눠서, 애플리케이션 상황에 맞게 선택할 수 있게 했다.
 
-1. READ UNCOMMITED (커밋되지 않은 읽기)
-2. READ COMMITTED  (커밋된 읽기)
-3. REPEATABLE READ (반복 가능한 읽기)
-4. SERIALIZABLE    (직렬화 가능)
+## 동시성 문제 세 가지
 
-(1->4으로 갈수록 격리 수준이 높아지고, 동시성은 떨어진다. )
+격리 수준을 이해하려면 먼저 동시성 문제를 알아야 한다. 크게 세 가지가 있다.
 
+### 1. Dirty Read (더티 리드)
 
+커밋되지 않은 데이터를 읽는 문제다.
 
-## READ UNCOMMITED
+![Dirty Read](/images/dirty-read.png)
+*Dirty Read - 커밋되지 않은 데이터를 다른 트랜잭션이 읽는 문제*
 
-- 커밋하지 않은 데이터를 읽을 수 있다.
-- Transaction A가 Transaction B 가 커밋하기 전에 수정한 데이터를 조회할 수 있다. 
-- 만약 Transaction B가 데이터를 수정하고 롤백을 해버렸는데, Transaction A는 이 ROLLBACK한 데이터를 참조하고 있는 경우 데이터 정합성 문제가 발생할 수 있다. (Dirty Read)
+Transaction A가 롤백했는데, Transaction B는 이미 롤백될 데이터를 읽어버렸다. 존재하지 않는 데이터를 기반으로 비즈니스 로직이 동작하면 큰 문제다.
 
-## READ COMMITED 
+### 2. Non-Repeatable Read (반복 불가능한 읽기)
 
-- 커밋한 데이터만 읽을 수 있다. 
-- Dirty Read가 발생하지 않는다. 
-- 만약 Transaction A 가 데이터를 수정하고 Commit하면 , Transaction B가 Transaction A가 변경하기 전의 데이터를 읽고, Transaction A가 변경하고 나서 커밋한 뒤에 데이터를 다시 읽었을때, 값이 다르다. 즉 Transaction B가 실행되는 도중에 Transaction A 가 값을 변경하고 커밋해버리면 다시 읽었을 때 값이 달라지는 문제이다. (NON-REPEATABLE READ) 
-- 보통 데이터베이스는 READ COMMITED 격리 수준을 기본으로 제공한다. 
+같은 쿼리를 두 번 실행했는데 결과가 다른 문제다.
 
-## REPEATABLE READ
+![Non-Repeatable Read](/images/non-repeatable-read.png)
+*Non-Repeatable Read - 같은 쿼리를 두 번 실행했는데 결과가 다른 문제*
 
-- 동일 Trnasaction 내에서 한번 조회한 데이터를 다시 조회할때도 동일한 값이 조회되는 격리 수준이다. 즉 NON-REPEATABLE READ가 발생하지 않는다. 
-- 만약 Transaction B가 특정 결과집합을 조회하고 나서,  Transaction A가 데이터를 insert 하고 커밋하면 ,  Transaction B가 결과집합을 다시 조회하였을때, 데이터 값이 변경되진 않지만 추가된 상태를 읽는다. (PHANTOM READ)
+Transaction A 입장에서는 아무것도 안 했는데 값이 바뀌었다. 읽기 일관성이 깨진 거다.
 
-## SERIALIZABLE 
+### 3. Phantom Read (팬텀 리드)
 
-- 가장 엄격한 Transaction 격리 수준으로 Dirty Read , NON-REPEATABLE READ , PHANTOM READ 어떠한 문제도 발생하지 않는다. 
+같은 조건으로 조회했는데 행 수가 달라지는 문제다.
 
+![Phantom Read](/images/phantom-read.png)
+*Phantom Read - 같은 조건으로 조회했는데 행 수가 달라지는 문제*
 
-## Oracle Transaction Isolation Level 
+Non-Repeatable Read는 기존 행의 값이 바뀌는 거고, Phantom Read는 새로운 행이 나타나거나 사라지는 거다.
 
--  오라클에서는 기본적으로 READ COMMITED 격리 수준을 제공하고, serializable 격리 수준 , read - only mode 을 추가로 제공한다고 한다. (https://docs.oracle.com/cd/E25054_01/server.1111/e25789/consist.htm)
+## ANSI SQL 격리 수준
 
+ANSI SQL 표준에서는 4단계 격리 수준을 정의한다.
 
-- read - only mode의 경우에는 serializable isolation level과 유사하나 , SYS 유저가 아닌 경우에는 데이터 변경을 허용하지 않는다. 즉 일반 유저는 serializable isolation level 에서 데이터 변경까지 허용이 불가능한 격리 수준이 가장 높은 모드이다.
+![Transaction Isolation Levels](/images/isolation-levels.png)
+*격리 수준별 발생 가능한 동시성 문제*
+
+| 격리 수준 | Dirty Read | Non-Repeatable Read | Phantom Read |
+|----------|------------|---------------------|--------------|
+| **READ UNCOMMITTED** | O | O | O |
+| **READ COMMITTED** | X | O | O |
+| **REPEATABLE READ** | X | X | O |
+| **SERIALIZABLE** | X | X | X |
+
+아래로 갈수록 격리 수준이 높고, 동시성은 떨어진다.
+
+### READ UNCOMMITTED
+
+가장 낮은 격리 수준이다. 커밋하지 않은 데이터도 읽을 수 있다.
+
+```sql
+SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+```
+
+Dirty Read가 발생할 수 있어서 실무에서는 거의 안 쓴다. 데이터 정합성이 중요하지 않은 통계성 쿼리 정도에만 사용할 수 있다.
+
+### READ COMMITTED
+
+커밋된 데이터만 읽는다. **대부분의 RDBMS 기본값**이다.
+
+```sql
+SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+```
+
+Dirty Read는 방지되지만, 같은 쿼리를 두 번 실행하면 결과가 다를 수 있다 (Non-Repeatable Read).
+
+```text
+                        ┌─────────────────┐
+Transaction A           │  Undo Segment   │
+SELECT balance ────────→│  (이전 버전)    │ ← 커밋 전에는 여기서 읽음
+                        └─────────────────┘
+                                ↑
+Transaction B ──────────────────┘
+UPDATE → COMMIT
+```
+
+커밋 전에는 Undo 영역의 이전 버전을 읽고, 커밋 후에는 새 값을 읽는다.
+
+### REPEATABLE READ
+
+트랜잭션 내에서 같은 데이터를 읽으면 항상 같은 값이 나온다.
+
+```sql
+SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+```
+
+**MySQL InnoDB의 기본 격리 수준**이다. 트랜잭션 시작 시점의 스냅샷을 기준으로 데이터를 읽어서 Non-Repeatable Read를 방지한다.
+
+다만 새로운 행이 INSERT되면 Phantom Read가 발생할 수 있다. (MySQL은 Gap Lock으로 이것도 막긴 한다)
+
+### SERIALIZABLE
+
+가장 높은 격리 수준이다. 트랜잭션을 순차적으로 실행하는 것처럼 동작한다.
+
+```sql
+SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+```
+
+모든 동시성 문제가 해결되지만, 성능이 크게 떨어진다. 읽기에도 공유 락을 걸어서 다른 트랜잭션의 쓰기를 막는다.
+
+```text
+Transaction A: SELECT → 공유 락 획득
+Transaction B: UPDATE → 락 대기... (A가 끝날 때까지)
+```
+
+## MVCC (Multi-Version Concurrency Control)
+
+대부분의 현대 RDBMS는 **MVCC**를 사용한다. 락 없이 동시성을 처리하는 기법이다.
+
+### 핵심 아이디어
+
+데이터를 수정할 때 기존 데이터를 덮어쓰지 않고, **새 버전을 만든다**. 각 트랜잭션은 자기 시작 시점의 스냅샷을 본다.
+
+![MVCC Update](/images/mvcc-update.png)
+*MVCC 버전 관리 - UPDATE 시 기존 버전을 유지하고 새 버전을 생성*
+
+Transaction 150이 실행 중이라면? v1을 본다 (200번 트랜잭션은 아직 시작 전이니까).
+Transaction 250이라면? v2를 본다.
+
+### MVCC의 장점
+
+| 장점 | 설명 |
+|------|------|
+| **읽기-쓰기 충돌 없음** | 읽기가 쓰기를 막지 않고, 쓰기가 읽기를 막지 않음 |
+| **락 대기 감소** | 각자 버전을 보니까 락 경합이 줄어듦 |
+| **일관된 읽기** | 트랜잭션 시작 시점의 스냅샷을 봄 |
+
+### MVCC의 비용
+
+공짜는 없다. 버전을 계속 쌓으니까 **가비지 컬렉션**이 필요하다.
+
+- **PostgreSQL**: VACUUM 프로세스가 오래된 버전 정리
+- **MySQL InnoDB**: Purge Thread가 Undo Log 정리
+- **Oracle**: Undo Segment 자동 관리
+
+## DB별 기본 격리 수준
+
+각 DBMS마다 기본 격리 수준이 다르다.
+
+| DBMS | 기본 격리 수준 | 비고 |
+|------|---------------|------|
+| **MySQL InnoDB** | REPEATABLE READ | Gap Lock으로 Phantom Read도 방지 |
+| **PostgreSQL** | READ COMMITTED | MVCC 기반 |
+| **Oracle** | READ COMMITTED | MVCC 기반, SERIALIZABLE 지원 |
+| **SQL Server** | READ COMMITTED | Snapshot Isolation 별도 지원 |
+
+### MySQL의 특이점
+
+MySQL InnoDB는 REPEATABLE READ에서도 **Gap Lock**을 사용해서 Phantom Read를 방지한다. ANSI 표준보다 강력한 격리를 제공하는 셈이다.
+
+```sql
+-- Gap Lock 예시
+SELECT * FROM users WHERE age BETWEEN 20 AND 30 FOR UPDATE;
+-- age 20~30 범위에 Gap Lock이 걸림
+-- 다른 트랜잭션이 이 범위에 INSERT 불가
+```
+
+### PostgreSQL의 특이점
+
+PostgreSQL은 REPEATABLE READ에서 Phantom Read를 허용한다고 표준에는 나와있지만, 실제로는 MVCC 스냅샷 덕분에 Phantom Read가 거의 발생하지 않는다.
+
+## Spring에서 격리 수준 설정
+
+Spring `@Transactional`에서 격리 수준을 설정할 수 있다.
+
+```java
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
+
+@Transactional(isolation = Isolation.READ_COMMITTED)
+public void updateBalance(Long accountId, int amount) {
+    // ...
+}
+```
+
+### Isolation 옵션
+
+| 값 | 설명 |
+|----|------|
+| `DEFAULT` | DB 기본값 사용 (권장) |
+| `READ_UNCOMMITTED` | 거의 안 씀 |
+| `READ_COMMITTED` | 일반적인 선택 |
+| `REPEATABLE_READ` | 읽기 일관성 필요 시 |
+| `SERIALIZABLE` | 완벽한 격리 필요 시 (성능 주의) |
+
+### 실무 팁
+
+```java
+// 대부분의 경우 기본값으로 충분
+@Transactional
+public void normalOperation() { }
+
+// 금융 거래처럼 정합성이 중요한 경우
+@Transactional(isolation = Isolation.SERIALIZABLE)
+public void transferMoney() { }
+
+// 통계 조회처럼 정확도보다 성능이 중요한 경우
+@Transactional(isolation = Isolation.READ_UNCOMMITTED, readOnly = true)
+public long countApproximate() { }
+```
+
+보통은 `DEFAULT`로 두고, DB 설정을 따르는 게 좋다. 애플리케이션 코드에서 격리 수준을 바꾸면 의도치 않은 동작이 발생할 수 있다.
+
+## 격리 수준 선택 가이드
+
+| 상황 | 권장 격리 수준 |
+|------|---------------|
+| 일반적인 CRUD | READ COMMITTED (기본값) |
+| 보고서/집계 조회 | READ COMMITTED |
+| 잔액 조회 후 차감 | REPEATABLE READ 또는 낙관적 락 |
+| 좌석 예약, 재고 차감 | 비관적 락 + READ COMMITTED |
+| 금융 이체 | SERIALIZABLE 또는 비관적 락 |
+
+격리 수준만으로 모든 동시성 문제를 해결하려 하지 말자. **비관적 락(SELECT FOR UPDATE)**이나 **낙관적 락(@Version)**을 함께 사용하는 게 더 명확한 경우가 많다.
+
+## 정리
+
+트랜잭션 격리 수준은 **동시성과 정합성 사이의 트레이드오프**다.
+
+- **Dirty Read**: 커밋 안 된 데이터 읽기 → READ COMMITTED로 방지
+- **Non-Repeatable Read**: 같은 쿼리, 다른 결과 → REPEATABLE READ로 방지
+- **Phantom Read**: 유령 행 등장 → SERIALIZABLE로 방지
+- **MVCC**: 락 없이 동시성 처리, 버전 관리로 스냅샷 제공
+- 대부분의 경우 **DB 기본값**(READ COMMITTED 또는 REPEATABLE READ)으로 충분
+- 특수한 경우에만 격리 수준 변경, 그보다는 **락 전략**을 먼저 고려
+
+## 참고문헌
+
+- [Transaction Isolation Levels - GeeksforGeeks](https://www.geeksforgeeks.org/dbms/transaction-isolation-levels-dbms/)
+- [How does MVCC work - Vlad Mihalcea](https://vladmihalcea.com/how-does-mvcc-multi-version-concurrency-control-work/)
+- [MySQL Isolation Levels - PlanetScale](https://planetscale.com/blog/mysql-isolation-levels-and-how-they-work)
+- [PostgreSQL Transaction Isolation](https://www.postgresql.org/docs/current/transaction-iso.html)
+- [Oracle Transaction Isolation](https://docs.oracle.com/cd/E25054_01/server.1111/e25789/consist.htm)

@@ -28,25 +28,8 @@ tags: ["OAuth2", "JWT", "Spring Security", "Authentication", "Session"]
 4. 이후 요청마다 쿠키의 세션 ID로 사용자 식별
 ```
 
-```
-┌─────────┐                    ┌─────────┐
-│ Client  │                    │ Server  │
-└────┬────┘                    └────┬────┘
-     │ 1. POST /login               │
-     │ (username, password)         │
-     │ ──────────────────────────►  │
-     │                              │ 2. 인증 확인
-     │                              │ 3. 세션 생성 (메모리/DB 저장)
-     │ 4. Set-Cookie: JSESSIONID=abc│
-     │ ◄──────────────────────────  │
-     │                              │
-     │ 5. GET /api/user             │
-     │ Cookie: JSESSIONID=abc       │
-     │ ──────────────────────────►  │
-     │                              │ 6. 세션 조회 → 사용자 확인
-     │ 7. 응답                       │
-     │ ◄──────────────────────────  │
-```
+![Session Based Authentication](/images/session-auth.jpg)
+*세션 기반 인증 흐름 - 서버가 세션 ID를 발급하고 쿠키로 관리*
 
 ### Spring에서 세션
 
@@ -99,7 +82,7 @@ public String logout(HttpSession session) {
 ### JWT 구조
 
 ```
-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+{Header}.{Payload}.{Signature}
 ```
 
 `.`으로 구분된 3개 파트:
@@ -114,24 +97,8 @@ Header와 Payload는 Base64 인코딩일 뿐 암호화가 아닙니다. 누구�
 
 ### 동작 방식
 
-```
-┌─────────┐                    ┌─────────┐
-│ Client  │                    │ Server  │
-└────┬────┘                    └────┬────┘
-     │ 1. POST /login               │
-     │ ──────────────────────────►  │
-     │                              │ 2. 인증 확인
-     │                              │ 3. JWT 생성 (서명)
-     │ 4. { "token": "eyJ..." }     │
-     │ ◄──────────────────────────  │
-     │                              │
-     │ 5. GET /api/user             │
-     │ Authorization: Bearer eyJ... │
-     │ ──────────────────────────►  │
-     │                              │ 6. 서명 검증 → Payload에서 사용자 확인
-     │ 7. 응답                       │
-     │ ◄──────────────────────────  │
-```
+![Token Based Authentication](/images/token-auth.jpg)
+*토큰 기반 인증 흐름 - 서버가 JWT를 발급하고 클라이언트가 보관*
 
 서버는 토큰의 서명만 검증하면 됩니다. 별도 저장소 조회가 필요 없어요.
 
@@ -327,35 +294,8 @@ OAuth 2.0은 **인가(Authorization)** 프로토콜입니다. "다른 서비스�
 
 서버 사이드 애플리케이션에 적합합니다. 가장 안전해요.
 
-```
-┌──────────┐                              ┌─────────────────┐
-│   User   │                              │  Authorization  │
-│ (Browser)│                              │     Server      │
-└────┬─────┘                              └────────┬────────┘
-     │                                             │
-     │ 1. "Google로 로그인" 클릭                     │
-     │ ──────────────────────────────────────────► │
-     │                                             │
-     │ 2. Google 로그인 페이지                       │
-     │ ◄────────────────────────────────────────── │
-     │                                             │
-     │ 3. 로그인 + 권한 동의                         │
-     │ ──────────────────────────────────────────► │
-     │                                             │
-     │ 4. Redirect: /callback?code=AUTH_CODE       │
-     │ ◄────────────────────────────────────────── │
-     │                                             │
-┌────┴─────┐                              ┌────────┴────────┐
-│  Client  │                              │  Authorization  │
-│  Server  │                              │     Server      │
-└────┬─────┘                              └────────┬────────┘
-     │                                             │
-     │ 5. POST /token (code + client_secret)       │
-     │ ──────────────────────────────────────────► │
-     │                                             │
-     │ 6. { access_token, refresh_token }          │
-     │ ◄────────────────────────────────────────── │
-```
+![OAuth 2.0 Authorization Code Flow](/images/oauth2-auth-code-flow.png)
+*OAuth 2.0 Authorization Code Grant 흐름 - 가장 안전한 인가 방식*
 
 Authorization Code는 클라이언트 시크릿과 교환해야 Access Token을 얻을 수 있습니다. 시크릿은 서버에만 있으니 안전해요.
 
