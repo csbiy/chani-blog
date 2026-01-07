@@ -1,0 +1,675 @@
+---
+id: 181
+title: "GitHub Actions로 CI/CD 파이프라인 구축하기"
+description: "GitHub Actions 개념부터 Spring Boot 프로젝트 자동 배포"
+date: "2025-08-09 11:32:55"
+tags: ["GitHub Actions", "CI/CD", "DevOps", "Docker", "Spring Boot"]
+---
+
+## CI/CD가 뭔가요?
+
+코드를 푸시하면 자동으로 테스트하고, 문제없으면 서버에 배포까지 해주는 것. 이게 CI/CD입니다.
+
+- **CI (Continuous Integration)**: 코드 변경을 자주 통합하고, 매번 자동으로 빌드/테스트
+- **CD (Continuous Deployment/Delivery)**: 테스트 통과한 코드를 자동으로 배포
+
+수동으로 하면 이렇습니다:
+
+```
+1. 코드 수정
+2. 로컬에서 테스트 실행
+3. 빌드
+4. 서버 접속
+5. 기존 프로세스 종료
+6. 새 버전 배포
+7. 프로세스 시작
+8. 동작 확인
+```
+
+매번 이걸 하면 시간도 걸리고, 실수도 생깁니다. CI/CD는 이 과정을 자동화해요.
+
+## GitHub Actions란
+
+GitHub에서 제공하는 CI/CD 플랫폼입니다. 저장소에 `.github/workflows/` 디렉토리에 YAML 파일만 추가하면 됩니다. 별도 서버 설치 없이 GitHub가 다 해줘요.
+
+### 왜 GitHub Actions인가?
+
+| 도구 | 장점 | 단점 |
+|------|------|------|
+| Jenkins | 유연함, 플러그인 풍부 | 별도 서버 필요, 관리 부담 |
+| Travis CI | 설정 간단 | 무료 플랜 제한적 |
+| CircleCI | 빠름, Docker 지원 좋음 | 복잡한 설정은 어려움 |
+| **GitHub Actions** | GitHub 통합, 무료 한도 넉넉 | GitHub 종속 |
+
+GitHub 쓰고 있다면 GitHub Actions가 가장 편합니다. 별도 연동 없이 바로 사용 가능하고, public 저장소는 무료예요.
+
+## 핵심 개념
+
+GitHub Actions를 이해하려면 4가지 개념을 알아야 합니다.
+
+```
+Workflow
+  └── Job 1
+  │     ├── Step 1 (Action)
+  │     ├── Step 2 (run command)
+  │     └── Step 3 (Action)
+  └── Job 2
+        ├── Step 1
+        └── Step 2
+```
+
+### Workflow
+
+자동화 프로세스 전체입니다. `.github/workflows/*.yml` 파일 하나가 워크플로우 하나예요. 이벤트(push, PR 등)가 발생하면 실행됩니다.
+
+### Job
+
+워크플로우 안에서 실행되는 작업 단위입니다. 기본적으로 병렬 실행되고, 의존 관계를 설정할 수도 있어요.
+
+### Step
+
+Job 안에서 순차적으로 실행되는 단계입니다. 쉘 명령어를 실행하거나 Action을 사용할 수 있습니다.
+
+### Action
+
+재사용 가능한 작업 단위입니다. 마켓플레이스에 수천 개가 있어요. 직접 만들 수도 있고요.
+
+### 자주 보는 표현들
+
+YAML 파일에서 `${{ }}` 형태의 표현이 자주 나옵니다.
+
+| 표현 | 의미 |
+|------|------|
+| `${{ github.sha }}` | 커밋 해시 (예: `a1b2c3d4...`) |
+| `${{ github.ref }}` | 브랜치/태그 참조 (예: `refs/heads/main`) |
+| `${{ github.actor }}` | 이벤트를 트리거한 사용자 |
+| `${{ github.repository }}` | 저장소 이름 (예: `owner/repo`) |
+| `${{ secrets.XXX }}` | 저장소에 설정한 비밀 값 |
+| `ghcr.io` | GitHub Container Registry (Docker 이미지 저장소) |
+
+## 첫 번째 Workflow 만들기
+
+`.github/workflows/ci.yml` 파일을 만들어봅시다.
+
+```yaml
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 코드 체크아웃
+        uses: actions/checkout@v4
+
+      - name: JDK 21 설정
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Gradle 빌드
+        run: ./gradlew build
+
+      - name: 테스트 실행
+        run: ./gradlew test
+```
+
+하나씩 뜯어보면:
+
+- `name`: 워크플로우 이름 (GitHub UI에 표시)
+- `on`: 언제 실행할지 (push, PR 등)
+- `jobs`: 실행할 작업들
+- `runs-on`: 실행 환경 (ubuntu, windows, macos)
+- `steps`: 순차 실행할 단계들
+- `uses`: 마켓플레이스 Action 사용
+- `run`: 쉘 명령어 실행
+
+## 실전: Spring Boot CI/CD
+
+실제 프로젝트에서 쓸 수 있는 파이프라인을 만들어봅시다.
+
+### 전체 구조
+
+```
+PR 생성/Push → 빌드 → 테스트 → Docker 이미지 빌드 → 레지스트리 Push → 서버 배포
+```
+
+### 완성된 Workflow
+
+```yaml
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  DOCKER_IMAGE: ghcr.io/${{ github.repository }}
+  DOCKER_TAG: ${{ github.sha }}
+
+jobs:
+  # Job 1: 빌드 및 테스트
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 체크아웃
+        uses: actions/checkout@v4
+
+      - name: JDK 21 설정
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'gradle'  # Gradle 캐싱
+
+      - name: 실행 권한 부여
+        run: chmod +x ./gradlew
+
+      - name: 빌드 (테스트 제외)
+        run: ./gradlew build -x test
+
+      - name: 테스트 실행
+        run: ./gradlew test
+
+      - name: 테스트 결과 업로드
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: build/reports/tests/
+
+      - name: JAR 파일 업로드
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-jar
+          path: build/libs/*.jar
+
+  # Job 2: Docker 이미지 빌드 및 푸시
+  docker:
+    needs: build  # build 완료 후 실행
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: 체크아웃
+        uses: actions/checkout@v4
+
+      - name: JAR 다운로드
+        uses: actions/download-artifact@v4
+        with:
+          name: app-jar
+          path: build/libs/
+
+      - name: Docker Buildx 설정
+        uses: docker/setup-buildx-action@v3
+
+      - name: GitHub Container Registry 로그인
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker 이미지 빌드 및 푸시
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.DOCKER_IMAGE }}:${{ env.DOCKER_TAG }}
+            ${{ env.DOCKER_IMAGE }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # Job 3: 배포
+  deploy:
+    needs: docker
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 서버 배포
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            docker pull ${{ env.DOCKER_IMAGE }}:${{ env.DOCKER_TAG }}
+            docker stop app || true
+            docker rm app || true
+            docker run -d --name app -p 8080:8080 ${{ env.DOCKER_IMAGE }}:${{ env.DOCKER_TAG }}
+```
+
+### Dockerfile
+
+```dockerfile
+FROM eclipse-temurin:21-jre-alpine
+
+WORKDIR /app
+
+COPY build/libs/*.jar app.jar
+
+EXPOSE 8080
+
+ENTRYPOINT ["java", "-jar", "app.jar"]
+```
+
+## 주요 기능들
+
+### 1. 캐싱
+
+빌드 시간을 줄이려면 캐싱이 필수입니다.
+
+```yaml
+# Gradle 캐싱 (setup-java에서 자동 지원)
+- uses: actions/setup-java@v4
+  with:
+    java-version: '21'
+    distribution: 'temurin'
+    cache: 'gradle'
+
+# 직접 캐싱 설정
+- name: Gradle 캐시
+  uses: actions/cache@v4
+  with:
+    path: |
+      ~/.gradle/caches
+      ~/.gradle/wrapper
+    key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+    restore-keys: |
+      ${{ runner.os }}-gradle-
+```
+
+캐싱 전후로 빌드 시간이 3분 → 1분으로 줄어드는 경우도 흔해요.
+
+### 2. Secrets (비밀 값 관리)
+
+비밀번호, API 키 같은 민감한 정보는 Secrets로 관리합니다.
+
+```
+GitHub 저장소 → Settings → Secrets and variables → Actions → New repository secret
+```
+
+```yaml
+steps:
+  - name: 배포
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      API_KEY: ${{ secrets.API_KEY }}
+    run: ./deploy.sh
+```
+
+`GITHUB_TOKEN`은 자동으로 제공됩니다. 저장소 권한이 필요한 작업(패키지 푸시 등)에 사용해요.
+
+### 3. Matrix (병렬 테스트)
+
+여러 환경에서 동시에 테스트하고 싶을 때 사용합니다.
+
+```yaml
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}  # 매트릭스 변수 사용
+    strategy:
+      matrix:
+        java-version: [17, 21]
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: ${{ matrix.java-version }}
+          distribution: 'temurin'
+      - run: ./gradlew test
+```
+
+이러면 4개의 Job이 병렬로 실행됩니다 (2 Java 버전 × 2 OS).
+
+### 4. Artifacts (결과물 저장)
+
+빌드 결과물이나 테스트 리포트를 저장하고 다운로드할 수 있습니다.
+
+```yaml
+# 업로드
+- uses: actions/upload-artifact@v4
+  with:
+    name: coverage-report
+    path: build/reports/jacoco/
+    retention-days: 7  # 보관 기간
+
+# 다운로드 (다른 Job에서)
+- uses: actions/download-artifact@v4
+  with:
+    name: coverage-report
+```
+
+### 5. 조건부 실행
+
+특정 조건에서만 실행하고 싶을 때:
+
+```yaml
+steps:
+  # main 브랜치일 때만
+  - name: 배포
+    if: github.ref == 'refs/heads/main'
+    run: ./deploy.sh
+
+  # PR일 때만
+  - name: PR 코멘트
+    if: github.event_name == 'pull_request'
+    run: echo "This is a PR"
+
+  # 이전 Step이 실패해도 실행
+  - name: 정리
+    if: always()
+    run: ./cleanup.sh
+
+  # 이전 Step이 성공했을 때만 (기본값)
+  - name: 알림
+    if: success()
+    run: ./notify.sh
+```
+
+## 배포 전략별 예시
+
+### AWS EC2 배포
+
+```yaml
+deploy:
+  runs-on: ubuntu-latest
+  steps:
+    - name: AWS 자격 증명 설정
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ap-northeast-2
+
+    - name: EC2 배포
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ec2-user
+        key: ${{ secrets.EC2_SSH_KEY }}
+        script: |
+          cd /home/ec2-user/app
+          ./deploy.sh
+```
+
+### AWS ECS (Fargate) 배포
+
+```yaml
+deploy:
+  runs-on: ubuntu-latest
+  steps:
+    - name: AWS 자격 증명 설정
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ap-northeast-2
+
+    - name: ECR 로그인
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: ECS Task Definition 업데이트
+      id: task-def
+      uses: aws-actions/amazon-ecs-render-task-definition@v1
+      with:
+        task-definition: task-definition.json
+        container-name: app
+        image: ${{ secrets.ECR_REGISTRY }}/app:${{ github.sha }}
+
+    - name: ECS 배포
+      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+      with:
+        task-definition: ${{ steps.task-def.outputs.task-definition }}
+        service: app-service
+        cluster: app-cluster
+        wait-for-service-stability: true
+```
+
+### Kubernetes (kubectl) 배포
+
+```yaml
+deploy:
+  runs-on: ubuntu-latest
+  steps:
+    - name: 체크아웃
+      uses: actions/checkout@v4
+
+    - name: kubectl 설정
+      uses: azure/k8s-set-context@v4
+      with:
+        kubeconfig: ${{ secrets.KUBECONFIG }}
+
+    - name: 이미지 태그 업데이트
+      run: |
+        sed -i "s|IMAGE_TAG|${{ github.sha }}|g" k8s/deployment.yaml
+
+    - name: 배포
+      run: kubectl apply -f k8s/
+```
+
+## 여러가지 팁
+
+### 1. 브랜치 전략에 맞게 설정
+
+```yaml
+on:
+  push:
+    branches: [ main ]  # main은 배포까지
+  pull_request:
+    branches: [ main, develop ]  # PR은 테스트만
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: ./gradlew test
+
+  deploy:
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # ... 배포 로직
+```
+
+### 2. 실패 알림
+
+```yaml
+- name: Slack 알림
+  if: failure()
+  uses: 8398a7/action-slack@v3
+  with:
+    status: failure
+    fields: repo,message,commit,author
+  env:
+    SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+```
+
+### 3. PR에 체크 결과 표시
+
+```yaml
+- name: 테스트 결과 코멘트
+  uses: EnricoMi/publish-unit-test-result-action@v2
+  if: always()
+  with:
+    files: build/test-results/**/*.xml
+```
+
+### 4. 수동 실행 (workflow_dispatch)
+
+```yaml
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: '배포 환경'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Deploying to ${{ inputs.environment }}"
+```
+
+GitHub UI에서 "Run workflow" 버튼으로 수동 실행할 수 있어요.
+
+### 5. 재사용 가능한 Workflow
+
+```yaml
+# .github/workflows/reusable-build.yml
+name: Reusable Build
+
+on:
+  workflow_call:
+    inputs:
+      java-version:
+        required: true
+        type: string
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: ${{ inputs.java-version }}
+          distribution: 'temurin'
+      - run: ./gradlew build
+```
+
+```yaml
+# .github/workflows/ci.yml
+name: CI
+
+on: [push]
+
+jobs:
+  call-build:
+    uses: ./.github/workflows/reusable-build.yml
+    with:
+      java-version: '21'
+```
+
+## 주의사항
+
+### 비용
+
+- Public 저장소: 무료
+- Private 저장소: 월 2,000분 무료 (Free 플랜), 초과 시 분당 $0.008
+
+```yaml
+# 불필요한 실행 방지
+on:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+```
+
+### 보안
+
+```yaml
+# 필요한 권한만 부여
+permissions:
+  contents: read
+  packages: write
+
+# Fork된 PR에서 Secrets 접근 제한
+jobs:
+  build:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+```
+
+### 디버깅
+
+```yaml
+# 디버그 로그 활성화
+- name: 디버그
+  run: echo "Event: ${{ toJson(github.event) }}"
+
+# SSH로 접속해서 디버깅
+- name: SSH 디버깅
+  uses: mxschmitt/action-tmate@v3
+  if: failure()
+```
+
+## 기타
+
+### Self-hosted runner는 언제 쓰나요?
+
+GitHub에서 제공하는 runner 대신 자체 서버에서 실행하는 방식입니다.
+
+- **Private 저장소 비용 절감**: 분당 과금 대신 자체 서버 비용만
+- **특수 환경 필요**: GPU, 특정 OS, 사내망 접근 등
+- **빌드 시간 단축**: 캐시가 로컬에 유지됨
+
+```yaml
+jobs:
+  build:
+    runs-on: self-hosted  # 또는 [self-hosted, linux, x64]
+```
+
+단, 보안 관리는 직접 해야 합니다. Public 저장소에서는 쓰지 마세요.
+
+### 모노레포에서는?
+
+변경된 패키지만 빌드하도록 `paths` 필터를 사용합니다.
+
+```yaml
+on:
+  push:
+    paths:
+      - 'packages/api/**'  # api 패키지 변경 시만 실행
+
+# 또는 동적으로 판단
+- name: 변경된 파일 확인
+  uses: dorny/paths-filter@v3
+  id: filter
+  with:
+    filters: |
+      api:
+        - 'packages/api/**'
+      web:
+        - 'packages/web/**'
+
+- name: API 빌드
+  if: steps.filter.outputs.api == 'true'
+  run: npm run build:api
+```
+
+## 정리
+
+GitHub Actions는 GitHub에 통합된 CI/CD 플랫폼입니다.
+
+핵심 개념:
+- **Workflow**: 자동화 프로세스 전체 (YAML 파일)
+- **Job**: 병렬/순차 실행 가능한 작업 단위
+- **Step**: Job 내 순차 실행 단계
+- **Action**: 재사용 가능한 작업 (마켓플레이스)
+
+## 참고문헌
+
+- [GitHub Actions 공식 문서](https://docs.github.com/en/actions)
+- [GitHub Actions Marketplace](https://github.com/marketplace?type=actions)
+- [Awesome Actions](https://github.com/sdras/awesome-actions)
+- [GitHub Actions 요금](https://docs.github.com/en/billing/managing-billing-for-github-actions)

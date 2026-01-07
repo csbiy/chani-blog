@@ -1,9 +1,9 @@
 ---
 id: 178
 title: "Java Virtual Thread - 경량 스레드로 동시성 프로그래밍"
-description: "Java 21에서 정식 도입된 Virtual Thread의 개념, 동작 원리, 사용법과 주의사항"
-date: "2026-01-04 13:22:00"
-tags: ["Java", "Concurrency", "VirtualThread", "JDK21"]
+description: "Java 21에서 정식 도입된 Virtual Thread의 개념, Continuation과 Scheduler 내부 동작 원리, 사용법과 Pinning 주의사항"
+date: "2026-01-04 13:22:32"
+tags: ["Java", "Concurrency", "VirtualThread", "JDK21", "Loom"]
 ---
 
 ## Virtual Thread가 필요한 이유
@@ -26,7 +26,8 @@ JDK 21에서 JEP 444로 들어온 Virtual Thread는 경량 스레드다. OS 스�
 
 핵심은 M:N 스케줄링이다. 쉽게 말해서 여러 Virtual Thread가 적은 수의 OS 스레드를 돌려쓴다. 택시 합승이랑 비슷하다고 보면 된다.
 
-![Virtual Thread 아키텍처](/images/virtual-thread-arch-new.png)
+![Virtual Thread Architecture](https://imgopt.infoq.com/fit-in/3000x4000/filters:quality(85)/filters:no_upscale()/articles/java-virtual-threads-a-case-study/en/resources/34fig1-1720467618583.jpg)
+*Virtual Thread와 OS 스레드의 M:N 관계 - 수많은 Virtual Thread가 소수의 Platform Thread(Carrier)를 공유한다*
 
 ## Platform Thread vs Virtual Thread
 
@@ -44,9 +45,16 @@ JDK 21에서 JEP 444로 들어온 Virtual Thread는 경량 스레드다. OS 스�
 
 Virtual Thread의 핵심 메커니즘은 mount/unmount다.
 
-Virtual Thread가 실행되려면 실제 OS 스레드가 필요하다. 이때 Virtual Thread를 태워서 실행하는 Platform Thread를 Carrier Thread라고 부른다.
+Virtual Thread가 실행되려면 실제 OS 스레드가 필요하다. 이때 Virtual Thread를 태워서 실행하는 Platform Thread를 **Carrier Thread**라고 부른다.
 
-![Virtual Thread Mount/Unmount](/images/virtual-thread-mount-new.png)
+### Mount/Unmount 상태 전이
+
+| 상태 | 설명 |
+|------|------|
+| **Mounted** | Carrier Thread에 올라타서 실행 중 |
+| **Unmounted (Ready)** | 실행 준비 완료, Carrier 대기 중 |
+| **Unmounted (Blocked)** | I/O 완료 대기 중 |
+| **Pinned** | Carrier에 고정됨 (unmount 불가) |
 
 - **Mount**: Virtual Thread가 Carrier Thread에 올라타서 실행
 - **Unmount**: Blocking I/O 발생 시 Carrier Thread에서 내려옴
@@ -55,16 +63,53 @@ Blocking I/O(파일 읽기, 네트워크 요청 등)가 발생하면 Virtual Thr
 
 그래서 Blocking I/O가 발생해도 OS 스레드가 놀지 않는다. 이게 Virtual Thread의 핵심이다.
 
+### 내부 구현: Continuation
+
+Virtual Thread의 핵심 구현체는 **Continuation**이다. Continuation은 실행을 일시 중단(suspend)했다가 나중에 재개(resume)할 수 있는 프로그래밍 구조다.
+
+```java
+// 개념적 구조 (실제 API는 내부용)
+Continuation cont = new Continuation(scope, () -> {
+    System.out.println("시작");
+    Continuation.yield(scope);  // 여기서 중단
+    System.out.println("재개");  // 나중에 여기서 계속
+});
+
+cont.run();  // "시작" 출력 후 중단
+cont.run();  // "재개" 출력 후 완료
+```
+
+Virtual Thread가 Blocking I/O를 만나면:
+1. 현재 실행 상태(스택 프레임)를 Continuation에 저장
+2. Continuation을 Heap에 보관 (GC 대상)
+3. Carrier Thread에서 unmount
+4. I/O 완료 시 Continuation 복원 후 재개
+
 ## Scheduler 구조
 
-Virtual Thread의 스케줄러는 Work-stealing 알고리즘을 사용하는 ForkJoinPool이다.
+Virtual Thread의 스케줄러는 **Work-stealing 알고리즘**을 사용하는 `ForkJoinPool`이다.
+
+### 왜 ForkJoinPool인가?
+
+Work-stealing은 Virtual Thread처럼 많은 수의 짧은 작업을 처리하는 데 최적화되어 있다. 각 Carrier Thread가 자신의 작업 큐를 가지고, 큐가 비면 다른 Carrier Thread의 큐에서 작업을 "훔쳐온다".
+
+| 설정 | 기본값 | 설명 |
+|------|--------|------|
+| parallelism | CPU 코어 수 | Carrier Thread 수 |
+| maxPoolSize | 256 | 최대 Carrier Thread 수 |
+| minRunnable | 1 | 최소 실행 가능 스레드 수 |
 
 ```bash
 # 스케줄러 병렬성 조정 (기본값: 가용 프로세서 수)
 java -Djdk.virtualThreadScheduler.parallelism=16 MyApp
+
+# 최대 풀 사이즈 조정
+java -Djdk.virtualThreadScheduler.maxPoolSize=512 MyApp
 ```
 
-각 Carrier Thread는 자신의 작업 큐를 가지고 있고, 큐가 비면 다른 Carrier Thread의 큐에서 작업을 가져온다. 이를 통해 부하가 자동으로 분산된다.
+### FIFO 스케줄링
+
+Virtual Thread는 **FIFO(First-In-First-Out)** 순서로 스케줄링된다. 먼저 준비된 Virtual Thread가 먼저 Carrier Thread에 mount된다. 우선순위 설정은 무시된다.
 
 ## 사용법
 
@@ -237,6 +282,80 @@ Virtual Thread가 수만 개 떠 있어도 DB Connection은 여전히 비싼 자
 
 이미 WebFlux로 잘 돌아가는 서비스라면 굳이 바꿀 필요 없다. 새 프로젝트거나 동기식 코드를 유지하고 싶다면 Virtual Thread가 좋은 선택이다.
 
+## Structured Concurrency (Preview)
+
+JDK 21에서 Preview로 도입된 **StructuredTaskScope**는 여러 Virtual Thread를 구조적으로 관리한다.
+
+```java
+// JDK 21 Preview 기능 활성화 필요
+try (var scope = new StructuredTaskScope.ShutdownOnFailure()) {
+    Supplier<String> user = scope.fork(() -> fetchUser(userId));
+    Supplier<String> order = scope.fork(() -> fetchOrder(orderId));
+
+    scope.join();            // 모든 작업 완료 대기
+    scope.throwIfFailed();   // 예외 발생 시 전파
+
+    // 두 작업 모두 성공한 경우에만 도달
+    return new Response(user.get(), order.get());
+}
+```
+
+### 장점
+
+| 기존 방식 | Structured Concurrency |
+|----------|------------------------|
+| ExecutorService로 수동 관리 | scope 종료 시 자동 정리 |
+| 예외 처리 복잡 | 자동 예외 전파 |
+| 스레드 누수 가능 | 구조적으로 불가능 |
+
+### ShutdownOnFailure vs ShutdownOnSuccess
+
+```java
+// 하나라도 실패하면 나머지 취소
+new StructuredTaskScope.ShutdownOnFailure()
+
+// 하나라도 성공하면 나머지 취소 (race 패턴)
+new StructuredTaskScope.ShutdownOnSuccess<>()
+```
+
+## 성능 비교
+
+Virtual Thread의 성능 이점은 **I/O 바운드 작업**에서 극대화된다.
+
+![Virtual Thread Performance](https://imgopt.infoq.com/fit-in/3000x4000/filters:quality(85)/filters:no_upscale()/articles/java-virtual-threads-a-case-study/en/resources/26fig2-1720467618583.jpg)
+*CPU 바운드 작업에서는 Platform Thread와 Virtual Thread 차이가 거의 없다*
+
+| 워크로드 | Platform Thread | Virtual Thread | 비고 |
+|---------|-----------------|----------------|------|
+| I/O 바운드 | 스레드 수 제한으로 병목 | 수백만 동시 처리 가능 | Virtual Thread 유리 |
+| CPU 바운드 | CPU 코어 수만큼 병렬 | CPU 코어 수만큼 병렬 | 차이 없음 |
+| 메모리 사용 | 스레드당 ~1MB | 스레드당 수 KB | Virtual Thread 유리 |
+
+## 디버깅과 모니터링
+
+### JFR (Java Flight Recorder)
+
+Virtual Thread 관련 이벤트를 JFR로 수집할 수 있다.
+
+```bash
+# JFR 녹화 시작
+java -XX:StartFlightRecording=filename=recording.jfr,duration=60s MyApp
+```
+
+주요 이벤트:
+- `jdk.VirtualThreadStart`: Virtual Thread 시작
+- `jdk.VirtualThreadEnd`: Virtual Thread 종료
+- `jdk.VirtualThreadPinned`: Pinning 발생
+
+### Thread Dump
+
+Virtual Thread도 thread dump에 포함된다. 다만 수백만 개가 있으면 dump가 매우 커질 수 있다.
+
+```bash
+# JSON 형식 thread dump (JDK 21+)
+jcmd <pid> Thread.dump_to_file -format=json threads.json
+```
+
 ## 정리
 
 Virtual Thread는 꽤 쓸만한 기능이다. Reactive 코드 없이도 thread-per-request 모델로 높은 처리량을 낼 수 있다.
@@ -249,8 +368,42 @@ Virtual Thread는 꽤 쓸만한 기능이다. Reactive 코드 없이도 thread-p
 - synchronized 블록 내 Blocking I/O는 Pinning 유발 (ReentrantLock 권장)
 - I/O 바운드 작업에 적합, CPU 바운드 작업에는 이점 없음
 
+## 자주 묻는 질문 (FAQ)
+
+### Q1: Virtual Thread를 사용하면 기존 Thread Pool 코드를 다 바꿔야 하나요?
+
+아니다. `Executors.newVirtualThreadPerTaskExecutor()`로 교체하면 된다. 나머지 코드는 그대로 유지 가능하다.
+
+### Q2: Virtual Thread가 CPU 바운드 작업에서는 왜 이점이 없나요?
+
+Virtual Thread의 장점은 Blocking I/O 시 Carrier Thread를 양보하는 것이다. CPU 바운드 작업은 Blocking이 없으므로 unmount가 발생하지 않는다. 결국 Platform Thread와 동일하게 동작한다.
+
+### Q3: Pinning이 발생하면 어떻게 되나요?
+
+Carrier Thread가 해당 Virtual Thread에 고정되어 다른 Virtual Thread를 실행할 수 없다. Carrier Thread 수가 부족해지면 전체 처리량이 저하된다.
+
+### Q4: Kotlin Coroutine과 뭐가 다른가요?
+
+| 구분 | Virtual Thread | Kotlin Coroutine |
+|------|----------------|------------------|
+| 구현 레벨 | JVM | 언어/컴파일러 |
+| 기존 코드 호환 | 거의 그대로 | suspend 함수 필요 |
+| 생태계 | 모든 Java 라이브러리 | Coroutine 지원 라이브러리 |
+
+둘 다 경량 스레드지만, Virtual Thread는 JVM 레벨 지원이라 기존 Java 코드와 호환성이 좋다.
+
+### Q5: DB Connection Pool과 Virtual Thread를 함께 쓰면 성능이 좋아지나요?
+
+DB 처리량이 병목이라면 Virtual Thread를 써도 성능이 늘지 않는다. Virtual Thread 수만큼 Connection을 늘리면 DB가 죽는다. Connection Pool은 기존대로 유지하고, Virtual Thread는 Connection 대기 시간에 다른 요청을 처리하는 용도로 활용한다.
+
+### Q6: JDK 24에서 Pinning 문제가 해결된다던데?
+
+맞다. JEP 491로 synchronized 블록 내에서도 unmount가 가능해진다. 다만 Native 메서드 실행 중 Pinning은 여전히 발생한다.
+
 ## 참고문헌
 
 - [JEP 444: Virtual Threads](https://openjdk.org/jeps/444) - OpenJDK 공식 스펙
 - [Virtual Threads - Oracle Java 21 Documentation](https://docs.oracle.com/en/java/javase/21/core/virtual-threads.html)
 - [JEP 491: Synchronize Virtual Threads without Pinning](https://openjdk.org/jeps/491) - Pinning 문제 해결 제안
+- [Java Virtual Threads: a Case Study - InfoQ](https://www.infoq.com/articles/java-virtual-threads-a-case-study/) - 성능 분석 사례
+- [The Ultimate Guide to Java Virtual Threads - Rock the JVM](https://rockthejvm.com/articles/the-ultimate-guide-to-java-virtual-threads) - 상세 가이드

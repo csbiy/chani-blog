@@ -1,0 +1,715 @@
+---
+id: 182
+title: "OAuth 2.0과 JWT 인증 - 세션과 무엇이 다른가"
+description: "세션 기반 인증부터 JWT, OAuth 2.0까지 인증 방식의 발전과 Spring Security"
+date: "2025-10-27 16:08:33"
+tags: ["OAuth2", "JWT", "Spring Security", "Authentication", "Session"]
+---
+
+## 인증 vs 인가
+
+먼저 용어를 정리하고 가겠습니다.
+
+- **인증 (Authentication)**: "너 누구야?" - 사용자가 누구인지 확인
+- **인가 (Authorization)**: "너 이거 해도 돼?" - 권한이 있는지 확인
+
+로그인은 인증이고, 관리자 페이지 접근 권한 확인은 인가입니다. 인증이 먼저, 인가가 나중이에요.
+
+## 세션 기반 인증
+
+전통적인 방식입니다. 서버가 사용자 상태를 기억해요.
+
+### 동작 방식
+
+```
+1. 사용자 로그인 요청
+2. 서버에서 인증 후 세션 생성 (세션 ID 발급)
+3. 세션 ID를 쿠키에 담아 클라이언트에 전달
+4. 이후 요청마다 쿠키의 세션 ID로 사용자 식별
+```
+
+```
+┌─────────┐                    ┌─────────┐
+│ Client  │                    │ Server  │
+└────┬────┘                    └────┬────┘
+     │ 1. POST /login               │
+     │ (username, password)         │
+     │ ──────────────────────────►  │
+     │                              │ 2. 인증 확인
+     │                              │ 3. 세션 생성 (메모리/DB 저장)
+     │ 4. Set-Cookie: JSESSIONID=abc│
+     │ ◄──────────────────────────  │
+     │                              │
+     │ 5. GET /api/user             │
+     │ Cookie: JSESSIONID=abc       │
+     │ ──────────────────────────►  │
+     │                              │ 6. 세션 조회 → 사용자 확인
+     │ 7. 응답                       │
+     │ ◄──────────────────────────  │
+```
+
+### Spring에서 세션
+
+```java
+@PostMapping("/login")
+public String login(@RequestBody LoginRequest request, HttpSession session) {
+    User user = userService.authenticate(request.getUsername(), request.getPassword());
+
+    // 세션에 사용자 정보 저장
+    session.setAttribute("user", user);
+    session.setAttribute("loginTime", LocalDateTime.now());
+
+    return "로그인 성공";
+}
+
+@GetMapping("/me")
+public User getCurrentUser(HttpSession session) {
+    User user = (User) session.getAttribute("user");
+    if (user == null) {
+        throw new UnauthorizedException("로그인이 필요합니다");
+    }
+    return user;
+}
+
+@PostMapping("/logout")
+public String logout(HttpSession session) {
+    session.invalidate();  // 세션 삭제
+    return "로그아웃 성공";
+}
+```
+
+### 세션의 문제점
+
+1. **서버 메모리 사용**: 동시 접속자가 많으면 메모리 부담
+2. **Scale-out 어려움**: 서버가 여러 대면 세션 공유 필요 (Redis 등)
+3. **CORS 이슈**: 다른 도메인에서 쿠키 전송이 까다로움
+4. **모바일 앱**: 쿠키 기반이라 네이티브 앱에서 불편
+
+```
+서버 A에 로그인 → 세션이 서버 A 메모리에 저장
+다음 요청이 서버 B로 가면? → 로그인 안 된 걸로 인식
+```
+
+이걸 해결하려면 세션 저장소를 분리해야 합니다 (Sticky Session 또는 Redis).
+
+## JWT (JSON Web Token)
+
+서버가 상태를 저장하지 않는 방식입니다. 토큰 자체에 정보가 담겨있어요.
+
+### JWT 구조
+
+```
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+```
+
+`.`으로 구분된 3개 파트:
+
+| 파트 | 내용 | 예시 |
+|------|------|------|
+| Header | 토큰 타입, 알고리즘 | `{"alg": "HS256", "typ": "JWT"}` |
+| Payload | 데이터 (Claims) | `{"sub": "1234", "name": "John", "exp": 1234567890}` |
+| Signature | 서명 (위변조 방지) | `HMACSHA256(header + "." + payload, secret)` |
+
+Header와 Payload는 Base64 인코딩일 뿐 암호화가 아닙니다. 누구나 디코딩해서 볼 수 있어요. Signature가 위변조를 방지하는 역할입니다.
+
+### 동작 방식
+
+```
+┌─────────┐                    ┌─────────┐
+│ Client  │                    │ Server  │
+└────┬────┘                    └────┬────┘
+     │ 1. POST /login               │
+     │ ──────────────────────────►  │
+     │                              │ 2. 인증 확인
+     │                              │ 3. JWT 생성 (서명)
+     │ 4. { "token": "eyJ..." }     │
+     │ ◄──────────────────────────  │
+     │                              │
+     │ 5. GET /api/user             │
+     │ Authorization: Bearer eyJ... │
+     │ ──────────────────────────►  │
+     │                              │ 6. 서명 검증 → Payload에서 사용자 확인
+     │ 7. 응답                       │
+     │ ◄──────────────────────────  │
+```
+
+서버는 토큰의 서명만 검증하면 됩니다. 별도 저장소 조회가 필요 없어요.
+
+### JWT 구현 (Spring Boot)
+
+의존성 추가:
+
+```groovy
+// build.gradle
+dependencies {
+    implementation 'io.jsonwebtoken:jjwt-api:0.12.3'
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.3'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.3'
+}
+```
+
+JWT 유틸리티 클래스:
+
+```java
+@Component
+public class JwtTokenProvider {
+
+    @Value("${jwt.secret}")
+    private String secretKey;
+
+    @Value("${jwt.expiration}")
+    private long expiration;  // 밀리초
+
+    private SecretKey getSigningKey() {
+        return Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
+    }
+
+    // 토큰 생성
+    public String createToken(String username, List<String> roles) {
+        Date now = new Date();
+        Date expiryDate = new Date(now.getTime() + expiration);
+
+        return Jwts.builder()
+            .subject(username)
+            .claim("roles", roles)
+            .issuedAt(now)
+            .expiration(expiryDate)
+            .signWith(getSigningKey())
+            .compact();
+    }
+
+    // 토큰에서 사용자 정보 추출
+    public String getUsername(String token) {
+        return getClaims(token).getSubject();
+    }
+
+    @SuppressWarnings("unchecked")
+    public List<String> getRoles(String token) {
+        return getClaims(token).get("roles", List.class);
+    }
+
+    // 토큰 유효성 검증
+    public boolean validateToken(String token) {
+        try {
+            getClaims(token);
+            return true;
+        } catch (JwtException | IllegalArgumentException e) {
+            return false;
+        }
+    }
+
+    private Claims getClaims(String token) {
+        return Jwts.parser()
+            .verifyWith(getSigningKey())
+            .build()
+            .parseSignedClaims(token)
+            .getPayload();
+    }
+}
+```
+
+JWT 인증 필터:
+
+```java
+@RequiredArgsConstructor
+public class JwtAuthenticationFilter extends OncePerRequestFilter {
+
+    private final JwtTokenProvider tokenProvider;
+    private final UserDetailsService userDetailsService;
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request,
+                                    HttpServletResponse response,
+                                    FilterChain filterChain) throws ServletException, IOException {
+
+        String token = resolveToken(request);
+
+        if (token != null && tokenProvider.validateToken(token)) {
+            String username = tokenProvider.getUsername(token);
+            UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+
+            UsernamePasswordAuthenticationToken authentication =
+                new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+        }
+
+        filterChain.doFilter(request, response);
+    }
+
+    private String resolveToken(HttpServletRequest request) {
+        String bearerToken = request.getHeader("Authorization");
+        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
+            return bearerToken.substring(7);
+        }
+        return null;
+    }
+}
+```
+
+Security 설정:
+
+```java
+@Configuration
+@EnableWebSecurity
+@RequiredArgsConstructor
+public class SecurityConfig {
+
+    private final JwtTokenProvider tokenProvider;
+    private final UserDetailsService userDetailsService;
+
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        return http
+            .csrf(csrf -> csrf.disable())  // JWT 사용 시 CSRF 불필요
+            .sessionManagement(session ->
+                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))  // 세션 미사용
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers("/auth/**").permitAll()
+                .requestMatchers("/admin/**").hasRole("ADMIN")
+                .anyRequest().authenticated())
+            .addFilterBefore(new JwtAuthenticationFilter(tokenProvider, userDetailsService),
+                UsernamePasswordAuthenticationFilter.class)
+            .build();
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+}
+```
+
+## 세션 vs JWT 비교
+
+| 비교 항목 | 세션 | JWT |
+|----------|------|-----|
+| 상태 저장 | Stateful (서버에 저장) | Stateless (토큰에 저장) |
+| 확장성 | 세션 공유 필요 | 서버 독립적 |
+| 보안 | 서버에서 즉시 무효화 가능 | 만료 전까지 유효 |
+| 데이터 크기 | 세션 ID만 전송 | 토큰 전체 전송 (큼) |
+| 서버 부하 | 매 요청 세션 조회 | 서명 검증만 |
+| 로그아웃 | 세션 삭제로 즉시 처리 | 블랙리스트 관리 필요 |
+
+### 언제 뭘 쓸까?
+
+**세션이 적합한 경우:**
+- 단일 서버 또는 세션 공유가 쉬운 환경
+- 즉각적인 세션 무효화가 중요할 때 (보안 민감)
+- 전통적인 웹 애플리케이션
+
+**JWT가 적합한 경우:**
+- MSA, 분산 시스템
+- 모바일 앱, SPA
+- 서버 간 인증 (API Gateway 등)
+- 확장성이 중요할 때
+
+## OAuth 2.0
+
+OAuth 2.0은 **인가(Authorization)** 프로토콜입니다. "다른 서비스의 리소스에 접근할 권한을 위임받는" 표준이에요.
+
+"Google로 로그인"을 생각해보세요. 우리 서비스가 사용자의 Google 계정 정보에 접근할 권한을 Google로부터 위임받는 겁니다.
+
+### 주요 용어
+
+| 용어 | 설명 | 예시 |
+|------|------|------|
+| Resource Owner | 리소스 소유자 (사용자) | Google 계정을 가진 사용자 |
+| Client | 리소스에 접근하려는 애플리케이션 | 우리가 만든 서비스 |
+| Authorization Server | 인증/인가를 처리하는 서버 | Google OAuth 서버 |
+| Resource Server | 보호된 리소스를 가진 서버 | Google API 서버 |
+| Access Token | 리소스 접근 권한 증명 | API 호출 시 사용 |
+| Refresh Token | Access Token 재발급용 | 만료 시 새 토큰 발급 |
+
+### OAuth 2.0 Grant Types
+
+#### 1. Authorization Code Grant (가장 많이 사용)
+
+서버 사이드 애플리케이션에 적합합니다. 가장 안전해요.
+
+```
+┌──────────┐                              ┌─────────────────┐
+│   User   │                              │  Authorization  │
+│ (Browser)│                              │     Server      │
+└────┬─────┘                              └────────┬────────┘
+     │                                             │
+     │ 1. "Google로 로그인" 클릭                     │
+     │ ──────────────────────────────────────────► │
+     │                                             │
+     │ 2. Google 로그인 페이지                       │
+     │ ◄────────────────────────────────────────── │
+     │                                             │
+     │ 3. 로그인 + 권한 동의                         │
+     │ ──────────────────────────────────────────► │
+     │                                             │
+     │ 4. Redirect: /callback?code=AUTH_CODE       │
+     │ ◄────────────────────────────────────────── │
+     │                                             │
+┌────┴─────┐                              ┌────────┴────────┐
+│  Client  │                              │  Authorization  │
+│  Server  │                              │     Server      │
+└────┬─────┘                              └────────┬────────┘
+     │                                             │
+     │ 5. POST /token (code + client_secret)       │
+     │ ──────────────────────────────────────────► │
+     │                                             │
+     │ 6. { access_token, refresh_token }          │
+     │ ◄────────────────────────────────────────── │
+```
+
+Authorization Code는 클라이언트 시크릿과 교환해야 Access Token을 얻을 수 있습니다. 시크릿은 서버에만 있으니 안전해요.
+
+#### 2. PKCE (Proof Key for Code Exchange)
+
+SPA나 모바일 앱처럼 시크릿을 안전하게 저장할 수 없는 환경용입니다.
+
+```java
+// 1. Code Verifier 생성 (랜덤 문자열)
+String codeVerifier = generateRandomString(128);
+
+// 2. Code Challenge 생성
+String codeChallenge = Base64.getUrlEncoder()
+    .encodeToString(MessageDigest.getInstance("SHA-256")
+        .digest(codeVerifier.getBytes()));
+
+// 3. 인가 요청 시 code_challenge 포함
+// 4. 토큰 요청 시 code_verifier 포함 → 서버에서 검증
+```
+
+#### 3. Client Credentials Grant
+
+서버 간 통신에 사용합니다. 사용자가 없고 애플리케이션 자체가 인증받는 경우예요.
+
+```
+POST /token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=client_credentials
+&client_id=my-app
+&client_secret=secret
+&scope=read write
+```
+
+## Spring Security + OAuth 2.0 Client
+
+Google 로그인을 구현해봅시다.
+
+### 의존성
+
+```groovy
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+}
+```
+
+### 설정
+
+```yaml
+# application.yml
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+            scope: profile, email
+          github:
+            client-id: ${GITHUB_CLIENT_ID}
+            client-secret: ${GITHUB_CLIENT_SECRET}
+            scope: read:user, user:email
+```
+
+### Security 설정
+
+```java
+@Configuration
+@EnableWebSecurity
+public class OAuth2SecurityConfig {
+
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        return http
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers("/", "/login/**", "/error").permitAll()
+                .anyRequest().authenticated())
+            .oauth2Login(oauth2 -> oauth2
+                .loginPage("/login")
+                .defaultSuccessUrl("/home")
+                .userInfoEndpoint(userInfo -> userInfo
+                    .userService(customOAuth2UserService())))
+            .build();
+    }
+
+    @Bean
+    public OAuth2UserService<OAuth2UserRequest, OAuth2User> customOAuth2UserService() {
+        return new CustomOAuth2UserService();
+    }
+}
+```
+
+### 커스텀 OAuth2UserService
+
+```java
+@Service
+@RequiredArgsConstructor
+public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequest, OAuth2User> {
+
+    private final UserRepository userRepository;
+
+    @Override
+    public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
+        OAuth2UserService<OAuth2UserRequest, OAuth2User> delegate = new DefaultOAuth2UserService();
+        OAuth2User oAuth2User = delegate.loadUser(userRequest);
+
+        String registrationId = userRequest.getClientRegistration().getRegistrationId();  // google, github
+        String userNameAttribute = userRequest.getClientRegistration()
+            .getProviderDetails().getUserInfoEndpoint().getUserNameAttributeName();
+
+        OAuthAttributes attributes = OAuthAttributes.of(registrationId, userNameAttribute, oAuth2User.getAttributes());
+
+        User user = saveOrUpdate(attributes);
+
+        return new DefaultOAuth2User(
+            Collections.singleton(new SimpleGrantedAuthority(user.getRole())),
+            attributes.getAttributes(),
+            attributes.getNameAttributeKey());
+    }
+
+    private User saveOrUpdate(OAuthAttributes attributes) {
+        User user = userRepository.findByEmail(attributes.getEmail())
+            .map(entity -> entity.update(attributes.getName(), attributes.getPicture()))
+            .orElse(attributes.toEntity());
+
+        return userRepository.save(user);
+    }
+}
+```
+
+### OAuthAttributes
+
+```java
+@Getter
+@Builder
+public class OAuthAttributes {
+    private Map<String, Object> attributes;
+    private String nameAttributeKey;
+    private String name;
+    private String email;
+    private String picture;
+
+    public static OAuthAttributes of(String registrationId, String userNameAttributeName,
+                                      Map<String, Object> attributes) {
+        if ("github".equals(registrationId)) {
+            return ofGithub(userNameAttributeName, attributes);
+        }
+        return ofGoogle(userNameAttributeName, attributes);
+    }
+
+    private static OAuthAttributes ofGoogle(String userNameAttributeName, Map<String, Object> attributes) {
+        return OAuthAttributes.builder()
+            .name((String) attributes.get("name"))
+            .email((String) attributes.get("email"))
+            .picture((String) attributes.get("picture"))
+            .attributes(attributes)
+            .nameAttributeKey(userNameAttributeName)
+            .build();
+    }
+
+    private static OAuthAttributes ofGithub(String userNameAttributeName, Map<String, Object> attributes) {
+        return OAuthAttributes.builder()
+            .name((String) attributes.get("login"))
+            .email((String) attributes.get("email"))
+            .picture((String) attributes.get("avatar_url"))
+            .attributes(attributes)
+            .nameAttributeKey(userNameAttributeName)
+            .build();
+    }
+
+    public User toEntity() {
+        return User.builder()
+            .name(name)
+            .email(email)
+            .picture(picture)
+            .role("ROLE_USER")
+            .build();
+    }
+}
+```
+
+## Refresh Token 전략
+
+Access Token은 짧게 (15분~1시간), Refresh Token은 길게 (7일~30일) 설정합니다.
+
+```java
+@PostMapping("/auth/refresh")
+public TokenResponse refresh(@RequestBody RefreshRequest request) {
+    String refreshToken = request.getRefreshToken();
+
+    // 1. Refresh Token 유효성 검증
+    if (!tokenProvider.validateToken(refreshToken)) {
+        throw new InvalidTokenException("유효하지 않은 Refresh Token");
+    }
+
+    // 2. DB에서 Refresh Token 확인 (탈취 대비)
+    RefreshTokenEntity stored = refreshTokenRepository.findByToken(refreshToken)
+        .orElseThrow(() -> new InvalidTokenException("존재하지 않는 Refresh Token"));
+
+    // 3. 새 Access Token 발급
+    String username = tokenProvider.getUsername(refreshToken);
+    String newAccessToken = tokenProvider.createAccessToken(username);
+
+    // 4. (선택) Refresh Token도 갱신 - Refresh Token Rotation
+    String newRefreshToken = tokenProvider.createRefreshToken(username);
+    stored.updateToken(newRefreshToken);
+    refreshTokenRepository.save(stored);
+
+    return new TokenResponse(newAccessToken, newRefreshToken);
+}
+```
+
+### Refresh Token Rotation
+
+Refresh Token을 사용할 때마다 새 Refresh Token을 발급합니다. 탈취되더라도 한 번만 사용 가능해요.
+
+```
+1. 정상 사용자가 Refresh Token A로 갱신 요청
+2. 서버: Access Token + 새 Refresh Token B 발급
+3. Refresh Token A는 무효화
+
+만약 공격자가 탈취한 A를 사용하면?
+→ 이미 무효화되어 실패
+→ 또는 B가 먼저 사용되면 A 사용 시 이상 탐지 → 모든 토큰 무효화
+```
+
+## 보안 고려사항
+
+### JWT
+
+1. **시크릿 키 관리**: 환경변수로 관리, 충분히 길게 (최소 256비트)
+2. **만료 시간**: 짧게 설정 (Access Token은 15분~1시간)
+3. **민감 정보 제외**: Payload에 비밀번호 등 넣지 않기 (Base64 디코딩 가능)
+4. **HTTPS 필수**: 토큰 탈취 방지
+
+```java
+// 나쁜 예 - Payload에 민감 정보
+Jwts.builder()
+    .claim("password", user.getPassword())  // 절대 금지!
+    .build();
+
+// 좋은 예 - 최소한의 정보만
+Jwts.builder()
+    .subject(user.getId().toString())
+    .claim("roles", user.getRoles())
+    .build();
+```
+
+### XSS / CSRF
+
+| 저장 위치 | XSS 취약 | CSRF 취약 | 권장 |
+|----------|---------|----------|------|
+| LocalStorage | O | X | 비권장 |
+| 쿠키 (일반) | O | O | 비권장 |
+| 쿠키 (HttpOnly) | X | O | CSRF 토큰과 함께 사용 |
+| 메모리 (변수) | X | X | SPA에서 권장 |
+
+```java
+// HttpOnly 쿠키로 Refresh Token 저장
+ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshToken)
+    .httpOnly(true)      // JavaScript 접근 불가
+    .secure(true)        // HTTPS에서만 전송
+    .sameSite("Strict")  // CSRF 방어
+    .path("/auth/refresh")
+    .maxAge(Duration.ofDays(7))
+    .build();
+
+response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+```
+
+### 토큰 무효화 (로그아웃)
+
+JWT는 stateless라서 서버에서 즉시 무효화하기 어렵습니다.
+
+해결책:
+1. **블랙리스트**: 로그아웃된 토큰을 Redis에 저장
+2. **짧은 만료 시간**: Access Token을 짧게 설정
+3. **토큰 버전 관리**: 사용자별 토큰 버전을 두고, 로그아웃 시 버전 증가
+
+```java
+// Redis 블랙리스트
+@PostMapping("/auth/logout")
+public void logout(@RequestHeader("Authorization") String bearerToken) {
+    String token = bearerToken.substring(7);
+    long expiration = tokenProvider.getExpiration(token);  // 남은 만료 시간
+
+    // 만료까지 블랙리스트에 저장
+    redisTemplate.opsForValue().set(
+        "blacklist:" + token,
+        "logout",
+        Duration.ofMillis(expiration)
+    );
+}
+
+// 필터에서 블랙리스트 확인
+if (redisTemplate.hasKey("blacklist:" + token)) {
+    throw new InvalidTokenException("로그아웃된 토큰");
+}
+```
+
+## 기타
+
+### Refresh Token을 DB에 저장하면 Stateless 장점이 없어지지 않나요?
+
+맞는 말입니다, 순수한 Stateless는 아니에요. 하지만 트레이드오프입니다.
+
+- Access Token 검증은 여전히 Stateless (매 요청마다 DB 조회 없음)
+- Refresh Token은 토큰 갱신 시에만 조회 (빈도 낮음)
+- 보안상 Refresh Token 탈취 대응을 위해 필요
+
+완전한 Stateless를 원하면 Refresh Token도 서명만으로 검증할 수 있지만, 탈취 시 대응이 어렵습니다.
+
+### HS256 vs RS256 차이는?
+
+| 알고리즘 | 방식 | 키 | 사용처 |
+|---------|------|-----|-------|
+| HS256 | 대칭키 | 하나의 secret | 단일 서버, 내부 통신 |
+| RS256 | 비대칭키 | 공개키/개인키 쌍 | MSA, 외부 연동 |
+
+RS256은 개인키로 서명하고 공개키로 검증합니다. 여러 서버가 공개키만 가지고 검증할 수 있어서 MSA에 적합해요. secret 공유 문제도 없고요.
+
+### 실무에서 토큰 만료 시간은 보통 어느 정도?
+
+일반적인 설정:
+- **Access Token**: 15분 ~ 1시간
+- **Refresh Token**: 7일 ~ 30일
+
+금융권처럼 보안이 중요하면 Access Token을 5분으로 짧게 잡기도 합니다.
+
+## 정리
+
+인증 방식 선택 가이드:
+
+| 상황 | 권장 방식 |
+|------|----------|
+| 전통적 웹 (서버 렌더링) | 세션 |
+| SPA + API 서버 | JWT (Access + Refresh) |
+| 모바일 앱 | JWT |
+| MSA / 분산 시스템 | JWT |
+| 소셜 로그인 | OAuth 2.0 + JWT |
+| 서버 간 통신 | OAuth 2.0 Client Credentials |
+
+핵심 정리:
+- **세션**: Stateful, 서버에서 상태 관리, 즉시 무효화 가능
+- **JWT**: Stateless, 토큰에 정보 포함, 확장성 좋음
+- **OAuth 2.0**: 인가 프로토콜, 제3자 리소스 접근 권한 위임
+- **Refresh Token**: Access Token 재발급용, 더 긴 만료 시간
+
+## 참고문헌
+
+- [OAuth 2.0 RFC 6749](https://datatracker.ietf.org/doc/html/rfc6749)
+- [JWT RFC 7519](https://datatracker.ietf.org/doc/html/rfc7519)
+- [Spring Security OAuth 2.0 Client](https://docs.spring.io/spring-security/reference/servlet/oauth2/client/index.html)
+- [JJWT GitHub](https://github.com/jwtk/jjwt)
+- [OAuth 2.0 Simplified](https://www.oauth.com/)

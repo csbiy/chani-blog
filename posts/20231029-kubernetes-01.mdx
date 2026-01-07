@@ -1,263 +1,701 @@
 ---
 id: 56
-title: "Kubernetes 개념 한판 정리"
-description: ""
+title: "Kubernetes 개념 한판 정리 - 아키텍처부터 실전 배포까지"
+description: "K8s 아키텍처, Pod/Service/Deployment 핵심 오브젝트, 네트워킹, 스토리지, 스케일링까지"
 date: "2023-10-29 18:48:05"
-tags: ["Infra", "Kubernetes"]
+tags: ["Kubernetes", "K8s", "DevOps", "Container", "Infra"]
 ---
-## Kubernetes의 정의 
 
-- Container화 된 application을 배포/관리해주는 오픈소스 Container Orchestrator Framework 
+## 왜 Kubernetes인가
 
-## Kubernetes에서 제공하는 기능
+Docker로 컨테이너 하나 띄우는 건 쉽다. 근데 실제 서비스는 그렇게 단순하지 않다.
 
-1. Service Discovery
+- 컨테이너가 죽으면 누가 다시 띄워주지?
+- 트래픽이 늘면 컨테이너를 어떻게 늘리지?
+- 여러 서버에 컨테이너를 어떻게 분산하지?
+- 무중단 배포는 어떻게 하지?
 
-DNS 이름 또는 자체  IP주소를 사용해서 Client가 사용할 Container를 노출할 수 있음. Traffic을 Load Balancing하고, AutoScaling이 가능하다. 
+이런 문제를 해결하는 게 **컨테이너 오케스트레이션**이고, Kubernetes(K8s)가 사실상 표준이다.
 
-2. Storage Orchestration 
+| 기능 | 설명 |
+|------|------|
+| 자동 복구 (Self-healing) | 컨테이너 죽으면 자동 재시작 |
+| 오토스케일링 | 트래픽에 따라 Pod 수 자동 조절 |
+| 로드밸런싱 | 여러 Pod에 트래픽 분산 |
+| 롤링 업데이트 | 무중단 배포 |
+| 서비스 디스커버리 | DNS 기반 서비스 간 통신 |
 
-원하는 저장소 시스템을 탑재할 수 있다.
+## Kubernetes 아키텍처
 
-3. 자동화된 binPacking 
+K8s 클러스터는 **Control Plane**과 **Worker Node**로 구성된다.
 
-container화된 작업을 실행하는데 사용할 수 있는 kubernetes cluster 노드를 제공하며, 각 container가 필요로 하는 CPU , RAM을 설정하면 kubernetes가 container를 resource를 가장 잘 사용할 수 있는 node에 배포한다. 
+![Kubernetes Architecture](https://devopscube.com/content/images/2025/03/kubernetes-architecture-1.png)
+*Kubernetes 클러스터 아키텍처 - Control Plane과 Worker Node 구성*
 
-4. self-healing 
+### Control Plane 구성요소
 
-실패한 container 재시작, 교체기능을 가지고 있다. 
+| 구성요소 | 역할 |
+|---------|------|
+| API Server | 모든 요청의 진입점. kubectl 명령이 여기로 들어옴 |
+| etcd | 클러스터 상태 저장소 (Key-Value DB) |
+| Scheduler | 새 Pod를 어느 Node에 배치할지 결정 |
+| Controller Manager | 원하는 상태(Desired State)를 유지. ReplicaSet, Deployment 등 관리 |
 
-## Kubernetes Object 이해하기
+### Worker Node 구성요소
 
-`object`란 k8s cluster에 대해 의도한 상태를 명세해놓은 하나의 "의도를 담은 레코드"이다. 
-( https://kubernetes.io/ko/docs/concepts/overview/working-with-objects/kubernetes-objects/ )
+| 구성요소 | 역할 |
+|---------|------|
+| kubelet | Node의 에이전트. Pod 생성/삭제/상태 보고 |
+| kube-proxy | 네트워크 프록시. Service → Pod 트래픽 라우팅 |
+| Container Runtime | 실제 컨테이너 실행 (containerd, CRI-O 등) |
 
-object에는 대표적으로 `pod`, `service`, `volume`, `namespace`등 이 있다.
+## 핵심 오브젝트
 
-object를 관리하는 `controller`는 사용자가 바라는 상태와 현재 상태가 일치하도록 object를 생성/삭제한다. 
+K8s에서는 모든 것이 **오브젝트**다. YAML로 원하는 상태(Desired State)를 선언하면, K8s가 알아서 현재 상태를 맞춰준다.
 
-controller에는 대표적으로 `ReplicaSet`, `Deployment`, `DemonSet`, `Job`등이 있다. 
+### Pod - 최소 배포 단위
 
-### 스쿼드별로 하나의 kubernetes cluster를 공유하기
+Pod는 K8s에서 가장 작은 배포 단위다. 하나 이상의 컨테이너를 포함한다.
 
-- `namespace`는 하나의 k8s cluster를 여러 개의 논리적인 단위로 쪼개서 사용한다.
-- namespace를 통해 하나의 k8s cluster를 공유하되, 논리적으로 구분할 수 있다.
+| Pod 특징 | 설명 |
+|----------|------|
+| 네트워크 | 같은 네트워크 네임스페이스 (localhost 통신) |
+| 스토리지 | 같은 볼륨 공유 가능 |
+| IP | Pod 단위로 고유 IP 할당 |
 
-<figure>
-  <img src="/images/K8S_01.png"></img>
-        <figcaption>k8s namespace</figcaption>
-</figure>
-
-
-- 기본적으로 k8s 를 실행하면 몇 개의 namespace가 자동으로 생성됩니다. 이 중 `default` namespace는 기본 namespace로 별도로 k8s에 namespace를 지정하지 않으면 항상 이 `default` namespace에 명령이 적용된다.
-
-### Kubernetes Object 기술하기 
-
-kubernetes에서는 object를 생성할때, object의 spec을 지정해주어야 한다.
-대부분 yaml파일로 kubectl CLI에 제공한다. 
+Pod 특징:
+- Pod 내 컨테이너들은 `localhost`로 서로 통신
+- Pod마다 고유 IP 할당 (클러스터 내부 IP)
+- Pod는 일시적(Ephemeral). 죽으면 새 IP로 재생성됨
+- 그래서 직접 Pod IP로 접근하면 안 됨 → **Service** 사용
 
 ```yaml
+# pod.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-app
+  labels:
+    app: my-app
+    env: production
+spec:
+  containers:
+  - name: app
+    image: my-app:1.0
+    ports:
+    - containerPort: 8080
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "250m"
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+```
+
+### ReplicaSet - Pod 복제 관리
+
+ReplicaSet은 지정한 수의 Pod를 항상 유지한다. Pod가 죽으면 자동으로 새로 생성.
+
+ReplicaSet의 핵심은 **Self-healing**이다. `replicas: 3`으로 설정하면 항상 3개의 Pod를 유지한다. Pod 2가 죽으면 자동으로 새 Pod 4를 생성하여 3개를 맞춘다.
+
+### Deployment - 배포 관리
+
+실무에서는 Pod나 ReplicaSet을 직접 만들지 않는다. **Deployment**를 사용한다.
+
+Deployment가 ReplicaSet을 관리하고, ReplicaSet이 Pod를 관리하는 구조다.
+
+Deployment는 ReplicaSet을 관리한다. 버전 업데이트(v1.0 → v1.1) 시 새 ReplicaSet을 만들고 기존 ReplicaSet의 Pod를 점진적으로 종료한다. 이것이 **롤링 업데이트**다.
+
+Deployment의 장점:
+- **롤링 업데이트**: 무중단 배포
+- **롤백**: 문제 생기면 이전 버전으로 복구
+- **스케일링**: `kubectl scale` 명령으로 Pod 수 조절
+
+```yaml
+# deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: nginx-deployment
+  name: my-app
 spec:
+  replicas: 3
   selector:
     matchLabels:
-      app: nginx
-  replicas: 2 # tells deployment to run 2 pods matching the template
+      app: my-app
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1        # 업데이트 중 최대 추가 Pod 수
+      maxUnavailable: 0  # 업데이트 중 최소 가용 Pod 수 보장
   template:
     metadata:
       labels:
-        app: nginx
+        app: my-app
     spec:
       containers:
-      - name: nginx
-        image: nginx:1.14.2
+      - name: app
+        image: my-app:1.0
         ports:
-        - containerPort: 80
+        - containerPort: 8080
 ```
-대표적으로 사용되는 필드값들은 다음의 의미를 나타낸다. 
 
-- apiVersion : object를 생성하기 위한 Kubernetes버전
-- kind : 생성할 object의 종류 
-- metadata : object를 유일하게 구분지어 줄 데이터
-- spec : object에 의도하는 상태값들 
+### Service - 네트워크 추상화
 
+Pod는 일시적이고 IP가 바뀐다. Service는 고정된 엔드포인트를 제공한다.
 
+Service는 `selector`로 매칭되는 Pod들에게 트래픽을 분산한다. Service IP(예: 10.96.0.100)는 고정이므로, Pod가 죽고 새로 생겨도 클라이언트는 같은 IP로 접근할 수 있다.
 
-## Kubernetes - Pod Object
+![Kube-Proxy Workflow](https://devopscube.com/content/images/2025/03/image-14-19.png)
+*kube-proxy가 Service와 Pod 간 트래픽 라우팅을 담당한다*
 
-- kubernetes에서 배포 가능한 가장 작은 컴퓨팅 단위이다.
-- 하나 이상의 Container의 그룹이며, 동일한 스토리지 * 네트워크 * 해당 컨테이너 구동방식에 대한 명세를 공유한다. 
-- 한 pod내에서 container들간의 port가 중복될 수는 없다. 
-- pod별로 ip가 할당되는데 이는 동적으로 변경되는 내부 IP이다. 
-- pod를 포함한 kubernetes object에는 key-value 형태의 label을 달 수 있다.
-(```metadata.labels.type```)
-type - production , type - develop과 같이 사용 목적에 따라 원하는 pod를 선택할 수 있다.
-- pod가 어떤 물리 node에 띄워질지는 직접 선택 또는 node scheduler에 의해 자동 선택될 수 있다. 
-- 직접 선택하는 경우는 ```spec.nodeSelector.hostname: 노드명```꼴로 배포할 노드명을 선택할 수 있다. 
-- 자동 선택되는 경우에는 pod에서 요구되는 resource(예: ```spec.containers.reqeusts.memory: 2Gi ```)를 수용할 수 있는 적합한 물리 node에서 배포된다. 
+Service 타입:
 
+| 타입 | 설명 | 접근 범위 |
+|------|------|----------|
+| ClusterIP | 클러스터 내부 IP (기본값) | 클러스터 내부만 |
+| NodePort | 모든 Node의 특정 포트로 노출 | 외부 접근 가능 |
+| LoadBalancer | 클라우드 LB 연동 | 외부 접근 가능 |
 
-### Pod * Service 생성 예시
-
-1. pod생성
 ```yaml
-## Pod yaml
-apiVersion: v1
-kind: Pod
-metadata:
-  name: pod-2
-  labels:
-    lo: dev ## label (lo[key] - dev[value])꼴로 지정할 수 있다.     
-spec:
-  containers:
-  - name: container
-    image: kubetm/init
-```
-2. service 생성
-```yaml
+# service.yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: svc-1
+  name: my-app-service
+spec:
+  type: ClusterIP
+  selector:
+    app: my-app
+  ports:
+  - port: 80          # Service 포트
+    targetPort: 8080  # Pod 포트
+```
+
+### Ingress - HTTP 라우팅
+
+Ingress는 외부 HTTP(S) 트래픽을 클러스터 내부 Service로 라우팅한다. 도메인 기반, 경로 기반 라우팅이 가능하다.
+
+Ingress Controller(nginx, traefik 등)가 외부 HTTP 트래픽을 받아 도메인/경로 규칙에 따라 내부 Service로 라우팅한다.
+
+| 요청 | 라우팅 대상 |
+|------|------------|
+| api.example.com/* | api-service:80 |
+| web.example.com/* | web-service:80 |
+| example.com/api/* | api-service:80 |
+| example.com/admin/* | admin-service:80 |
+
+```yaml
+# ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: my-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: api.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: api-service
+            port:
+              number: 80
+  - host: web.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: web-service
+            port:
+              number: 80
+```
+
+## Namespace - 논리적 분리
+
+하나의 클러스터를 여러 팀이나 환경으로 분리할 때 사용한다.
+
+| Namespace | 용도 | ResourceQuota 예시 |
+|-----------|------|-------------------|
+| dev | 개발 환경 | CPU 4 cores, Memory 8Gi |
+| staging | 스테이징 환경 | CPU 8 cores, Memory 16Gi |
+| prod | 프로덕션 환경 | CPU 32 cores, Memory 64Gi |
+
+```bash
+# Namespace 생성
+kubectl create namespace dev
+
+# 특정 Namespace에 리소스 생성
+kubectl apply -f deployment.yaml -n dev
+
+# Namespace별 리소스 확인
+kubectl get pods -n dev
+kubectl get all -n prod
+```
+
+## ConfigMap & Secret
+
+환경별로 다른 설정값을 관리한다.
+
+| 구분 | ConfigMap | Secret |
+|------|-----------|--------|
+| 용도 | 일반 설정값 | 민감한 정보 (비밀번호, API 키) |
+| 저장 방식 | 평문 | Base64 인코딩 |
+| 예시 | DB 호스트, 로그 레벨 | DB 비밀번호, JWT 시크릿 |
+
+```yaml
+# configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+data:
+  DATABASE_HOST: "mysql-service"
+  LOG_LEVEL: "INFO"
+  SPRING_PROFILES_ACTIVE: "production"
+
+---
+# secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: app-secret
+type: Opaque
+data:
+  DATABASE_PASSWORD: cGFzc3dvcmQxMjM=  # base64 encoded
+  JWT_SECRET: c2VjcmV0LWtleS0xMjM0NTY=
+```
+
+Pod에서 사용하는 방법:
+
+```yaml
+spec:
+  containers:
+  - name: app
+    image: my-app:1.0
+    envFrom:
+    - configMapRef:
+        name: app-config
+    - secretRef:
+        name: app-secret
+    # 또는 개별 환경변수로
+    env:
+    - name: DB_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: app-secret
+          key: DATABASE_PASSWORD
+```
+
+## Volume & PersistentVolume
+
+Pod는 일시적이다. 데이터를 영구 저장하려면 Volume을 사용해야 한다.
+
+| Volume 종류 | 설명 | 수명 |
+|-------------|------|------|
+| emptyDir | Pod 내 컨테이너간 임시 공유 | Pod 삭제 시 소멸 |
+| hostPath | Node의 파일시스템 마운트 | Node에 종속적 |
+| PersistentVolume | 클러스터 레벨의 영구 스토리지 | 독립적 (권장) |
+
+### PV / PVC 구조
+
+PV(PersistentVolume)는 인프라 관리자가 프로비저닝하고, PVC(PersistentVolumeClaim)는 개발자가 요청한다.
+
+| 구성요소 | 역할 | 관리 주체 |
+|---------|------|----------|
+| Pod | volumeMounts로 PVC 연결 | 개발자 |
+| PVC | 스토리지 요청 (예: 10Gi) | 개발자 |
+| PV | 실제 스토리지 (AWS EBS, NFS 등) | 인프라 관리자 |
+
+```yaml
+# pv.yaml - 인프라 관리자가 생성
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: my-pv
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: standard
+  hostPath:
+    path: /data/my-pv
+
+---
+# pvc.yaml - 개발자가 생성
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: my-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: standard
+
+---
+# Pod에서 PVC 사용
+spec:
+  containers:
+  - name: app
+    volumeMounts:
+    - name: data
+      mountPath: /app/data
+  volumes:
+  - name: data
+    persistentVolumeClaim:
+      claimName: my-pvc
+```
+
+## 오토스케일링
+
+### HPA (Horizontal Pod Autoscaler)
+
+CPU/메모리 사용량에 따라 Pod 수를 자동 조절한다.
+
+HPA는 CPU/메모리 사용률을 모니터링하여 Pod 수를 자동 조절한다.
+
+| CPU 사용률 | 동작 | Pod 수 |
+|-----------|------|--------|
+| 50% 이하 | Scale Down | 1개로 축소 |
+| 50% 목표 | 유지 | 3개 유지 |
+| 80% 이상 | Scale Up | 5개로 확장 |
+
+```yaml
+# hpa.yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: my-app-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: my-app
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 50
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 70
+```
+
+## 실전: Spring Boot 앱 배포
+
+전체 구성을 한 번에 보자.
+
+```yaml
+# 1. Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: my-app
+
+---
+# 2. ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: my-app
+data:
+  SPRING_PROFILES_ACTIVE: "production"
+  SERVER_PORT: "8080"
+
+---
+# 3. Secret
+apiVersion: v1
+kind: Secret
+metadata:
+  name: app-secret
+  namespace: my-app
+type: Opaque
+data:
+  DB_PASSWORD: cGFzc3dvcmQxMjM=
+
+---
+# 4. Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app
+  namespace: my-app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+      - name: app
+        image: my-app:1.0.0
+        ports:
+        - containerPort: 8080
+        envFrom:
+        - configMapRef:
+            name: app-config
+        - secretRef:
+            name: app-secret
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+
+---
+# 5. Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-app-service
+  namespace: my-app
 spec:
   selector:
-    lo: dev
+    app: my-app
   ports:
-  - port: 8080
-```
-다음과 같이 spec.selector 를 이용하면 특정 label을 가진 pod를 선택할 수 있다. 
+  - port: 80
+    targetPort: 8080
 
-<figure>
-  <img src="/images/KUBER_POD_01.png"></img>
-        <figcaption>Pod 생성 후 Service Object에서 Selector를 통한 Pod 선택</figcaption>
-</figure>
-
-- 다음과 같이 특정 물리 node에 pod를 띄우도록 설정할 수 있다. 
-
-```yaml
-apiVersion: v1
-kind: Pod
+---
+# 6. Ingress
+apiVersion: networking.k8s.io/v1
+kind: Ingress
 metadata:
-  name: pod-test
+  name: my-app-ingress
+  namespace: my-app
 spec:
-  nodeSelector:
-    kubernetes.io/hostname: k8s-node1 ## 특정 물리노드 지정 
-  containers:
-  - name: container
-    image: kubetm/init
-```
+  ingressClassName: nginx
+  rules:
+  - host: my-app.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: my-app-service
+            port:
+              number: 80
 
-- nodeSelector에 특정 노드를 명시하지 않은 경우에는 node Scheduler에 의해 pod에 명시된 resource 필드값을 충족시킬 수 있는 node에 pod가 배포된다. 
-
-```yaml
-apiVersion: v1
-kind: Pod
+---
+# 7. HPA
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
 metadata:
-  name: pod-test
+  name: my-app-hpa
+  namespace: my-app
 spec:
-  containers:
-  - name: container
-    image: kubetm/init
-    resources:
-      requests:
-        memory: 2Gi
-      limits:
-        memory: 3Gi
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: my-app
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 50
 ```
 
-<figure>
-  <img src="https://k21academy.com/wp-content/uploads/2020/11/2918027a-kublr1.png"></img>
-        <figcaption>[1] Node Scheduler</figcaption>
-</figure>
+## kubectl 명령어 정리
 
-## Kubernetes - Service Object
+```bash
+# 리소스 조회
+kubectl get pods                     # Pod 목록
+kubectl get pods -o wide             # 상세 정보 (Node, IP)
+kubectl get all                      # 모든 리소스
+kubectl get all -n my-namespace      # 특정 Namespace
 
-- Cluster Ip 타입, NodePort 타입, Load Balancer 타입으로 총 3가지 Service Object 타입이 존재한다. 
+# 리소스 상세 정보
+kubectl describe pod my-pod
+kubectl describe deployment my-app
 
-- Service Object는 Cluster에서만 접근 가능한 Cluster IP를 가지고 있음. 하나 이상의 Pod에 연결하면 Service 를 통해 연결된 Pod에 접근할 수 있다.
+# 로그 확인
+kubectl logs my-pod                  # Pod 로그
+kubectl logs -f my-pod               # 실시간 로그
+kubectl logs my-pod -c my-container  # 특정 컨테이너 로그
 
-- Pod와 다르게 사용자가 직접 제거하지 않는한 재시작되거나 삭제되지 않음. 즉 Service를 통해 Pod를 접근하는 구조이다. 
+# 리소스 생성/수정/삭제
+kubectl apply -f deployment.yaml     # 생성 또는 수정
+kubectl delete -f deployment.yaml    # 삭제
+kubectl delete pod my-pod            # Pod 삭제
 
-- ClusterIP타입으로 service object를 생성하면 clsuter 내부에서만 사용가능한 IP가 생성되며, (외부에서 접근하지는 못함) 운영자가 pod 상태 디버깅 * 내부 대쉬보드를 확인하는 용도로 사용된다. 
+# 스케일링
+kubectl scale deployment my-app --replicas=5
 
-- NodePort타입으로 service object를 생성하면 모든 물리적인 Node에 외부에서 접속 가능한 특정 port번호를 생성하며, 해당 port로 접속하면 service object로 접속한다.
+# 롤아웃 (배포)
+kubectl rollout status deployment my-app   # 배포 상태
+kubectl rollout history deployment my-app  # 배포 이력
+kubectl rollout undo deployment my-app     # 롤백
 
-- LoadBalencer 타입으로 service object를 생성하면 NodePort 타입에 추가적으로 ndoe간 traffic을 분산시켜주는 기능이 추가된다. LoadBalancer 타입에 External IP를 할당해주어 외부 시스템에 노출되는 용도로 사용한다.  
+# Pod 접속
+kubectl exec -it my-pod -- /bin/bash
 
-## Kubernetes - Volume Object
+# 포트 포워딩 (로컬 테스트)
+kubectl port-forward pod/my-pod 8080:8080
+kubectl port-forward svc/my-service 8080:80
+```
 
-1. emptyDir
+## 자주 묻는 질문
 
-컨테이너간에 데이터를 공유하기 위해서 Volume을 사용함
-최초 volume생성시에는 volume이 비어있음.
+### Pod가 계속 CrashLoopBackOff 상태인데요?
 
-여러 container간에 mount 된 volume을 마치 자기 자신 local에 있는 것처럼 사용함.
+컨테이너가 시작 후 바로 종료되는 상황이다.
 
-pod안에 생성되는것이기 때문에 pod에 문제가 생겨 재생성된다면 날라간다. 즉 휘발적인 데이터만 넣어야한다. 
+```bash
+# 로그 확인
+kubectl logs my-pod --previous
 
-2. hostPath 
+# 이벤트 확인
+kubectl describe pod my-pod
+```
 
-각 Node의 Path를 Volume으로 사용한다. 즉 pod가 죽어도 Node의 데이터는 사라지지 않는다. 
+흔한 원인:
+- 애플리케이션 에러 (설정 누락, 포트 충돌)
+- 리소스 부족 (메모리 OOM)
+- liveness probe 실패
 
-Pod가 만약 node scheduler에 의해 다른 Node에 생성된다면 데이터를 연결 할 수 없다. 
+### ImagePullBackOff는 뭔가요?
 
-사전에 해당 Node에 경로가 있어야만 오류가 나지 않으며, 주로 Node에 있는 데이터를 Pod가 사용하는 용도로 사용한다.  
+이미지를 Pull 받지 못하는 상태다.
 
-3. PVC/PV (Persistent Volume Claim , Persistent Volume)
+확인 사항:
+- 이미지 이름/태그가 정확한지
+- Private 레지스트리면 imagePullSecrets 설정했는지
+- 네트워크 문제는 없는지
 
-Persistent Volume(PV)는 영구적인 데이터 저장소(AWS,NFS...)이고, persistent Volume Claim(PVC)은 pod를 PV에 연결하기 위한 Object이다. PV는 저장소 VENDOR별로 다르며, 사용자가 생성한 PVC에 적합한 PV를 kubernetes가 선택해준다. 
+### Pod가 Pending 상태에서 안 넘어가요
 
-## Kubernetes - ConfigMap , Secret Object
+Scheduler가 Pod를 배치할 Node를 찾지 못한 상태다.
 
-- 테스트 환경 & 상용 환경에 따라 결정되는 값은 외부에 따라 결정될 수 있게함 
+```bash
+kubectl describe pod my-pod
+# Events 섹션에서 원인 확인
+```
 
-- 즉 환경변수를 관리하기 위해서 kubernetes는 ConfigMap,Secret 객체를 생성
-- ConfigMap : 관리해야할 상수값 정의
-- Secret : 키와같이 보안적인 관리가 필요한 값을 관리하는 객체
+흔한 원인:
+- 리소스 부족 (CPU, Memory 요청량 > 가용량)
+- nodeSelector가 매칭되는 Node가 없음
+- PVC가 바인딩되지 않음
 
-Pod 생성시 위 두 object를 연결할 수 있다. (ConfigMap, Secret)
-즉 상용환경이든 개발환경이든 동일한 도커 이미지를 사용하고, 외부 환경변수는 ConfigMap, Secret Object로 주입 
+### Service로 Pod에 접근이 안 돼요
 
-Literal(상수)형태로 외부환경변수를 주입하는 경우에는,
-ConfigMap,Secret Object 모두 K-V꼴로 데이터를 넣음. 
-다만 Value의 경우는 base64 인코딩해서 넣음. pod로 넣을 때는 자동으로 decoding. 
-Secret의 경우는 tmpfs 인메모리 파일시스템에 넣어 데이터가 파일에 영구적으로 보관되지 않고 파드 삭제시 소실됨
-이렇게 상수를 만들어 pod생성시 명시하는 경우에 해당 pod의 env 명령어를 치면 환경변수로 잡혀있음 
+```bash
+# Endpoints 확인 (연결된 Pod IP 목록)
+kubectl get endpoints my-service
 
-File형태로 외부환경변수를 주입하는 경우에는,
-K: 파일명,VALUE : 파일컨텐츠임
-SECRET의 경우는 파일내용이 BASE64인코딩이 된다. 
+# 없으면 selector가 Pod label과 일치하는지 확인
+kubectl get pods --show-labels
+```
 
-Mounting하는 경우에는 환경변수로 주입하는 방식과 달리 환경변수가 변경되면 바로바로 pod에 반영된다. 
+### StatefulSet은 뭔가요? Deployment랑 뭐가 다른가요?
 
+StatefulSet은 상태를 가진 애플리케이션용이다. DB, 메시지 큐 같은 것들.
 
-## Kubernetes - NameSpace, ResourceQuota, LimitRange
+| 구분 | Deployment | StatefulSet |
+|------|------------|-------------|
+| Pod 이름 | 랜덤 (my-app-abc123) | 순차 (my-app-0, my-app-1) |
+| 스토리지 | 공유 또는 없음 | Pod마다 고유 PVC |
+| 생성/삭제 순서 | 동시 | 순차 (0→1→2, 2→1→0) |
+| 용도 | Stateless 앱 (API 서버) | Stateful 앱 (DB, Kafka) |
 
-ResourceQuota는 NameSpace별로 달아서,해당 NameSpace에서 최대 사용가능한 resource(memory/cpu)를 정의한다. 즉 namespace의 자원한계를 설정하기 위한 object이다. compute resource(cpu,memory,storage)와 object count(pod,service,configMap,PVC)를 제한할 수 있음. pod에 resource spec (request,limit)을 명시하지 않으면 해당 resourceQuota가 설정된 namespace에는 pod가 할당되지 않는다.
-* 주의 : 기존에 pod가 있는 상태에서 resourceQuota object를 생성하면 그냥 만들어짐. 따라서 resourceQuota를 만들기전에 해당 namespace에 pod를 만들지 않아야함
+대부분의 Spring Boot 앱은 Deployment로 충분하다. StatefulSet은 DB 클러스터 같은 특수한 경우에만 쓴다.
 
+### 로컬에서 K8s 테스트하려면 어떻게 하나요?
 
-LimitRange는 NameSpace에 들어오는 pod가 차지하는 resource의 크기를 제한할 수 있다. 특정 pod가 모든 resource를 잡아먹는것을 막기 위함이다.  (clsuter에 제한을 걸수도있다.) pod에 별다른 명시를 하지 않는 경우 limitRange에 설정된 spec으로 namespace에 할당된다.
-한 namespace에 여러개의 LimitRange를 설정하는 경우 충돌이 발생할수 있다.
+여러 옵션이 있다.
 
-Namespace는 한 namespace안에 같은 이름의 object 를 가질수 없다.
-타 namespace와 자원이 분리된다. 예를 들어 service는 다른 namespace의 pod와 연결될수는 없음. 기본적으로 namespace는 pod간  network연결을 막아주진 않는다. 
-networkPolicy Object를 통해 network 통신을 막아준다. 
-NodePort 타입의 service object도 namespace로 나눌수없음. 즉 경우에 따라 추가적인 object를 설정해서 namespace을 분리헤야 한다. 
+| 도구 | 특징 | 추천 |
+|------|------|------|
+| Docker Desktop | 가장 쉬움. 설정에서 K8s 활성화 | 입문자 |
+| minikube | 단일 노드 클러스터. 다양한 드라이버 지원 | 학습용 |
+| kind | Docker 컨테이너로 클러스터 구성. 가벼움 | CI/CD |
+| k3s | 경량 K8s. ARM 지원 | 라즈베리파이, Edge |
 
-물론 persistent volume이나 node와 같이 여러 namespace에서 공유될수있는 object들도 존재한다. 
+```bash
+# minikube 예시
+minikube start
+kubectl get nodes
+minikube dashboard  # 웹 대시보드
 
-namespace를 지우게되면 해당 namespace에 속한 모든 자원도 지워진다. 
-pod나 service를 만들 때 속할 namespace를 지정할 수 있음
+# kind 예시
+kind create cluster --name my-cluster
+kubectl cluster-info
+```
 
--->
+### Helm이 뭔가요?
 
+K8s용 패키지 매니저다. 여러 YAML 파일을 하나의 Chart로 묶어서 관리한다.
 
-## Reference 
-- [1] https://k21academy.com/wp-content/uploads/2020/11/2918027a-kublr1.png
-- https://bcho.tistory.com/1252
-- https://kubernetes.io/ko/docs/concepts/overview/
-- https://kubetm.github.io/k8s/03-beginner-basic-resource/pod/
+```bash
+# nginx 설치 예시
+helm repo add bitnami https://charts.bitnami.com/bitnami
+helm install my-nginx bitnami/nginx
+
+# 값 커스텀
+helm install my-nginx bitnami/nginx --set replicaCount=3
+```
+
+ConfigMap, Secret, Deployment, Service 등을 일일이 만들 필요 없이 Chart 하나로 설치 가능. 버전 관리, 롤백도 쉽다.
+
+## 정리
+
+Kubernetes 핵심 개념:
+
+- **Pod**: 최소 배포 단위, 일시적(Ephemeral)
+- **Deployment**: Pod 배포 관리, 롤링 업데이트/롤백
+- **Service**: Pod에 대한 고정 엔드포인트, 로드밸런싱
+- **Ingress**: HTTP 라우팅, 도메인/경로 기반
+- **ConfigMap/Secret**: 설정값 외부화
+- **PV/PVC**: 영구 스토리지
+- **HPA**: CPU/메모리 기반 오토스케일링
+- **Namespace**: 클러스터 논리적 분리
+
+선언형(Declarative) 방식으로 원하는 상태를 YAML에 기술하면, K8s가 알아서 맞춰주는 게 핵심이다.
+
+## 참고문헌
+
+- [Kubernetes 공식 문서](https://kubernetes.io/ko/docs/home/)
+- [Kubernetes The Hard Way](https://github.com/kelseyhightower/kubernetes-the-hard-way) - 직접 클러스터 구축
+- [CNCF Kubernetes](https://www.cncf.io/projects/kubernetes/)

@@ -1,184 +1,346 @@
 ---
 id: 5
 title: "Spring Batch Step 파헤쳐보기"
-description: ""
+description: "Spring Batch Step의 핵심 개념, Chunk/Tasklet 처리 방식, StepExecution, ExecutionContext, 재시작 제어까지 실무 예제와 함께 정리"
 date: "2024-01-02 15:43:28"
-tags: ["spring", "Batch"]
+tags: ["Spring", "Batch", "Step", "Chunk", "Tasklet"]
 ---
-## Step 개념
 
-- Batch Job 을 구성하는 독립적인 단계로 하나의 Job은 하나 이상의 Step으로 구성됩니다.
-- Spring Batch Job 구현체중 하나인 ```SimpleJob```을 까보면 Job 은 내부 멤버변수로 Step List를 들고 있음을 확인할 수 있습니다.
+## Step이란?
+
+Step은 Batch Job을 구성하는 독립적인 실행 단위다. 하나의 Job은 최소 하나 이상의 Step으로 구성되며, 각 Step은 실제 배치 처리를 정의하고 제어하는 모든 정보를 담고 있다.
+
+Step을 이해하기 위해 Spring Batch의 전체 아키텍처를 먼저 살펴보자.
+
+![Spring Batch Architecture](https://www.tutorialspoint.com/spring_batch/images/architecture.jpg)
+*Spring Batch 아키텍처 - Application, Batch Core, Batch Infrastructure 3계층 구조*
+
+Spring Batch Job 구현체 중 하나인 `SimpleJob`의 내부를 보면 Job이 Step 리스트를 멤버변수로 가지고 있음을 확인할 수 있다.
+
 ```java
 public class SimpleJob extends AbstractJob {
     private List<Step> steps = new ArrayList<>();
-    //...
+    // ...
 }
 ```
-<figure>
-  <img src="/images/BATCH_STEP_17.png"></img>
-        <figcaption>[2] Spring Batch Step</figcaption>
-</figure>
 
-## StepExecution 이란?
+![Spring Batch Components](https://www.tutorialspoint.com/spring_batch/images/components.jpg)
+*Spring Batch 주요 컴포넌트 - Job과 Step의 관계*
 
-- Step에 대한 한번의 시도를 의미하는 객체로서 Step 실행 중에 발생한 정보들을 저장하고 있는 객체입니다. 
-- DB의 ```BATCH_STEP_EXECUTION``` 테이블과 1:1로 매핑됩니다. 
-- Job이 실패해서 재수행하는 경우에는 실패한 Step에 대해서만 재시작하고, 성공한 Step은 생략합니다. ( 하지만 ```allowStartIfComplete``` 설정값을 변경하면 성공한 Step도 재시작되게 변경할 수 있습니다  )
+## Spring Batch에서 제공하는 Step 구현체
 
-예를 들어 Step 1,2,3이 존재하는데 Step2번이 실행중에 실패한다면 Step 1은 성공 , Step 2는 실패처리 됩니다. 그리고 Step 3는 실행되지 않습니다. 
-이 상태에서 Job을 재시작하면 Step2부터 재시작하여 Step2,Step3 가 수행됩니다. 
+Step 인터페이스를 `AbstractStep` 추상 클래스가 구현하고, 이를 상속받는 5가지 구현체가 존재한다.
 
-- Job을 구성하는 모든 Step의 실행 정보인 ```StepExecution```이 완료 처리되어야만 ```JobExecution```이 완료처리됩니다.
+| Step 구현체 | 설명 | 주요 용도 |
+|------------|------|----------|
+| **TaskletStep** | 가장 기본적인 Step. Tasklet 구현체를 실행 | 단순 작업, Chunk 기반 처리 |
+| **PartitionStep** | 데이터를 파티셔닝하여 병렬 처리 | 대용량 데이터 병렬 처리 |
+| **JobStep** | Step 내부에 또 다른 Job을 포함 | Job 분리 및 재사용 |
+| **FlowStep** | Flow를 실행하는 Step | 복잡한 흐름 제어 |
+| **JobExecutionDecider** | 조건에 따라 분기 결정 (Step이 아닌 인터페이스) | 동적 흐름 결정 |
 
-즉 Spring Batch 도메인 용어를 정리하면 하나의 ```Job```은 여러개의 ```Step```으로 구성되고, Job이 ```JobParameter```를 주입받아 실행되는 객체가 ```JobInstance```객체입니다. 
+## StepExecution - Step 실행 정보
 
-JobInstance를 실행한 정보가 ```JobExecution```이고, Job이 실행되면서 Job을 구성하는 Step들의 실행정보가 ```StepExecution```입니다. 
+`StepExecution`은 Step에 대한 한 번의 실행 시도를 나타내는 객체다. Step이 실행될 때마다 새로운 StepExecution이 생성되며, 실행 중 발생한 모든 정보를 저장한다.
 
-<figure>
-  <img src="/images/BATCH_STEP_16.png"></img>
-        <figcaption> [1] Spring Batch Job과 Step에 관련된 도메인 객체들</figcaption>
-</figure>
+### StepExecution의 주요 속성
 
-## Step간 데이터 공유하기 - ExecutionContext
-
-- ```ExecutionContext```를 활용하면 Job내 Step간 데이터를 공유할 수 있습니다. 혹은 실패한 Step에서 Step 재시작시 실패 이전까지 작업했던 상태값들을 가져올 수 있습니다. 
-- ```ExecutionContext```는 Spring Batch에서 관리하는 key-value (Map) 컬렉션입니다. 
-- ```StepExecution```, ```JobExecution``` 객체의 멤버변수로 선언되고 , 각각 DB의 ```BATCH_JOB_EXECUTION_CONTEXT``` , ```BATCH_STEP_EXECUTION_CONTEXT``` 테이블에 1:1 매핑됩니다.   
-- ```StepExecution``` 내 ```ExecutionContext```는 Step안에서만 공유됩니다. 즉 특정 Step에서만 접근이 가능합니다. 실패한 Step이 재시작된 경우도 이전까지 작업한 내용을 불러들일수 있습니다. 
-- ```JobExeuction``` 내 ```ExecutionContext```는 모든 Step안에서 공유됩니다. 
-
-<figure>
-  <img src="/images/BATCH_STEP_13.png"></img>
-        <figcaption>ExecutionContext</figcaption>
-</figure>
-
-### 예시 코드
-
-아래와 같이 ```ExecutionContext```를 ```StepContribution``` 또는 ```ChunkContext```를 통해 접근하고, 값을 넣어줄 수 있습니다.  
-넣어준 값은 ```BATCH_JOB_EXECUTION_CONTEXT``` , ```BATCH_STEP_EXECUTION_CONTEXT``` 테이블에 각각 직렬화되어 저장됩니다.
 ```java
-public class ExecutionContextTasklet1 implements Tasklet {
+public class StepExecution extends Entity {
+    private final JobExecution jobExecution;  // 소속된 JobExecution
+    private final String stepName;            // Step 이름
+    private volatile BatchStatus status;      // 실행 상태
+    private volatile int readCount;           // 읽은 아이템 수
+    private volatile int writeCount;          // 쓴 아이템 수
+    private volatile int commitCount;         // 커밋 횟수
+    private volatile int rollbackCount;       // 롤백 횟수
+    private volatile int readSkipCount;       // 읽기 스킵 수
+    private volatile int processSkipCount;    // 처리 스킵 수
+    private volatile int writeSkipCount;      // 쓰기 스킵 수
+    private volatile int filterCount;         // 필터링된 아이템 수
+    private volatile Date startTime;          // 시작 시간
+    private volatile Date endTime;            // 종료 시간
+    private volatile ExecutionContext executionContext;  // 실행 컨텍스트
+    private volatile ExitStatus exitStatus;   // 종료 상태
+    // ...
+}
+```
+
+### 재시작 시 StepExecution 동작
+
+Job이 실패해서 재실행하는 경우, 기본적으로 실패한 Step부터 재시작된다.
+
+```text
+첫 번째 실행:
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│   Step 1    │ -> │   Step 2    │ -> │   Step 3    │
+│  COMPLETED  │    │   FAILED    │    │  미실행     │
+└─────────────┘    └─────────────┘    └─────────────┘
+
+재실행 (Job 재시작):
+                   ┌─────────────┐    ┌─────────────┐
+                   │   Step 2    │ -> │   Step 3    │
+                   │  재시작      │    │  실행       │
+                   └─────────────┘    └─────────────┘
+```
+
+Step 1은 이미 성공했으므로 생략되고, 실패한 Step 2부터 재시작된다. 단, `allowStartIfComplete(true)` 설정 시 성공한 Step도 재시작할 수 있다.
+
+### DB 테이블 매핑
+
+StepExecution은 `BATCH_STEP_EXECUTION` 테이블과 1:1로 매핑된다.
+
+![Spring Batch ERD](https://terasoluna-batch.github.io/guideline/5.0.0.RELEASE/en/images/Ch02_SpringBatchArchitecture_Architecture_ER.png)
+*Spring Batch 메타데이터 ERD - Job, Step, Execution 관계*
+
+## ExecutionContext - Step 간 데이터 공유
+
+`ExecutionContext`는 Spring Batch가 관리하는 key-value 저장소다. Step 간 데이터 공유나 재시작 시 이전 상태 복원에 활용된다.
+
+### ExecutionContext 범위
+
+| ExecutionContext | 범위 | DB 테이블 |
+|-----------------|------|----------|
+| JobExecution 내 | 모든 Step에서 공유 | BATCH_JOB_EXECUTION_CONTEXT |
+| StepExecution 내 | 해당 Step 내에서만 접근 | BATCH_STEP_EXECUTION_CONTEXT |
+
+### 사용 예시 (Spring Batch 5.x)
+
+```java
+@Bean
+public Step contextSharingStep(JobRepository jobRepository,
+                                PlatformTransactionManager transactionManager) {
+    return new StepBuilder("contextSharingStep", jobRepository)
+            .tasklet((contribution, chunkContext) -> {
+                // JobExecution의 ExecutionContext (모든 Step에서 공유)
+                ExecutionContext jobContext = contribution.getStepExecution()
+                        .getJobExecution()
+                        .getExecutionContext();
+
+                // StepExecution의 ExecutionContext (현재 Step에서만 접근)
+                ExecutionContext stepContext = contribution.getStepExecution()
+                        .getExecutionContext();
+
+                jobContext.put("sharedData", "모든 Step에서 접근 가능");
+                stepContext.put("stepLocalData", "현재 Step에서만 접근 가능");
+
+                return RepeatStatus.FINISHED;
+            }, transactionManager)
+            .build();
+}
+```
+
+다른 Step에서 공유 데이터 접근:
+
+```java
+@Bean
+public Step readSharedDataStep(JobRepository jobRepository,
+                                PlatformTransactionManager transactionManager) {
+    return new StepBuilder("readSharedDataStep", jobRepository)
+            .tasklet((contribution, chunkContext) -> {
+                ExecutionContext jobContext = contribution.getStepExecution()
+                        .getJobExecution()
+                        .getExecutionContext();
+
+                String sharedData = jobContext.getString("sharedData");
+                System.out.println("공유 데이터: " + sharedData);  // "모든 Step에서 접근 가능"
+
+                return RepeatStatus.FINISHED;
+            }, transactionManager)
+            .build();
+}
+```
+
+## TaskletStep - 가장 기본적인 Step
+
+TaskletStep은 `Tasklet` 인터페이스 구현체를 실행하는 Step이다. Spring Batch에서 가장 많이 사용되는 Step 유형이다.
+
+![Step-Tasklet Flow](https://terasoluna-batch.github.io/guideline/5.0.0.RELEASE/en/images/ch02/SpringBatchArchitecture/Ch02_SpringBatchArchitecture_Architecture_StepTaskletFlow.png)
+*Step과 Tasklet의 실행 흐름*
+
+### Tasklet 인터페이스
+
+```java
+@FunctionalInterface
+public interface Tasklet {
+    /**
+     * @return RepeatStatus.FINISHED: 작업 완료, RepeatStatus.CONTINUABLE: 재실행
+     */
+    @Nullable
+    RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext)
+            throws Exception;
+}
+```
+
+`RepeatTemplate`이 Tasklet을 트랜잭션 경계 내에서 반복 실행하며, `RepeatStatus.FINISHED`를 반환할 때까지 계속 실행한다.
+
+### Task 기반 vs Chunk 기반
+
+TaskletStep은 두 가지 방식으로 구현할 수 있다.
+
+| 구분 | Task 기반 | Chunk 기반 |
+|-----|----------|-----------|
+| 처리 방식 | 단일 작업으로 처리 | 데이터를 Chunk 단위로 분할 처리 |
+| 주요 용도 | 파일 삭제, 리소스 정리 등 | 대용량 데이터 읽기/처리/쓰기 |
+| 구현 방법 | Tasklet 직접 구현 | ItemReader, ItemProcessor, ItemWriter |
+| 트랜잭션 | 전체가 하나의 트랜잭션 | Chunk 단위로 트랜잭션 커밋 |
+
+## Task 기반 Tasklet
+
+단순하고 독립적인 작업에 적합하다. 직접 `Tasklet` 인터페이스를 구현한다.
+
+```java
+@Configuration
+@RequiredArgsConstructor
+public class TaskBasedStepConfig {
+
+    private final JobRepository jobRepository;
+    private final PlatformTransactionManager transactionManager;
+
+    @Bean
+    public Step cleanupStep() {
+        return new StepBuilder("cleanupStep", jobRepository)
+                .tasklet((contribution, chunkContext) -> {
+                    // 임시 파일 정리 로직
+                    Path tempDir = Paths.get("/tmp/batch-work");
+                    if (Files.exists(tempDir)) {
+                        Files.walk(tempDir)
+                             .sorted(Comparator.reverseOrder())
+                             .map(Path::toFile)
+                             .forEach(File::delete);
+                    }
+                    return RepeatStatus.FINISHED;
+                }, transactionManager)
+                .build();
+    }
+
+    @Bean
+    public Step notificationStep() {
+        return new StepBuilder("notificationStep", jobRepository)
+                .tasklet(new SlackNotificationTasklet(), transactionManager)
+                .build();
+    }
+}
+
+public class SlackNotificationTasklet implements Tasklet {
 
     @Override
     public RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) {
+        JobExecution jobExecution = contribution.getStepExecution().getJobExecution();
 
-        ExecutionContext jobExecutionContext = contribution.getStepExecution().getJobExecution().getExecutionContext(); 
-        ExecutionContext stepExecutionContext = contribution.getStepExecution().getExecutionContext();
+        String message = String.format("Job [%s] 완료. 상태: %s",
+                jobExecution.getJobInstance().getJobName(),
+                jobExecution.getStatus());
 
-        jobExecutionContext.put("jobName", "developer"); //1. BATCH_JOB_EXECUTION_CONTEXT 에 저장 (모든 STEP에서 공유)
-        stepExecutionContext.put("stepName", "software"); // 2. BATCH_STEP_EXECUTION_CONTEXT 에 저장 (특정 STEP에서 공유)
+        // Slack 알림 발송 로직
+        sendSlackMessage(message);
 
         return RepeatStatus.FINISHED;
     }
-}
-```
-<figure>
-  <img src="/images/BATCH_STEP_14.png"></img>
-        <figcaption>BATCH_JOB_EXECUTION_CONTEXT 테이블</figcaption>
-</figure>
 
-<figure>
-  <img src="/images/BATCH_STEP_15.png"></img>
-        <figcaption>BATCH_STEP_EXECUTION_CONTEXT 테이블</figcaption>
-</figure>
-
-
-## Spring Batch에서 제공하는 Step 구현체(5)
-
-- Step 인터페이스를 AbstractStep이라는 추상 클래스에서 구현하고,AbstractStep 추상클래스를 구현하는 구조입니다.
-- Batch에서 제공하는 Step의 구현체는 아래와 같은 5개의 구현체가 존재합니다.
-
-1. Tasklet Step 
-2. Partition Step 
-3. Job Step
-4. Flow Step
-5. Decision Step
-
-<figure>
-  <img src="/images/BATCH_STEP_01.png"></img>
-        <figcaption>Spring Batch에서 제공하는 Step 구현체 종류</figcaption>
-</figure>
-
-## TaskletStep
-- ```RepeatTemplate```을 사용해서 Tasklet 코드 block을 트랜잭션 경계 내(성공시 커밋,실패시 롤백)에서 반복해서 실행합니다.
-언제까지 반복해서 실행할것인가에 대한 판단은 Tasklet 객체에서 반환하는 ```RepeatStatus```값에 의해 결정됩니다. ```RepeatStatus.FINISHED``` 와 같이 특정 ```RepeatStatus```를 반환할 때까지 계속해서 실행합니다.
-- TaskletStep은 아래와 같은 tasklet 인터페이스를 구현하는 tasklet 구현체를 멤버변수로 가지고 있습니다.
-```java
-/**
- * Strategy for processing in a step.
- */
-public interface Tasklet {
-
-	/**
-	 * @return an {@link RepeatStatus} indicating whether processing is
-	 * continuable. Returning {@code null} is interpreted as {@link RepeatStatus#FINISHED}
-	 *
-	 * @throws Exception thrown if error occurs during execution.
-	 */
-	@Nullable
-	RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) throws Exception;
-
+    private void sendSlackMessage(String message) {
+        // Slack API 호출
+    }
 }
 ```
 
-- TaskletStep의 코드를 확인해보면 Tasklet 호출횟수를 조정하기 위한 RepeatTemplate 와 실행되야할 작업 그 자체 (tasklet) 구현체를 멤버변수로 들고있는것을 확인할 수 있습니다.
+## Chunk 기반 Tasklet - ChunkOrientedTasklet
+
+대용량 데이터 처리의 핵심이다. 데이터를 일정 크기(Chunk)로 나누어 처리하고, Chunk 단위로 트랜잭션을 커밋한다.
+
+![Chunk Processing Sequence](https://terasoluna-batch.github.io/guideline/5.0.0.RELEASE/en/images/Ch02_SpringBatchArchitecture_Architecture_Sequence_ChunkOrientedTasklet.png)
+*ChunkOrientedTasklet 처리 시퀀스 - Read, Process, Write 흐름*
+
+### Chunk 처리 흐름
+
+```text
+┌────────────────────────────────────────────────────────────┐
+│                    Chunk 처리 루프                          │
+├────────────────────────────────────────────────────────────┤
+│  1. ItemReader.read() 호출 (chunk-size 만큼 반복)           │
+│     └─> 아이템을 하나씩 읽어 리스트에 저장                   │
+│                                                            │
+│  2. ItemProcessor.process() 호출 (읽은 아이템 수만큼)       │
+│     └─> 각 아이템을 변환/가공                               │
+│                                                            │
+│  3. ItemWriter.write() 호출 (1회)                          │
+│     └─> 처리된 chunk 전체를 한 번에 쓰기                    │
+│                                                            │
+│  4. 트랜잭션 커밋                                           │
+└────────────────────────────────────────────────────────────┘
+          ↓ ItemReader가 null 반환할 때까지 반복
+```
+
+### Chunk 기반 Step 구현 (Spring Batch 5.x)
 
 ```java
-public class TaskletStep extends AbstractStep {
+@Configuration
+@RequiredArgsConstructor
+public class ChunkBasedStepConfig {
 
-    private RepeatOperations stepOperations = new RepeatTemplate();
-    //...
-    private Tasklet tasklet;
-    //...
+    private final JobRepository jobRepository;
+    private final PlatformTransactionManager transactionManager;
+    private final DataSource dataSource;  // HikariCP 등에서 주입
+
+    @Bean
+    public Step processOrdersStep() {
+        return new StepBuilder("processOrdersStep", jobRepository)
+                .<Order, ProcessedOrder>chunk(100, transactionManager)  // chunk-size: 100
+                .reader(orderReader())
+                .processor(orderProcessor())
+                .writer(orderWriter())
+                .build();
+    }
+
+    @Bean
+    public ItemReader<Order> orderReader() {
+        return new JdbcCursorItemReaderBuilder<Order>()
+                .name("orderReader")
+                .dataSource(dataSource)
+                .sql("SELECT id, customer_id, amount, status FROM orders WHERE status = 'PENDING'")
+                .rowMapper(new OrderRowMapper())
+                .build();
+    }
+
+    @Bean
+    public ItemProcessor<Order, ProcessedOrder> orderProcessor() {
+        return order -> {
+            // 비즈니스 로직 적용
+            double discountedAmount = order.getAmount() * 0.9;
+            return new ProcessedOrder(order.getId(), discountedAmount, "PROCESSED");
+        };
+    }
+
+    @Bean
+    public ItemWriter<ProcessedOrder> orderWriter() {
+        return new JdbcBatchItemWriterBuilder<ProcessedOrder>()
+                .dataSource(dataSource)
+                .sql("UPDATE orders SET amount = :amount, status = :status WHERE id = :id")
+                .beanMapped()
+                .build();
+    }
 }
 ```
 
-- 자주 사용되는 tasklet 구현체는 Spring Batch에서 이미 구현해놓았습니다. 이 중 ```ChunkOrientedTasklet```구현체을 활용해 Chunk 단위로 배치 작업을 쪼개서 처리할 수 있습니다.
-<figure>
-  <img src="/images/BATCH_STEP_02.png"></img>
-        <figcaption>Spring Batch에서 제공하는 Step 구현체 종류</figcaption>
-</figure>
+### chunk-size 설정 가이드
 
+chunk-size는 성능에 직접적인 영향을 미친다.
 
+| chunk-size | 장점 | 단점 |
+|------------|------|------|
+| 작은 값 (10~50) | 메모리 사용량 적음, 빠른 실패 감지 | 커밋 오버헤드 증가 |
+| 큰 값 (500~1000) | 처리량 증가, 커밋 오버헤드 감소 | 메모리 사용량 증가, 롤백 범위 증가 |
 
+일반적으로 100~500 사이에서 시작하고, 실제 데이터와 시스템 환경에 맞게 튜닝한다.
 
+## StepContribution - Chunk 작업 버퍼링
 
-## Chunk 기반과 Task 기반
-
-- Spring Batch에서 Tasklet Step의 실행 단위는 크게 Chunk기반과 Task기반으로 2가지입니다. 
-
-### Chunk 기반 Tasklet의 특징
-- 하나의 큰 덩어리를 n개씩 쪼개서 실행한다는 의미로 데이터 대용량 처리용으로 설계되었습니다.
-- ItemReader, ItemProcessor, ItemWriter를 사용합니다. 
-- Spring Batch에서는 Chunk기반 Tasklet 실행을 위해 ```ChunkOrientedTasklet``` 구현체를 제공합니다. 
-```java
-public Step chunkStep() {
-    return stepBuilderFactory.get("chunkStep")
-                             .<String, String>chunk(2)
-                             .reader(new ListItemReader<>(List.of("a", "b", "c", "d", "e", "f")))
-                             .processor((ItemProcessor<String, String>) String::toUpperCase)
-                             .writer(items -> items.forEach(System.out::println))
-                             .build();
-}
-```
-
-## Chunk 작업의 Buffering -  StepContribution 
-
-- Chunk Process의 변경 사항을 버퍼링 한 뒤, ```StepExecution``` 상태를 업데이트하는 도메인 객체입니다. 
-- ```ItemReader```, ```ItemWriter```의 ```readCount``` , ```writeCount```와 같은 Chunk내 작업 정보들을 임시적으로 들고 있다가 Chunk Commit 직전에 update해주는 역할입니다. 
-
-- 실제로 Chunk 작업 결과를 Buffering했다가 update해주는 코드는 ```StepExecution.apply``` method를 호출하면서 발생합니다. 아래 로직을 확인해보면 ```StepContribution```의 상태값들을 ```StepExecution``` 에 누적시켜주는것을 확인할 수 있습니다. 
+`StepContribution`은 Chunk 처리 과정의 변경 사항을 임시 저장(버퍼링)한다. Chunk 커밋 직전에 `StepExecution`에 반영된다.
 
 ```java
-class StepExecution {
-    //...
+public class StepExecution extends Entity {
     /**
-     * On successful execution just before a chunk commit, this method should be
-     * called. Synchronizes access to the {@link StepExecution} so that changes
-     * are atomic.
-     *
-     * @param contribution {@link StepContribution} instance used to update the StepExecution state.
+     * Chunk 커밋 직전에 호출되어 StepContribution의 값을 누적
      */
     public synchronized void apply(StepContribution contribution) {
         readSkipCount += contribution.getReadSkipCount();
@@ -189,248 +351,375 @@ class StepExecution {
         writeCount += contribution.getWriteCount();
         exitStatus = exitStatus.and(contribution.getExitStatus());
     }
-    //...
 }
 ```
 
+이 구조 덕분에 Chunk 처리 중 실패해도 이전 Chunk까지의 진행 상황은 안전하게 보존된다.
 
-### Task 기반 Tasklet의 특징 
-- Chunk 기반으로 작업을 n개로 쪼개서 처리하기보다, 단일 작업 기반이 더 효율적인 경우 사용됩니다.
-- 주로 Tasklet 인터페이스 구현체를 만들어서 사용합니다. 
+## Step 재시작 제어 API
+
+### startLimit - 재시작 횟수 제한
+
+Step 실패 시 재시작할 수 있는 최대 횟수를 제한한다.
+
 ```java
-public Step taskStep(){
-    return stepBuilderFactory.get("taskStep")
-            .tasklet(new CustomTasklet())
+@Bean
+public Step limitedRetryStep(JobRepository jobRepository,
+                              PlatformTransactionManager transactionManager) {
+    return new StepBuilder("limitedRetryStep", jobRepository)
+            .tasklet((contribution, chunkContext) -> {
+                // 외부 API 호출 등 실패 가능한 작업
+                callExternalApi();
+                return RepeatStatus.FINISHED;
+            }, transactionManager)
+            .startLimit(3)  // 최대 3번까지만 재시작 허용
+            .build();
+}
+```
+
+3번 재시작 후에도 실패하면 `StartLimitExceededException`이 발생한다.
+
+```text
+재시작 1회차: Step 실행 -> FAILED
+재시작 2회차: Step 실행 -> FAILED
+재시작 3회차: Step 실행 -> FAILED
+재시작 4회차: StartLimitExceededException 발생!
+```
+
+### allowStartIfComplete - 완료된 Step 재실행
+
+기본적으로 성공한 Step은 재시작 시 건너뛴다. `allowStartIfComplete(true)`로 설정하면 성공한 Step도 재실행한다.
+
+```java
+@Bean
+public Step dataValidationStep(JobRepository jobRepository,
+                                PlatformTransactionManager transactionManager) {
+    return new StepBuilder("dataValidationStep", jobRepository)
+            .tasklet((contribution, chunkContext) -> {
+                // 데이터 유효성 검증 - 매번 실행 필요
+                validateData();
+                return RepeatStatus.FINISHED;
+            }, transactionManager)
+            .allowStartIfComplete(true)  // 성공해도 재시작 시 다시 실행
+            .build();
+}
+```
+
+**활용 사례:**
+- 시점에 따라 결과가 달라지는 데이터 유효성 검증
+- 외부 시스템 상태 확인
+- 매 실행마다 최신 데이터 동기화가 필요한 경우
+
+### 조합 예시
+
+```java
+@Bean
+public Job robustBatchJob(JobRepository jobRepository,
+                          PlatformTransactionManager transactionManager) {
+    return new JobBuilder("robustBatchJob", jobRepository)
+            .start(validationStep(jobRepository, transactionManager))
+            .next(processingStep(jobRepository, transactionManager))
+            .next(cleanupStep(jobRepository, transactionManager))
+            .build();
+}
+
+@Bean
+public Step validationStep(JobRepository jobRepository,
+                           PlatformTransactionManager transactionManager) {
+    return new StepBuilder("validationStep", jobRepository)
+            .tasklet(validationTasklet(), transactionManager)
+            .allowStartIfComplete(true)  // 재시작 시에도 항상 검증
+            .build();
+}
+
+@Bean
+public Step processingStep(JobRepository jobRepository,
+                           PlatformTransactionManager transactionManager) {
+    return new StepBuilder("processingStep", jobRepository)
+            .<Data, Data>chunk(100, transactionManager)
+            .reader(dataReader())
+            .processor(dataProcessor())
+            .writer(dataWriter())
+            .startLimit(5)  // 최대 5회까지 재시작
+            .build();
+}
+```
+
+## JobStep - Step 안의 Job
+
+`JobStep`은 Step 내부에 별도의 Job을 포함시킨다. 큰 Job을 논리적으로 분리하거나, 재사용 가능한 Job을 조합할 때 유용하다.
+
+```java
+@Configuration
+@RequiredArgsConstructor
+public class JobStepConfig {
+
+    private final JobRepository jobRepository;
+    private final PlatformTransactionManager transactionManager;
+    private final JobLauncher jobLauncher;
+
+    @Bean
+    public Job parentJob() {
+        return new JobBuilder("parentJob", jobRepository)
+                .start(childJobStep())
+                .next(postProcessingStep())
+                .build();
+    }
+
+    @Bean
+    public Step childJobStep() {
+        return new StepBuilder("childJobStep", jobRepository)
+                .job(childJob())
+                .launcher(jobLauncher)
+                .parametersExtractor(jobParametersExtractor())
+                .build();
+    }
+
+    @Bean
+    public Job childJob() {
+        return new JobBuilder("childJob", jobRepository)
+                .start(childStep1())
+                .next(childStep2())
+                .build();
+    }
+
+    /**
+     * 부모 Job의 파라미터나 ExecutionContext에서 값을 추출하여
+     * 자식 Job에 전달
+     */
+    @Bean
+    public DefaultJobParametersExtractor jobParametersExtractor() {
+        DefaultJobParametersExtractor extractor = new DefaultJobParametersExtractor();
+        extractor.setKeys(new String[]{"inputFile", "outputDir"});
+        return extractor;
+    }
+}
+```
+
+### JobStep 실행 결과에 따른 상태
+
+| 시나리오 | Child Job 상태 | Parent Job 상태 |
+|---------|---------------|-----------------|
+| 모두 성공 | COMPLETED | COMPLETED |
+| Child Job 실패 | FAILED | FAILED |
+| Child 성공, Parent의 다른 Step 실패 | COMPLETED | FAILED |
+
+Child Job은 별도의 JobInstance로 관리되므로, Child Job이 성공하면 Parent Job 재시작 시 Child Job은 다시 실행되지 않는다.
+
+## PartitionStep - 병렬 처리
+
+대용량 데이터를 파티션으로 나누어 병렬 처리한다. 각 파티션은 독립적인 StepExecution으로 실행된다.
+
+```java
+@Bean
+public Step partitionedStep(JobRepository jobRepository,
+                            PlatformTransactionManager transactionManager) {
+    return new StepBuilder("partitionedStep", jobRepository)
+            .partitioner("workerStep", rangePartitioner())
+            .step(workerStep(jobRepository, transactionManager))
+            .gridSize(4)  // 4개 파티션으로 분할
+            .taskExecutor(taskExecutor())
+            .build();
+}
+
+@Bean
+public Partitioner rangePartitioner() {
+    return gridSize -> {
+        Map<String, ExecutionContext> partitions = new HashMap<>();
+        int totalRecords = getTotalCount();
+        int range = totalRecords / gridSize;
+
+        for (int i = 0; i < gridSize; i++) {
+            ExecutionContext context = new ExecutionContext();
+            context.putInt("minId", i * range + 1);
+            context.putInt("maxId", (i + 1) * range);
+            partitions.put("partition" + i, context);
+        }
+        return partitions;
+    };
+}
+
+@Bean
+public Step workerStep(JobRepository jobRepository,
+                       PlatformTransactionManager transactionManager) {
+    return new StepBuilder("workerStep", jobRepository)
+            .<Data, Data>chunk(100, transactionManager)
+            .reader(partitionedReader(null, null))  // @StepScope로 파티션 값 주입
+            .processor(processor())
+            .writer(writer())
+            .build();
+}
+
+@Bean
+@StepScope
+public JdbcCursorItemReader<Data> partitionedReader(
+        @Value("#{stepExecutionContext['minId']}") Integer minId,
+        @Value("#{stepExecutionContext['maxId']}") Integer maxId) {
+    return new JdbcCursorItemReaderBuilder<Data>()
+            .name("partitionedReader")
+            .dataSource(dataSource)
+            .sql("SELECT * FROM data WHERE id BETWEEN ? AND ?")
+            .preparedStatementSetter(ps -> {
+                ps.setInt(1, minId);
+                ps.setInt(2, maxId);
+            })
+            .rowMapper(new DataRowMapper())
+            .build();
+}
+```
+
+## FlowStep - 복잡한 흐름 제어
+
+여러 Step을 Flow로 그룹화하여 재사용하거나, 조건부 분기를 구현한다.
+
+```java
+@Bean
+public Job flowBasedJob(JobRepository jobRepository) {
+    return new JobBuilder("flowBasedJob", jobRepository)
+            .start(preprocessingFlow())
+            .next(mainProcessingStep())
+            .end()
+            .build();
+}
+
+@Bean
+public Flow preprocessingFlow() {
+    return new FlowBuilder<SimpleFlow>("preprocessingFlow")
+            .start(validateInputStep())
+            .next(backupStep())
+            .build();
+}
+
+// 조건부 분기
+@Bean
+public Job conditionalJob(JobRepository jobRepository) {
+    return new JobBuilder("conditionalJob", jobRepository)
+            .start(decisionStep())
+            .on("VALID").to(processStep())
+            .from(decisionStep())
+            .on("INVALID").to(errorHandlingStep())
+            .from(decisionStep())
+            .on("*").to(defaultStep())
+            .end()
+            .build();
+}
+```
+
+## 실전 팁
+
+### 1. Step 설계 원칙
+
+```text
+✓ 하나의 Step은 하나의 책임만
+✓ Step 간 의존성을 최소화
+✓ 실패 시 재시작 가능하도록 멱등성 보장
+✓ 진행 상황을 ExecutionContext에 저장하여 재시작 시 복원
+```
+
+### 2. Chunk-size 튜닝
+
+```java
+// 메모리 사용량 모니터링하며 조정
+@Bean
+public Step tunedChunkStep(JobRepository jobRepository,
+                           PlatformTransactionManager transactionManager) {
+    return new StepBuilder("tunedChunkStep", jobRepository)
+            .<Data, Data>chunk(
+                    getOptimalChunkSize(),  // 환경 변수나 설정에서 동적으로
+                    transactionManager)
+            .reader(reader())
+            .writer(writer())
+            .build();
+}
+
+private int getOptimalChunkSize() {
+    // 시스템 메모리, 레코드 크기 등을 고려하여 결정
+    return Integer.parseInt(System.getProperty("batch.chunk.size", "100"));
+}
+```
+
+### 3. Step 리스너 활용
+
+```java
+@Bean
+public Step monitoredStep(JobRepository jobRepository,
+                          PlatformTransactionManager transactionManager) {
+    return new StepBuilder("monitoredStep", jobRepository)
+            .<Data, Data>chunk(100, transactionManager)
+            .reader(reader())
+            .writer(writer())
             .listener(new StepExecutionListener() {
                 @Override
-                public void beforeStep(StepExecution stepExecution) {}
+                public void beforeStep(StepExecution stepExecution) {
+                    log.info("Step 시작: {}", stepExecution.getStepName());
+                }
 
                 @Override
-                public ExitStatus afterStep(StepExecution stepExecution) {return null;}
-            })  // 1. Step 실행전과 후에 수행해야할 콜백 로직 설정
-            .build();
-}      
-```
-
-- Chunk Buffering
-
-## Step API - startLimit / allowStartIfComplete
-
-- Step 재시작과 관련된 API로 startLimit , allowStartIfComplete API가 존재합니다. 
-
-### startLimit API 
-
-- step 실패시 step이 재수행될 수 있는데, 이때 재수행횟수를 제한하는 API입니다. 
-- 예를 들어서 ```startLimit``` 값을 3으로 주게 되면 3번까지만 step 재시작이 허용됩니다. 이후에는 ```org.springframework.batch.core.StartLimitExceededException``` 예외가 터집니다.
-- default값은 ```Integer.MAX_VALUE```로 사실상 제한이 없습니다.
-
-### 설정 예시
-- 아래 테스트 케이스는 startLimit을 3으로 주었을 때입니다.
-```java
-public Step step(){
-    return stepBuilderFactory.get("step")
-            .tasklet((contribution, chunkContext) -> {
-                System.out.println("step execute");
-                throw new RuntimeException();
+                public ExitStatus afterStep(StepExecution stepExecution) {
+                    log.info("Step 완료: {} - 읽음: {}, 씀: {}",
+                            stepExecution.getStepName(),
+                            stepExecution.getReadCount(),
+                            stepExecution.getWriteCount());
+                    return stepExecution.getExitStatus();
+                }
             })
-            .startLimit(3)
             .build();
 }
 ```
-- tasklet 로직에서 의도적으로 RuntimeException을 던지고 Job을 여러번까지 재시작하면 3번까지는 ```BATCH_JOB_STEP_EXECUTION```테이블에 저장됩니다.
 
-<figure>
-  <img src="/images/BATCH_STEP_03.png"></img>
-        <figcaption>startLimit 3으로 설정하고 STEP 재시작시 BATCH_STEP_EXECUTION 테이블 상태</figcaption>
-</figure>
+## 자주 묻는 질문 (FAQ)
 
-- 이후에 step은 재시작하더라도 아래와 같은 예외가 던져지게 됩니다.
-```bash
-org.springframework.batch.core.StartLimitExceededException: Maximum start limit exceeded for step: stepStartMax: 3
-```
-- 주의해야할 부분은 해당 API와 설정과 무관하게 Job Execution은 계속해서 일어나게 됩니다. 즉 ```BATCH_JOB_EXECUTION``` 테이블의 행은 누적됩니다. 즉 Step 재시작이 안되는 것 뿐 입니다. 
-  아래 예시를 확인해보면 설정된 ```startLimit```값 (3) 이후로는 ```StartLimitException```이 ```EXIT_MESSAGE```로 기록되고 있습니다. 
-<figure>
-  <img src="/images/BATCH_STEP_04.png"></img>
-        <figcaption>startLimit 3으로 설정하고 STEP 재시작시 BATCH_JOB_EXECUTION 테이블 상태</figcaption>
-</figure>
+### Q1: Chunk-size는 얼마로 설정해야 하나요?
 
-### allowStartIfComplete API
+일반적으로 100~500 사이에서 시작한다. 레코드 크기가 크면 작게, 작으면 크게 설정한다. 실제 환경에서 메모리 사용량과 처리 시간을 모니터링하며 튜닝하는 것이 좋다.
 
-- step 실패시 step이 재시작될 수 있는데, 이때 기존에 완료된 step은 재시작할지 말지를 결정하는 api입니다.
-- 기본값은 false로 완료된 step은 재시작을 수행하지 않습니다. 만약 true로 주게 된다면 이미 ```COMPLETE```된 step이더라도 항상 재시작합니다. 
+### Q2: Task 기반과 Chunk 기반 중 어떤 것을 선택해야 하나요?
 
+- **Task 기반**: 파일 삭제, 알림 발송 등 단순하고 독립적인 작업
+- **Chunk 기반**: 대량의 데이터를 읽고, 처리하고, 저장하는 ETL 작업
 
-### 설정 예시
-- 아래 테스트 케이스는 ```Job```을 첫 번째 step은 ```allowStartIfComplete```값을 ```true```로 준 step이고, 두번째 step은 항상 실패하는 step입니다. 
-   즉 두 번째 step에서 항상 실패함으로 step1은 ```allowStartIfComplete```값이 ```true```라면 같이 재시작됩니다.
+### Q3: Step 실패 시 자동 재시도는 어떻게 하나요?
+
+`faultTolerant()`와 `retry()`를 사용한다:
+
 ```java
 @Bean
-public Job batchJob() {
-        return this.jobBuilderFactory.get("Job")
-        .start(restartAllowableStep())
-        .next(alwaysFailStep())
-        .build();
-}
-@Bean
-public Step restartAllowableStep(){
-        return stepBuilderFactory.get("restartAllowableStep")
-        .tasklet((contribution, chunkContext) -> RepeatStatus.FINISHED)
-        .allowStartIfComplete(true)
-        .build();
-}
-@Bean
-public Step alwaysFailStep(){
-        return stepBuilderFactory.get("alwaysFailStep")
-        .tasklet((contribution, chunkContext) -> {
-        throw new RuntimeException();
-        })
-        .startLimit(3)
-        .build();
+public Step retryableStep(JobRepository jobRepository,
+                          PlatformTransactionManager transactionManager) {
+    return new StepBuilder("retryableStep", jobRepository)
+            .<Data, Data>chunk(100, transactionManager)
+            .reader(reader())
+            .processor(processor())
+            .writer(writer())
+            .faultTolerant()
+            .retry(TransientException.class)
+            .retryLimit(3)
+            .build();
 }
 ```
 
-- 5번 Job을 재시작해보면 ```allowStartIfComplete```을 ```true```로 준 첫 번째 step은 이미 step이 완료되었음에도 불구하고 항상 재시작 되는 것을 확인할 수 있습니다.
-- 항상 실패하는 두 번째 step은 ```startLimit``` 값을 초과하게 되면 재시작되지 않고, 첫 번째 step만 계속해서 재시작됩니다.
-<figure>
-  <img src="/images/BATCH_STEP_05.png"></img>
-        <figcaption> allowStartIfComplete값을 true로 설정하고 STEP 재시작시 BATCH_STEP_EXECUTION 테이블 상태</figcaption>
-</figure>
+### Q4: ExecutionContext에 저장할 수 있는 데이터 크기 제한이 있나요?
 
+DB 컬럼 크기에 따라 제한된다. 기본적으로 직렬화된 JSON 형태로 저장되므로, 너무 큰 데이터는 외부 저장소(Redis, S3 등)를 활용하고 ExecutionContext에는 참조 키만 저장하는 것이 좋다.
 
-### 언제 allowStartIfComplete API를 사용할 수 있을까?
+### Q5: allowStartIfComplete와 startLimit을 동시에 사용할 수 있나요?
 
-- 시점에 따라 데이터 값이 변경될 수 있어 <strong>데이터 유효성 점검</strong>을 수행하는 step의 경우에는 이전에 성공했던 step이더라도 재실행이 필요할 것입니다. 
+가능하다. `allowStartIfComplete(true)`는 성공한 Step을 재실행할지 결정하고, `startLimit`은 실패한 Step의 재시작 횟수를 제한한다. 두 설정은 독립적으로 동작한다.
 
+### Q6: ItemProcessor에서 null을 반환하면 어떻게 되나요?
 
-## JobStep
+해당 아이템은 필터링되어 ItemWriter로 전달되지 않는다. `filterCount`가 1 증가하고 다음 아이템 처리로 넘어간다. 조건부로 아이템을 건너뛸 때 유용하다.
 
-- Job을 포함하고 있는 Step입니다. 즉, Step안에 또 다른 Job이 있습니다.
-- JobStep안에 있는 Job이 실패하면, 해당 JobStep을 포함하고 있는 Job 역시 당연히 실패합니다.
-- Job 실행 관련 메타 데이터는 JobStep안에 Job도 별도로 DB에 저장됩니다.
-- 커다란 Job 하나를 작은 Job으로 쪼개서 관리하고자 할 때 사용될 수 있습니다. 
+### Q7: Chunk 처리 중 특정 아이템에서 예외가 발생하면?
 
-### 설정 예시
-- 먼저 가장 상위 Job을 설정하고, 하위에 step을 JobStep 으로 구성합니다. 
-- JobStep에 들어갈 Job이 사용할 parameter를 정의하기 위해서 ```parametersExtractor```를 정의합니다. 
-```java
-@Bean
-public Job parentJob(Step jobStep) {
-    return this.jobBuilderFactory.get("parentJob") // 1. 가장 상위의 Job입니다.
-                                 .start(jobStep)
-                                 .next(parentStep())
-                                 .build();
-}
+기본적으로 해당 Chunk 전체가 롤백된다. `faultTolerant()`와 `skip()`을 설정하면 특정 예외 발생 시 해당 아이템만 건너뛰고 나머지는 정상 처리할 수 있다.
 
-@Bean
-public Step jobStep(JobLauncher jobLauncher) { 
-        return stepBuilderFactory.get("jobStep") // 2. JobStep 입니다. 
-        .job(childJob())   // 3. JobStep이 포함할 Job을 명시합니다.
-        .launcher(jobLauncher) // 4. 해당 Job이 사용할 JobLauncher를 명시합니다.
-        .parametersExtractor(jobParmetersExtractor()) // 5. 해당 Job에 넘겨줄 파라미터를 어떻게 가져올것인지 정의합니다.
-        .listener(new StepExecutionListener() { // 6. step 실행 전후로 실행할 콜백메소드를 정의합니다.
-            @Override
-            public void beforeStep(StepExecution stepExecution) {
-                    stepExecution.getExecutionContext().putString("name", "chansoo");
-            }
-            
-            @Override
-            public ExitStatus afterStep(StepExecution stepExecution) {
-                    return null;
-            }
-        })
-        .build();
-}
-```
+### Q8: StepBuilderFactory에서 StepBuilder로 마이그레이션하려면?
 
+Spring Batch 5.0부터 `StepBuilderFactory`가 deprecated되었다. `new StepBuilder("stepName", jobRepository)`로 직접 생성하고, `transactionManager`를 tasklet이나 chunk 메서드에 전달하면 된다.
 
-- Spring Batch에서는  ```parametersExtractor``` 인터페이스의 구현체인 ```DefaultJobParametersExtractor```를 제공합니다.
-- ```DefaultJobParametersExtractor```는 부모 Job의 parameter와 Step의 parameter를 가져올 수 있습니다. 이때 가져올 parameter의 key값을 설정해줄 수 있습니다. 
-- 위 예시 코드에서는 ```StepExecutionListener```에서 JobStep이 실행되기전에 ```name``` parameter를 설정해서 넘겨주고 있습니다. 이럴때는 아래와 같이 key를 ```name```으로 주면 설정된 value값을 들고 올 수 있습니다. 
-```java
-// stepExecutionContext에 있는 key를 찾아서 job에게 값을 넘겨줄 수 있습니다.
-private JobParametersExtractor jobParmetersExtractor() {
-        DefaultJobParametersExtractor extractor = new DefaultJobParametersExtractor();
-        extractor.setKeys(new String[]{"name"}); // 1. name key를 가진 parameter가 존재하는 경우 Job에 넘겨준다.
-        return extractor;
-}
-```
+## 참고문헌
 
-배치 작업이 부모 Job,JobStep의 Job모두 성공한 경우가 아니라 JobStep의 Job만 성공한 case에는 어떻게 될까요? 아래와 같이 각각 3개의 케이스로 나눠볼 수 있을것입니다. 
-
-1. 부모 Job, JobStep의 Job 모두 성공된 경우 
-2. 부모 Job 실행 중 JobStep의 Job이 실패된 경우
-3. 부모 Job 실행 중 JobStep의 Job은 성공했으나, 부모 Job의 다른 Step 실패된 경우
-
-### 부모 Job, JobStep의 Job 모두 성공된 케이스
-
-- 우선 성공/실패 케이스와 별개로 ```BATCH_JOB_INSTANCE``` 테이블에는 부모 Job와 ```JobStep```의 Job 모두 데이터가 들어갑니다.
-
-<figure>
-  <img src="/images/BATCH_STEP_06.png"></img>
-        <figcaption> JobStep 구성한 Job의 BATCH_JOB_INSTANCE 테이블 상태</figcaption>
-</figure>
-
-- JobStep의 Job또한 별개의 Job Instance로 관리되기 때문에 ```BATCH_JOB_EXECUTION``` 테이블의 레코드도 2개가 생성됩니다. 
-
-<figure>
-  <img src="/images/BATCH_STEP_07.png"></img>
-        <figcaption> JobStep 구성한 Job의 BATCH_JOB_EXECUTION 테이블 상태</figcaption>
-</figure>
-
-<figure>
-  <img src="/images/BATCH_STEP_08.png"></img>
-        <figcaption> JobStep 구성한 Job의 BATCH_STEP_EXECUTION 테이블 상태</figcaption>
-</figure>
-
-### 부모 Job 실행 중 JobStep의 Job이 실패된 케이스
-
-- JobStep의 Job이 실패되면 부모의 Job도 실패처리가 됩니다. 즉 모든 Job이 실패된 것으로 간주됩니다. 
-
-아래와 같이 JobStep의 job의 step에서 무조건 ```RuntimeException```을 던져서 실패하도록 설정하였습니다. 
-```java
-@Bean
-public Step childStep() {
-    return stepBuilderFactory.get("childStep")
-                             .tasklet((contribution, chunkContext) -> {
-                                 throw new RuntimeException("child job failed");
-                             })
-                             .build();
-}
-```
-
-- job 실행 후 ```BATCH_JOB_EXECUTION```테이블을 확인해보면 부모 Job까지 모두 실패처리된것을 확인할 수 있고 부모 Job은 ```org.springframework.batch.core.UnexpectedJobExecutionException: Step failure: the delegate Job failed in JobStep.``` 예외가 던져집니다.
-
-<figure>
-  <img src="/images/BATCH_STEP_09.png"></img>
-        <figcaption> JobStep 구성한 Job의 BATCH_JOB_EXECUTION 테이블 상태</figcaption>
-</figure>
-
-- ```BATCH_STEP_EXECUTION```테이블을 확인해보면 부모 Job의 다음 step은 실행처리가 안되고, JobStep의 job의 step까지만 처리하다가 실패된것으로 기록됩니다. 
-
-<figure>
-  <img src="/images/BATCH_STEP_10.png"></img>
-        <figcaption> JobStep 구성한 Job의 BATCH_STEP_EXECUTION 테이블 상태</figcaption>
-</figure>
-
-
-### 부모 Job 실행 중 JobStep의 Job은 성공했으나, 부모 Job의 다른 Step 실패된 경우
-
-- JobStep의 Job은 별개의 ```JobInstance```로 취급되기 때문에 ```COMPLETED```상태로 기록되고, 부모 Job만 ```FAILED```상태로 기록됩니다. 즉 JobStep의 Job은 성공처리됩니다.
-```BATCH_JOB_EXECUTION``` 테이블을 확인해보면 JobStep의 job은 성공처리된것을 확인할 수 있습니다. 
-
-<figure>
-  <img src="/images/BATCH_STEP_11.png"></img>
-        <figcaption> JobStep 구성한 Job의 BATCH_JOB_EXECUTION 테이블 상태</figcaption>
-</figure>
-
-
-<figure>
-  <img src="/images/BATCH_STEP_12.png"></img>
-        <figcaption> JobStep 구성한 Job의 BATCH_STEP_EXECUTION 테이블 상태</figcaption>
-</figure>
-
-
-## Reference
-[1] https://docs.spring.io/spring-batch/docs/current/reference/html/domain.html
-[2] https://docs.spring.io/spring-batch/docs/current/reference/html/step.html#configureStep
+- [Spring Batch Reference - Configuring a Step](https://docs.spring.io/spring-batch/reference/step.html) - 공식 문서
+- [TERASOLUNA Batch Framework Guideline](https://terasoluna-batch.github.io/guideline/5.0.0.RELEASE/en/Ch02_SpringBatchArchitecture.html) - 아키텍처 상세
+- [Spring Batch - Chunk-oriented Processing](https://docs.spring.io/spring-batch/reference/step/chunk-oriented-processing.html) - Chunk 처리 공식 가이드

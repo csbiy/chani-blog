@@ -1,28 +1,269 @@
 ---
 id: 111
 title: "DB 캐시 탐색 메커니즘"
-description: ""
+description: "데이터베이스 Buffer Cache의 구조와 탐색 알고리즘, Hash Chain과 LRU 관리, Latch를 통한 동시성 제어"
 date: "2022-11-06 21:35:19"
-tags: ["Computer Science", "Database"]
+tags: ["Computer Science", "Database", "BufferCache", "Oracle", "MySQL"]
 ---
-- Direct Path I/O을 제외한 모든 블록 I/O는 메모리 버퍼캐시에 해당 블록이 있는지 확인하고 없으면 물리 I/O가 발생한다. 
 
-![](/images/db-buffer-cache-01.png)
+## Buffer Cache가 필요한 이유
 
-- 인덱스 루트 블록을 읽을 때 , 인덱스 루트 블록을 통해 얻은 ROWID값으로 브랜치 블록을 읽을때 , 브랜치 블록에서 얻은 ROWID값으로 리프 블록을 읽을때 , 리프 블록에서 읽은 ROWID값으로 테이블 블록 읽을 때 , Full Scan시 모두 메모리 버퍼 캐시를 먼저 확인한다. 
+디스크 I/O는 메모리 접근보다 수천~수만 배 느리다. DB가 매번 디스크에서 데이터를 읽어오면 성능이 나올 수가 없다. 그래서 자주 사용하는 데이터 블록을 메모리에 올려두고 재사용하는 게 Buffer Cache다.
 
+Buffer Cache는 DB 성능의 핵심이다. 같은 데이터를 10번 읽어야 할 때, 매번 디스크에 가면 10번의 물리 I/O가 발생한다. Buffer Cache에 있으면 첫 번째만 디스크에서 읽고 나머지 9번은 메모리에서 읽는다.
 
-## 메모리 버퍼 캐시의 구조 
+```text
+Buffer Cache Hit  → 메모리 접근 (수십 나노초)
+Buffer Cache Miss → 디스크 I/O (수 밀리초) + 메모리에 캐싱
+```
 
-- 해시구조로 관리 , 해시 함수에 입력값을 넣어 나온 해시값으로 몇번 해시 Chain에 속해있는지 확인하고 , 해당 Chain에 연결되어 있는 버퍼 헤더를 순차 탐색한다. 결과값이 있다면 캐시된 버퍼 블록으로부터 데이터을 읽어오고 , 결과값이 없다면 물리 I/O가 발생하고 , 읽기 전에 버퍼 블록에 캐싱한다. 
+## Buffer Cache의 위치
 
-![](/images/db-buffer-cache-02.png)
+Buffer Cache는 DB 인스턴스의 공유 메모리 영역에 위치한다. Oracle에서는 SGA(System Global Area), MySQL InnoDB에서는 Buffer Pool이라고 부른다.
 
+![InnoDB Architecture](https://dev.mysql.com/doc/refman/8.0/en/images/innodb-architecture.png)
+*MySQL InnoDB 아키텍처 - Buffer Pool이 In-Memory Structures의 핵심 영역이다*
 
-## 메모리 공유 자원에 대한 직렬화 
+모든 프로세스(세션)가 이 메모리 영역을 공유한다. 한 세션이 읽어온 블록을 다른 세션도 재사용할 수 있어서 효율적이다. 대신 공유 자원이므로 동시성 제어가 필요하다.
 
-- 버퍼캐시는 SGA 구성요소로 프로세스간 공유 자원임. 즉 동시성이슈가 발생할 수 있어 동기화 작업이 필요함 
+## Buffer Cache 탐색 흐름
 
-- Cache Buffer Chain Latch : 해시 체인에 접근하기전 프로세스는 Latch 를 획득해야만 접근이 가능하다. 만약 한 process가 Latch를 획득했다면 다른 process는 대기한다. 
+Direct Path I/O를 제외한 모든 블록 I/O는 Buffer Cache를 먼저 확인한다.
 
-- Buffer Lock : Buffer Block에 대한 동기화 메카니즘 
+```text
+┌─────────────────────────────────────────────────────────────┐
+│                    Block I/O 요청                            │
+└─────────────────────┬───────────────────────────────────────┘
+                      ▼
+              ┌───────────────┐
+              │ Buffer Cache  │
+              │   탐색         │
+              └───────┬───────┘
+                      │
+           ┌──────────┴──────────┐
+           ▼                     ▼
+    ┌─────────────┐       ┌─────────────┐
+    │  Cache Hit  │       │ Cache Miss  │
+    │ (메모리에서    │       │ (디스크에서    │
+    │    읽기)     │       │ 읽고 캐싱)     │
+    └─────────────┘       └─────────────┘
+```
+
+인덱스 스캔을 예로 들면:
+1. **루트 블록 읽기** → Buffer Cache 확인
+2. **브랜치 블록 읽기** → Buffer Cache 확인
+3. **리프 블록 읽기** → Buffer Cache 확인
+4. **테이블 블록 읽기** → Buffer Cache 확인
+
+Full Table Scan도 마찬가지다. 블록 단위로 Buffer Cache를 먼저 확인한다.
+
+## Hash 구조로 빠른 탐색
+
+Buffer Cache에 수만~수십만 개의 블록이 올라와 있을 수 있다. 순차 탐색하면 너무 느리다. 그래서 **Hash 구조**로 관리한다.
+
+### Hash Bucket과 Hash Chain
+
+```text
+  Block 주소 (DBA)
+        │
+        ▼
+  ┌──────────────┐
+  │  Hash 함수    │
+  └──────┬───────┘
+         │
+         ▼
+   Hash Bucket 번호 결정
+         │
+         ▼
+┌─────────────────────────────────────────────────────────┐
+│ Hash Bucket 0 │ Hash Bucket 1 │ Hash Bucket 2 │ ...    │
+├───────────────┼───────────────┼───────────────┼────────┤
+│      │        │      │        │      │        │        │
+│      ▼        │      ▼        │      ▼        │        │
+│   ┌─────┐     │   ┌─────┐     │   ┌─────┐     │        │
+│   │ BH  │←→   │   │ BH  │←→   │   │ BH  │←→   │        │
+│   └─────┘     │   └─────┘     │   └─────┘     │        │
+│      ↓        │      ↓        │      ↓        │        │
+│   ┌─────┐     │   ┌─────┐     │   ┌─────┐     │        │
+│   │ BH  │←→   │   │ BH  │     │   │ BH  │     │        │
+│   └─────┘     │   └─────┘     │   └─────┘     │        │
+│      ↓        │               │               │        │
+│   ┌─────┐     │               │               │        │
+│   │ BH  │     │               │               │        │
+│   └─────┘     │               │               │        │
+└─────────────────────────────────────────────────────────┘
+           BH = Buffer Header (이중 연결 리스트)
+```
+
+탐색 과정:
+1. **Block 주소(DBA)**를 Hash 함수에 입력
+2. **Hash Bucket 번호** 결정
+3. 해당 Bucket의 **Hash Chain**을 순차 탐색
+4. Buffer Header에서 원하는 블록 찾기
+
+Hash Chain 내에서는 순차 탐색이지만, Chain 길이가 짧으면 빠르다. 잘 분산되도록 Hash Bucket 개수를 충분히 잡는 게 중요하다.
+
+### Buffer Header와 Buffer Block
+
+Buffer Header는 버퍼 메타데이터를 담고 있다:
+- Block 주소 (DBA: Data Block Address)
+- 상태 정보 (Clean/Dirty, Pinned 등)
+- Hash Chain 링크 (이전/다음 포인터)
+- LRU Chain 링크
+
+실제 데이터는 Buffer Block에 있고, Buffer Header가 이를 가리킨다.
+
+## LRU 알고리즘으로 교체 관리
+
+Buffer Cache 공간은 제한되어 있다. 새 블록을 캐싱하려면 기존 블록을 내보내야 한다. 어떤 블록을 내보낼지 결정하는 게 **LRU(Least Recently Used)** 알고리즘이다.
+
+![Buffer Pool LRU List](https://dev.mysql.com/doc/refman/8.4/en/images/innodb-buffer-pool-list.png)
+*InnoDB Buffer Pool의 LRU List 구조 - New Sublist(Hot)와 Old Sublist로 나뉜다*
+
+### Midpoint Insertion 전략
+
+단순 LRU는 문제가 있다. Full Table Scan 한 번에 자주 사용하던 블록이 전부 밀려날 수 있다. 그래서 **Midpoint Insertion** 전략을 사용한다.
+
+| 영역 | 위치 | 특징 |
+|------|------|------|
+| **New Sublist (Young)** | 리스트 Head | 자주 접근되는 Hot 블록 |
+| **Old Sublist** | 리스트 Tail | 최근에 읽혔지만 아직 검증 안 된 블록 |
+| **Midpoint** | 중간 지점 | 새 블록이 삽입되는 위치 |
+
+새 블록은 Midpoint(Old Sublist의 Head)에 삽입된다. 이후 다시 접근되면 New Sublist로 승격한다. 한 번만 읽히고 버려지는 블록은 Old Sublist에서 빠르게 evict된다.
+
+```text
+신규 블록 → Midpoint 삽입 → 재접근 시 Head로 이동
+                         → 미접근 시 Tail로 밀려나 evict
+```
+
+이 방식 덕분에 Full Scan이 Cache를 오염시키는 걸 막을 수 있다.
+
+## Dirty Buffer와 Checkpoint
+
+Buffer Cache의 블록이 수정되면 **Dirty Buffer**가 된다. Dirty Buffer는 디스크의 원본과 내용이 다르다.
+
+### Buffer 상태
+
+| 상태 | 설명 |
+|------|------|
+| **Free** | 비어있는 버퍼, 새 블록 캐싱에 사용 가능 |
+| **Clean** | 디스크와 내용이 동일 |
+| **Dirty** | 수정됨, 디스크에 기록 필요 |
+| **Pinned** | 현재 사용 중, 교체 불가 |
+
+### Checkpoint와 DBWn
+
+Dirty Buffer는 언젠가 디스크에 기록되어야 한다. 이 작업을 **Checkpoint**라고 하고, **DBWn(Database Writer)** 프로세스가 담당한다.
+
+```text
+트랜잭션 Commit
+      │
+      ▼
+  Redo Log에 기록 (WAL)     ← 즉시 기록 (durability 보장)
+      │
+      ▼
+  Buffer에는 Dirty 상태 유지
+      │
+      ▼
+  DBWn이 주기적으로 디스크에 기록 (Checkpoint)
+```
+
+**WAL(Write-Ahead Logging)** 덕분에 Dirty Buffer를 즉시 디스크에 쓰지 않아도 된다. Commit 시점에 Redo Log만 기록하면 복구가 가능하므로 durability가 보장된다.
+
+## 동시성 제어: Latch와 Buffer Lock
+
+Buffer Cache는 공유 자원이다. 여러 프로세스가 동시에 접근하면 데이터 정합성이 깨질 수 있다. 이를 방지하기 위한 동기화 메커니즘이 필요하다.
+
+### Cache Buffer Chain Latch
+
+Hash Chain을 탐색하거나 수정할 때 **Latch**를 획득해야 한다.
+
+```text
+프로세스 A                          프로세스 B
+    │                                   │
+    ▼                                   ▼
+Latch 획득 시도                     Latch 획득 시도
+    │                                   │
+    ▼                                   ▼
+ [성공]                              [대기]
+    │                                   │
+    ▼                                   :
+Hash Chain 탐색                         :
+    │                                   :
+    ▼                                   :
+Latch 해제  ─────────────────────→  Latch 획득
+                                        │
+                                        ▼
+                                   Hash Chain 탐색
+```
+
+Latch는 아주 짧은 시간만 점유하는 가벼운 락이다. 하지만 Hot Block(자주 접근되는 블록)이 있으면 해당 Hash Chain의 Latch 경합이 심해질 수 있다.
+
+### Buffer Lock (Buffer Pin)
+
+실제 Buffer Block을 읽거나 수정할 때는 **Buffer Lock**을 사용한다.
+
+| Lock 모드 | 용도 |
+|-----------|------|
+| **Shared** | 읽기 작업, 여러 프로세스 동시 가능 |
+| **Exclusive** | 쓰기 작업, 단독 점유 |
+
+Latch는 Hash Chain 탐색용, Buffer Lock은 실제 Block 접근용으로 역할이 다르다.
+
+## Buffer Cache 튜닝
+
+### Cache Hit Ratio
+
+Buffer Cache 효율을 측정하는 대표 지표가 **Cache Hit Ratio**다.
+
+```sql
+-- Oracle
+SELECT 1 - (physical_reads / (db_block_gets + consistent_gets)) AS hit_ratio
+FROM v$buffer_pool_statistics;
+
+-- MySQL
+SHOW GLOBAL STATUS LIKE 'Innodb_buffer_pool_read%';
+```
+
+일반적으로 **95% 이상**의 Hit Ratio를 목표로 한다. 낮다면:
+- Buffer Cache 크기 증가 검토
+- 비효율적인 Full Scan 쿼리 점검
+- Hot Block 분산 필요 여부 확인
+
+### 크기 설정
+
+| DB | 파라미터 | 권장값 |
+|----|----------|--------|
+| Oracle | `DB_CACHE_SIZE` | 가용 메모리의 40-70% |
+| MySQL | `innodb_buffer_pool_size` | 전용 서버 시 80% |
+
+너무 크게 잡으면 OS나 다른 프로세스가 메모리 부족으로 paging을 일으킬 수 있다.
+
+### Multiple Buffer Pool
+
+대용량 시스템에서는 Buffer Pool을 여러 개로 분리해서 Latch 경합을 줄인다.
+
+```sql
+-- MySQL: Buffer Pool Instance 개수 설정
+innodb_buffer_pool_instances = 8
+```
+
+Instance마다 별도의 LRU List와 Latch를 가지므로 동시성이 향상된다.
+
+## 정리
+
+Buffer Cache는 디스크 I/O를 줄여 DB 성능을 높이는 핵심 구조다.
+
+- **Hash 구조**로 빠른 탐색 (O(1) + Chain 길이)
+- **LRU + Midpoint Insertion**으로 효율적인 교체
+- **Latch**와 **Buffer Lock**으로 동시성 제어
+- **Dirty Buffer**는 Checkpoint 시 디스크에 기록
+- **Hit Ratio 95% 이상**을 목표로 튜닝
+
+## 참고문헌
+
+- [MySQL 8.4 Reference Manual - Buffer Pool](https://dev.mysql.com/doc/refman/8.4/en/innodb-buffer-pool.html)
+- [Oracle Database Memory Architecture](https://docs.oracle.com/en/database/oracle/oracle-database/26/cncpt/memory-architecture.html)
+- [Tuning the Database Buffer Cache - Oracle](https://docs.oracle.com/database/121/TGDBA/tune_buffer_cache.htm)
+- [latch: cache buffers chains - Oracle Internals](https://orainternals.wordpress.com/2008/07/30/tuning-latch-contention-cache-buffers-chain-latches/)
