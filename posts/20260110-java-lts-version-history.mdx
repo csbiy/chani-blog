@@ -216,11 +216,11 @@ public interface Vehicle {
 
     static Vehicle create(String type) {
         // 정적 팩토리 메서드
-        return switch (type) {
-            case "car" -> new Car();
-            case "bike" -> new Bike();
-            default -> throw new IllegalArgumentException();
-        };
+        switch (type) {
+            case "car": return new Car();
+            case "bike": return new Bike();
+            default: throw new IllegalArgumentException();
+        }
     }
 }
 ```
@@ -583,8 +583,12 @@ try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
     });
 }
 
-// Spring Boot에서 Virtual Thread 활성화
-// application.yml
+```
+
+Spring Boot에서 Virtual Thread를 활성화하려면 다음 설정을 추가하면 된다.
+
+```yaml
+# application.yml
 spring:
   threads:
     virtual:
