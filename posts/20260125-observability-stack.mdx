@@ -581,11 +581,6 @@ OpenTelemetry를 통합하면 MDC(Mapped Diagnostic Context)에 자동으로 `tr
 </configuration>
 ```
 
-**출력 예시**:
-```
-2026-01-25 15:30:45.123 [http-nio-8080-exec-1] INFO  c.e.OrderController - [traceId=5f3a4b2c1d8e9f7a, spanId=3c9d1e4f] - Creating order for user: 12345
-```
-
 **JSON 로그 형식** (프로덕션 권장):
 
 ```xml
@@ -1538,12 +1533,229 @@ Spring Boot 3.x에서 Micrometer Tracing을 쓰고 있다면, OpenTelemetry는 �
 
 ### Q3: Kubernetes에서 Collector를 Sidecar vs DaemonSet?
 
-| 배포 방식 | 장점 | 단점 | 추천 상황 |
-|----------|------|------|----------|
-| **Sidecar** | Pod별 격리, 설정 유연 | 리소스 중복 | 팀별 독립 운영 |
-| **DaemonSet** | 리소스 효율적, 중앙 관리 | Node 장애 시 영향 큼 | 단일 플랫폼 팀 운영 |
+Kubernetes에서 OpenTelemetry Collector를 배포하는 방식은 크게 두 가지다. 각각의 구조와 장단점을 비교해보자.
 
-일반적으로는 **DaemonSet**을 추천한다. 각 노드에 Collector 하나씩 띄우고, 모든 Pod이 localhost:4317로 전송하는 방식이다.
+#### 1. Sidecar 패턴
+
+**구조**: 각 애플리케이션 Pod마다 Collector 컨테이너가 같이 배포된다.
+
+```text
+Node 1
+├── Pod: order-service-1
+│   ├── Container: order-service (애플리케이션)
+│   └── Container: otel-collector (전용 Collector)
+│
+├── Pod: order-service-2
+│   ├── Container: order-service (애플리케이션)
+│   └── Container: otel-collector (전용 Collector)
+│
+└── Pod: payment-service-1
+    ├── Container: payment-service (애플리케이션)
+    └── Container: otel-collector (전용 Collector)
+
+Node 2
+├── Pod: inventory-service-1
+│   ├── Container: inventory-service (애플리케이션)
+│   └── Container: otel-collector (전용 Collector)
+```
+
+**데이터 흐름**:
+```text
+애플리케이션 → localhost:4317 (같은 Pod의 Collector) → Gateway Collector → Backend
+```
+
+**장점**:
+- **Pod별 격리**: 각 Pod이 독립적인 Collector를 가짐
+- **설정 유연성**: 팀/서비스별로 다른 Collector 설정 가능
+- **네트워크 홉 최소화**: Pod 내부 통신 (localhost)
+- **높은 충실도**: Pod 컨텍스트(namespace, pod name 등) 자동 추가
+- **AWS Fargate, GCP Cloud Run 지원**: Node 접근이 불가능한 서버리스 환경에서 유일한 선택
+
+**단점**:
+- **리소스 중복**: Pod 100개 = Collector 100개 (메모리/CPU 낭비)
+- **관리 복잡도**: Collector 설정 변경 시 모든 Pod 재시작 필요
+- **버전 불일치**: 각 팀이 다른 Collector 버전 사용 가능
+
+**리소스 사용량 예시**:
+```text
+Pod 100개, Collector당 메모리 128MB 사용 시
+= 100 × 128MB = 12.8GB (전체 클러스터)
+```
+
+**Kubernetes 설정 예시**:
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: order-service
+spec:
+  containers:
+  # 애플리케이션 컨테이너
+  - name: order-service
+    image: order-service:latest
+    env:
+    - name: OTEL_EXPORTER_OTLP_ENDPOINT
+      value: "http://localhost:4317"  # 같은 Pod의 Collector
+
+  # Sidecar Collector 컨테이너
+  - name: otel-collector
+    image: otel/opentelemetry-collector:latest
+    resources:
+      limits:
+        memory: 128Mi
+        cpu: 100m
+    ports:
+    - containerPort: 4317
+      protocol: TCP
+```
+
+#### 2. DaemonSet 패턴
+
+**구조**: 각 Node마다 Collector Pod 1개만 배포된다. 같은 Node의 모든 Pod이 공유한다.
+
+```text
+Node 1
+├── Pod: otel-collector (DaemonSet) ← 모든 Pod이 이거 사용
+├── Pod: order-service-1
+├── Pod: order-service-2
+├── Pod: payment-service-1
+└── Pod: notification-service-1
+
+Node 2
+├── Pod: otel-collector (DaemonSet) ← 모든 Pod이 이거 사용
+├── Pod: inventory-service-1
+├── Pod: inventory-service-2
+└── Pod: shipping-service-1
+```
+
+**데이터 흐름**:
+```text
+애플리케이션 → Node IP:4317 (DaemonSet Collector) → Gateway Collector → Backend
+```
+
+**장점**:
+- **리소스 효율성**: Node 10개 = Collector 10개 (Pod 수와 무관)
+- **중앙 관리**: 설정 변경 시 DaemonSet만 업데이트
+- **일관성**: 모든 Pod이 동일한 Collector 버전/설정 사용
+- **Node 메트릭 수집**: Kubelet, cAdvisor 메트릭 수집 가능
+- **로그 파일 접근**: Node 파일 시스템에서 직접 로그 수집 가능
+
+**단점**:
+- **Node 장애 영향**: Node 죽으면 해당 Node의 모든 Pod 데이터 손실
+- **네트워크 홉 추가**: Pod → Node IP (localhost 아님)
+- **설정 공유**: 모든 서비스가 동일한 Collector 설정 사용
+- **서버리스 불가**: AWS Fargate, GCP Cloud Run에서 사용 불가
+
+**리소스 사용량 예시**:
+```text
+Node 10개, Collector당 메모리 256MB 사용 시
+= 10 × 256MB = 2.56GB (전체 클러스터)
+
+Sidecar 대비 약 80% 절감 (Pod 100개 기준)
+```
+
+**Kubernetes 설정 예시**:
+```yaml
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: otel-collector
+spec:
+  selector:
+    matchLabels:
+      app: otel-collector
+  template:
+    metadata:
+      labels:
+        app: otel-collector
+    spec:
+      hostNetwork: true  # Node 네트워크 사용
+      containers:
+      - name: otel-collector
+        image: otel/opentelemetry-collector:latest
+        resources:
+          limits:
+            memory: 256Mi
+            cpu: 200m
+        ports:
+        - containerPort: 4317
+          hostPort: 4317  # Node IP:4317로 접근 가능
+          protocol: TCP
+        volumeMounts:
+        - name: varlog
+          mountPath: /var/log
+          readOnly: true
+      volumes:
+      - name: varlog
+        hostPath:
+          path: /var/log
+```
+
+**애플리케이션 설정 (DaemonSet 사용 시)**:
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: order-service
+spec:
+  containers:
+  - name: order-service
+    image: order-service:latest
+    env:
+    - name: NODE_IP
+      valueFrom:
+        fieldRef:
+          fieldPath: status.hostIP
+    - name: OTEL_EXPORTER_OTLP_ENDPOINT
+      value: "http://$(NODE_IP):4317"  # Node IP 사용
+```
+
+#### 3. 비교 요약
+
+| 구분 | Sidecar | DaemonSet |
+|------|---------|-----------|
+| **배포 단위** | Pod마다 1개 | Node마다 1개 |
+| **리소스 사용** | 높음 (Pod × Collector) | 낮음 (Node × Collector) |
+| **네트워크** | localhost (Pod 내부) | Node IP (Pod 간 통신) |
+| **격리성** | 높음 (Pod별 독립) | 낮음 (Node 공유) |
+| **설정 유연성** | 높음 (팀별 설정 가능) | 낮음 (통일된 설정) |
+| **장애 영향 범위** | Pod 단위 | Node 단위 |
+| **서버리스 지원** | 가능 (Fargate, Cloud Run) | 불가능 |
+| **Node 메트릭** | 수집 불가 | 수집 가능 |
+| **관리 복잡도** | 높음 | 낮음 |
+
+#### 4. 실무 권장 사항
+
+**DaemonSet 사용 (80% 케이스)**:
+- 단일 플랫폼 팀이 운영
+- 리소스 효율성이 중요
+- Node/Pod 메트릭 수집 필요
+- 통일된 관측성 정책 적용
+
+**Sidecar 사용 (20% 케이스)**:
+- AWS Fargate, GCP Cloud Run 사용
+- 팀별 독립적인 Collector 설정 필요
+- 높은 격리성이 요구됨 (보안, 멀티테넌시)
+- 특정 서비스만 고급 프로세싱 필요
+
+**하이브리드 사용**:
+```text
+DaemonSet (기본)
+  → 모든 서비스의 기본 메트릭/로그/트레이스 수집
+
+Sidecar (특수 케이스)
+  → 결제 서비스: PCI-DSS 준수를 위한 민감 정보 필터링
+  → ML 서비스: 고빈도 메트릭 수집 (초당 수만 건)
+```
+
+**비용 비교 (예시)**:
+
+| 환경 | Sidecar 비용 | DaemonSet 비용 | 절감률 |
+|------|------------|--------------|-------|
+| Node 10개, Pod 100개 | Collector 100개<br/>12.8GB 메모리 | Collector 10개<br/>2.56GB 메모리 | **80% 절감** |
+| Node 50개, Pod 500개 | Collector 500개<br/>64GB 메모리 | Collector 50개<br/>12.8GB 메모리 | **80% 절감** |
+
+일반적으로는 **DaemonSet**을 추천한다. 각 노드에 Collector 하나씩 띄우고, 모든 Pod이 `$(NODE_IP):4317`로 전송하는 방식이다. AWS EKS, GKE 등 대부분의 관리형 Kubernetes에서 기본 패턴으로 사용된다.
 
 ### Q4: @Async 메서드에서도 trace_id가 자동으로 전파되나?
 
@@ -1551,31 +1763,13 @@ OpenTelemetry Java Agent를 쓰면 @Async, ExecutorService, CompletableFuture �
 
 단, 직접 `new Thread()`로 스레드를 생성하면 Context가 끊긴다. 이 경우 `Context.current().wrap(runnable)`로 명시적으로 감싸야 한다.
 
-### Q5: Exemplar가 자동으로 추가된다는데, 어떻게 동작하나?
-
-OpenTelemetry SDK가 메트릭을 기록할 때, 현재 활성화된 Span의 Trace ID를 자동으로 Exemplar로 첨부한다. Prometheus가 이 Exemplar를 수집하고, Grafana가 시각화할 때 Trace 링크를 생성한다.
-
-단, Prometheus exporter에서 Exemplar를 활성화해야 한다 (기본값은 비활성화).
-
-```yaml
-# prometheus.yml
-scrape_configs:
-  - job_name: 'spring-app'
-    scrape_interval: 15s
-    # Exemplar 수집 활성화 (Prometheus 2.26+)
-    metric_relabel_configs:
-      - source_labels: [__name__]
-        regex: '.*'
-        action: keep
-```
-
-### Q6: Mimir Ingester가 죽으면 버퍼 데이터는 소실되나?
+### Q5: Mimir Ingester가 죽으면 버퍼 데이터는 소실되나?
 
 Mimir는 기본적으로 **복제 계수(replication factor) 3**으로 동작한다. Ingester 3개에 동일한 데이터를 중복 저장하므로, Ingester 하나가 죽어도 데이터가 소실되지 않는다. 나머지 2개에서 데이터를 복구할 수 있다.
 
 단일 노드 모드(monolithic)로 띄우면 복제가 없으므로, 프로덕션에서는 최소 3개 이상의 Ingester를 운영해야 한다.
 
-### Q7: TraceQL과 PromQL의 문법 차이는?
+### Q6: TraceQL과 PromQL의 문법 차이는?
 
 기본 철학은 비슷하지만 세부 문법이 다르다.
 
@@ -1588,75 +1782,6 @@ http_requests_total{status="500"} > 100
 ```
 
 PromQL은 시계열 데이터를 다루고, TraceQL은 Span 속성을 다룬다. PromQL 경험이 있으면 TraceQL도 금방 익힐 수 있다.
-
-## 흔한 문제와 해결 방법
-
-### Q1: Trace가 Tempo에 표시되지 않는다
-
-**원인**: OTLP Endpoint 설정 오류 또는 네트워크 문제
-
-**해결**:
-
-```bash
-# Collector 로그 확인
-docker logs otel-collector
-
-# Tempo로 데이터가 들어오는지 확인
-curl http://localhost:3200/ready
-```
-
-애플리케이션에서 직접 Tempo로 전송하는지 확인한다.
-
-```bash
-# 애플리케이션 로그에서 OTLP 전송 확인
-java -javaagent:opentelemetry-javaagent.jar \
-     -Dotel.exporter.otlp.endpoint=http://localhost:4317 \
-     -Dotel.traces.exporter=logging \  # 로깅 추가
-     -jar app.jar
-```
-
-### Q2: Logs에서 Trace로 점프가 안 된다
-
-**원인**: 로그에 `trace_id`가 포함되지 않음
-
-**해결**: Logback 설정에서 `%X{trace_id}` 추가 확인. OpenTelemetry Java Agent를 사용하면 자동으로 MDC에 추가되는데, 로그 패턴에 포함시켜야 한다.
-
-```xml
-<pattern>%d [%X{trace_id}] %msg%n</pattern>
-```
-
-Grafana 데이터소스 설정에서 "Derived fields" 추가:
-
-- Name: `trace_id`
-- Regex: `trace_id=(\w+)`
-- URL: `${__value.raw}`
-- Internal link: Tempo 데이터소스 선택
-
-### Q3: Mimir에 메트릭이 안 들어온다
-
-**원인**: Prometheus remote_write 설정 누락
-
-**해결**: Collector 설정에서 exporter 확인
-
-```yaml
-exporters:
-  prometheusremotewrite:
-    endpoint: http://mimir:9009/api/v1/push
-    # Mimir가 multi-tenancy 모드면 헤더 추가 필요
-    headers:
-      X-Scope-OrgID: "demo"
-```
-
-## 성능 비교
-
-LGTM 스택의 리소스 사용량을 기존 도구와 비교하면 다음과 같다.
-
-| 구성 | 메모리 사용량 | 디스크 I/O | 비용 (월간 예상) |
-|------|-------------|-----------|---------------|
-| Jaeger + Prometheus + ELK | ~16GB | 높음 | ~$500 (EC2 + EBS) |
-| Tempo + Mimir + Loki (Grafana Stack) | ~8GB | 낮음 | ~$150 (EC2 + S3) |
-
-Grafana Stack이 Object Storage를 사용하므로 디스크 I/O가 낮고, 전체 비용이 약 70% 절감된다.
 
 ## 마무리
 
