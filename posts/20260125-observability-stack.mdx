@@ -106,31 +106,123 @@ Span 3: Inventory Service
 
 MSA 환경에서 하나의 Trace는 여러 서비스를 거치므로, **Trace Context**(Trace ID, Span ID 등)를 서비스 간에 전파해야 한다. 이때 **W3C Trace Context** 표준을 사용한다.
 
-#### HTTP 요청 시 전파
+## W3C Trace Context란?
 
-HTTP 요청을 보낼 때 `traceparent` 헤더에 Trace Context를 담아서 전송한다.
+W3C Trace Context는 분산 시스템에서 trace context를 전파하기 위한 **표준 HTTP 헤더와 값 형식**을 정의한 공식 표준이다. 2020년 2월 W3C에서 공식 승인되었으며, OpenTelemetry를 포함한 대부분의 관측성 도구가 이 표준을 따른다.
+
+**왜 필요한가?**
+
+기존에는 각 벤더마다 다른 헤더 형식을 사용했다. Jaeger는 `uber-trace-id`, Zipkin은 `X-B3-TraceId`, Datadog은 `x-datadog-trace-id` 이런 식이었다. 서로 다른 도구를 사용하는 서비스 간에는 trace가 끊기는 문제가 발생했다.
+
+W3C Trace Context는 모든 벤더가 동일한 헤더를 사용하도록 표준화했다. USB-C처럼 하나의 표준으로 모든 도구가 호환된다.
+
+![W3C Trace Context 전파 메커니즘](/images/w3c-trace-context.png)
+
+### Traceparent 헤더
+
+**traceparent**는 필수 헤더로, trace의 핵심 정보를 담는다.
+
+**형식**:
+```text
+traceparent: version-trace-id-parent-id-trace-flags
+
+예시:
+traceparent: 00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01
+```
+
+**각 필드 상세**:
+
+| 필드 | 크기 | 설명 | 예시 |
+|------|------|------|------|
+| **version** | 2자리 hex | 프로토콜 버전 (현재는 `00`만 사용) | `00` |
+| **trace-id** | 32자리 hex | 전체 trace를 식별하는 16바이트 ID<br/>**주의**: 모두 0은 invalid | `0af7651916cd43dd8448eb211c80319c` |
+| **parent-id** | 16자리 hex | 현재 요청을 식별하는 8바이트 ID<br/>**주의**: 모두 0은 invalid | `b7ad6b7169203331` |
+| **trace-flags** | 2자리 hex | 8비트 플래그 (sampling, priority 등) | `01` |
+
+**trace-flags 상세**:
+
+```text
+trace-flags: 01 (2진수: 00000001)
+                           │
+                           └─ 비트 0: sampled flag
+                                1 = 샘플링됨 (기록 대상)
+                                0 = 샘플링 안됨
+
+나머지 7비트는 미래 사용을 위해 예약 (모두 0이어야 함)
+```
+
+**비트 플래그 확인 방법** (Java 예시):
+```java
+boolean sampled = (traceFlags & 0x01) == 0x01;
+```
+
+**HTTP 요청 예시**:
 
 ```http
 GET /api/inventory/check HTTP/1.1
 Host: inventory-service
-traceparent: 00-5f3a4b2c1d8e9f7a6b2c1d8e9f7a6b2c-def456abc7890123-01
+traceparent: 00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01
 ```
 
-**traceparent 헤더 형식**:
+### Tracestate 헤더 (선택사항)
+
+**tracestate**는 선택적 헤더로, 벤더별 추가 정보를 담는다.
+
+**형식**:
+```text
+tracestate: key1=value1,key2=value2
+
+예시:
+tracestate: congo=t61rcWkgMzE,rojo=00f067aa0ba902b7
+```
+
+**특징**:
+- 최대 32개 key-value 쌍 허용
+- 최소 512자 이상 전파 권장
+- 순서 중요: 왼쪽이 가장 최근 작업
+- 키는 소문자 알파벳 + `_`, `-`, `*`, `/`만 허용
+
+**사용 예시**:
+
+```http
+GET /api/payment HTTP/1.1
+Host: payment-service
+traceparent: 00-0af7651916cd43dd8448eb211c80319c-00f067aa0ba902b7-01
+tracestate: payment=prioritize,congo=t61rcWkgMzE
+```
+
+### 서비스 간 전파 규칙
+
+서비스가 다음 서비스로 요청을 보낼 때:
+
+**필수 변경**:
+1. **parent-id 업데이트**: 새로운 Span ID로 변경
+2. **trace-flags**: 현재 서비스의 샘플링 결정 반영
+
+**유지**:
+- **trace-id**: 절대 변경하지 않음 (전체 trace 식별자)
+- **version**: 그대로 유지
+
+**예시**:
 
 ```text
-00-{trace-id}-{parent-span-id}-{trace-flags}
-│   │           │                │
-│   │           │                └─ 01 = sampled (수집 대상)
-│   │           └─ 16자리 Parent Span ID
-│   └─ 32자리 Trace ID
-└─ 버전 (00 = W3C Trace Context v1)
+Service A 수신:
+traceparent: 00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01
+
+Service A → Service B 전송:
+traceparent: 00-0af7651916cd43dd8448eb211c80319c-00f067aa0ba902b7-01
+             │   │                                  │                  │
+             │   └─ 동일한 trace-id               │                  │
+             │                                      └─ 새 parent-id    │
+             └─ 동일한 version                                        └─ 동일한 flags
 ```
 
+![분산 추적 아키텍처](/images/distributed-trace.png)
+
 수신하는 서비스는 이 헤더를 읽어서:
-1. 동일한 Trace ID를 사용
-2. 새로운 Span ID를 생성
-3. 받은 Span ID를 Parent Span ID로 설정
+1. 동일한 **trace-id**를 사용 (전체 trace 연결)
+2. 새로운 **Span ID**를 생성
+3. 받은 **parent-id**를 Parent Span ID로 설정
 
 이렇게 해서 전체 호출 체인이 하나의 Trace로 연결된다.
 
