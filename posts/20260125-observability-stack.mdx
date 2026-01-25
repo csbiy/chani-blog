@@ -1,22 +1,22 @@
 ---
 id: 185
-title: "OpenTelemetry + Grafana Stack (Tempo, Mimir, Loki) - 통합 관측성 시스템 구축"
-description: "OpenTelemetry로 Traces, Metrics, Logs를 수집하고 Grafana Stack(Tempo, Mimir, Loki)으로 통합 관측성을 구축하는 방법"
+title: "OpenTelemetry + LGTM 스택 (Loki, Grafana, Tempo, Mimir) 구축 가이드"
+description: "OpenTelemetry로 Traces, Metrics, Logs를 수집하고 LGTM 스택으로 관측성 플랫폼을 구축하는 방법"
 date: "2026-01-25 14:30:00"
-tags: ["OpenTelemetry", "Grafana", "Tempo", "Mimir", "Loki", "Observability", "Monitoring", "Tracing"]
+tags: ["OpenTelemetry", "Grafana", "Tempo", "Mimir", "Loki", "Observability", "Monitoring", "Tracing", "LGTM"]
 ---
 
-## 왜 통합 관측성인가?
+## 왜 LGTM 스택인가?
 
 기존에는 모니터링을 위해 Prometheus만 쓰거나, 로그는 ELK Stack, 분산 트레이싱은 Jaeger 이런 식으로 각각 따로 운영했다. 근데 이게 문제가 있다.
 
 서비스에서 장애가 발생했을 때 Prometheus에서 메트릭을 확인하고, 문제가 있는 시간대의 로그를 Kibana에서 찾고, 다시 Jaeger로 가서 해당 요청의 Trace를 확인하는 식이다. 도구가 분산되어 있으니까 문제 원인을 찾는 데 시간이 오래 걸린다.
 
-**통합 관측성(Unified Observability)**은 Traces, Metrics, Logs 세 가지를 하나의 플랫폼에서 통합해서 보는 것이다. 하나의 대시보드에서 메트릭 이상을 발견하면 클릭 한 번으로 해당 시점의 로그와 트레이스로 바로 이동할 수 있다.
+**LGTM 스택**은 Traces, Metrics, Logs 세 가지를 하나의 플랫폼에서 통합해서 보는 것이다. 하나의 대시보드에서 메트릭 이상을 발견하면 클릭 한 번으로 해당 시점의 로그와 트레이스로 바로 이동할 수 있다.
 
 ```text
 기존 방식: Metrics(Prometheus) → Logs(Kibana) → Traces(Jaeger) → 각각 별도 조회
-통합 관측성: Grafana 하나에서 Metrics → Logs → Traces 연결
+LGTM 스택: Grafana 하나에서 Metrics → Logs → Traces 연결
 ```
 
 ## 관측성의 세 가지 기둥 (Three Pillars)
@@ -237,9 +237,9 @@ OTLP는 두 가지 인코딩 방식을 지원하는데, 실무에서는 거의 P
 
 JSON은 디버깅할 때나 가끔 켜보는 정도다.
 
-## Grafana Stack이란?
+## LGTM 스택이란?
 
-Grafana Stack은 Grafana Labs에서 만든 오픈소스 관측성 플랫폼이다. 핵심 구성 요소는 다음과 같다.
+LGTM 스택은 Grafana Labs에서 만든 오픈소스 관측성 플랫폼이다. LGTM은 **Loki, Grafana, Tempo, Mimir**의 앞 글자를 따온 약자다. 핵심 구성 요소는 다음과 같다.
 
 | 구성 요소 | 역할 | 기존 대체 도구 |
 |----------|------|-------------|
@@ -1557,7 +1557,7 @@ exporters:
 
 ## 성능 비교
 
-통합 관측성 스택의 리소스 사용량을 기존 도구와 비교하면 다음과 같다.
+LGTM 스택의 리소스 사용량을 기존 도구와 비교하면 다음과 같다.
 
 | 구성 | 메모리 사용량 | 디스크 I/O | 비용 (월간 예상) |
 |------|-------------|-----------|---------------|
