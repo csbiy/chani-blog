@@ -12,11 +12,14 @@ type Heading = {
 export default function TableOfContents({ headings }: { headings: Heading[] }) {
   const activeId = useActiveHeading(headings.map((h) => h.id));
 
+  // h2, h3만 표시
+  const filteredHeadings = headings.filter((h) => h.level <= 3);
+
   return (
     <aside className="lg:sticky lg:top-20 max-h-[80vh] overflow-y-auto w-full lg:w-64 text-sm pl-4 border-l border-card-border">
       <h2 className="text-lg font-semibold mb-3 text-foreground">목차</h2>
       <ul className="space-y-1">
-        {headings.map((heading) => {
+        {filteredHeadings.map((heading) => {
           const isActive = heading.id === activeId;
           return (
             <li

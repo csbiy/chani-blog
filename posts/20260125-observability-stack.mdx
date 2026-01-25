@@ -102,11 +102,9 @@ Span 3: Inventory Service
   - Parent Span ID: def456abc7890123 (Span 2의 child)
 ```
 
-### Trace Context 전파 메커니즘
+### W3C Trace Context
 
 MSA 환경에서 하나의 Trace는 여러 서비스를 거치므로, **Trace Context**(Trace ID, Span ID 등)를 서비스 간에 전파해야 한다. 이때 **W3C Trace Context** 표준을 사용한다.
-
-## W3C Trace Context란?
 
 W3C Trace Context는 분산 시스템에서 trace context를 전파하기 위한 **표준 HTTP 헤더와 값 형식**을 정의한 공식 표준이다. 2020년 2월 W3C에서 공식 승인되었으며, OpenTelemetry를 포함한 대부분의 관측성 도구가 이 표준을 따른다.
 
@@ -118,7 +116,7 @@ W3C Trace Context는 모든 벤더가 동일한 헤더를 사용하도록 표준
 
 ![W3C Trace Context 전파 메커니즘](/images/w3c-trace-context.png)
 
-### Traceparent 헤더
+#### Traceparent 헤더
 
 **traceparent**는 필수 헤더로, trace의 핵심 정보를 담는다.
 
@@ -164,7 +162,7 @@ Host: inventory-service
 traceparent: 00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01
 ```
 
-### Tracestate 헤더 (선택사항)
+#### Tracestate 헤더 (선택사항)
 
 **tracestate**는 선택적 헤더로, 벤더별 추가 정보를 담는다.
 
@@ -191,7 +189,7 @@ traceparent: 00-0af7651916cd43dd8448eb211c80319c-00f067aa0ba902b7-01
 tracestate: payment=prioritize,congo=t61rcWkgMzE
 ```
 
-### 서비스 간 전파 규칙
+#### 서비스 간 전파 규칙
 
 서비스가 다음 서비스로 요청을 보낼 때:
 
@@ -1584,29 +1582,20 @@ Pod 100개, Collector당 메모리 128MB 사용 시
 
 **Kubernetes 설정 예시**:
 ```yaml
-apiVersion: v1
-kind: Pod
-metadata:
-  name: order-service
 spec:
   containers:
   # 애플리케이션 컨테이너
   - name: order-service
-    image: order-service:latest
     env:
     - name: OTEL_EXPORTER_OTLP_ENDPOINT
-      value: "http://localhost:4317"  # 같은 Pod의 Collector
+      value: "http://localhost:4317"  # Sidecar Collector로 전송
 
-  # Sidecar Collector 컨테이너
+  # Sidecar Collector
   - name: otel-collector
     image: otel/opentelemetry-collector:latest
     resources:
       limits:
         memory: 128Mi
-        cpu: 100m
-    ports:
-    - containerPort: 4317
-      protocol: TCP
 ```
 
 #### 2. DaemonSet 패턴
@@ -1656,58 +1645,30 @@ Sidecar 대비 약 80% 절감 (Pod 100개 기준)
 
 **Kubernetes 설정 예시**:
 ```yaml
-apiVersion: apps/v1
+# DaemonSet 설정 (핵심만 발췌)
 kind: DaemonSet
-metadata:
-  name: otel-collector
 spec:
-  selector:
-    matchLabels:
-      app: otel-collector
   template:
-    metadata:
-      labels:
-        app: otel-collector
     spec:
       hostNetwork: true  # Node 네트워크 사용
       containers:
       - name: otel-collector
-        image: otel/opentelemetry-collector:latest
+        ports:
+        - hostPort: 4317  # Node IP:4317로 접근 가능
         resources:
           limits:
             memory: 256Mi
-            cpu: 200m
-        ports:
-        - containerPort: 4317
-          hostPort: 4317  # Node IP:4317로 접근 가능
-          protocol: TCP
-        volumeMounts:
-        - name: varlog
-          mountPath: /var/log
-          readOnly: true
-      volumes:
-      - name: varlog
-        hostPath:
-          path: /var/log
 ```
 
-**애플리케이션 설정 (DaemonSet 사용 시)**:
+**애플리케이션 환경변수**:
 ```yaml
-apiVersion: v1
-kind: Pod
-metadata:
-  name: order-service
-spec:
-  containers:
-  - name: order-service
-    image: order-service:latest
-    env:
-    - name: NODE_IP
-      valueFrom:
-        fieldRef:
-          fieldPath: status.hostIP
-    - name: OTEL_EXPORTER_OTLP_ENDPOINT
-      value: "http://$(NODE_IP):4317"  # Node IP 사용
+env:
+- name: NODE_IP
+  valueFrom:
+    fieldRef:
+      fieldPath: status.hostIP  # Node IP를 환경변수로
+- name: OTEL_EXPORTER_OTLP_ENDPOINT
+  value: "http://$(NODE_IP):4317"  # DaemonSet Collector로 전송
 ```
 
 #### 3. 비교 요약
