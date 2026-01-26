@@ -1,0 +1,596 @@
+---
+id: 186
+title: "데이터베이스 동시성 제어 기법 총정리 - Lock, MVCC, OCC"
+description: "Lock 기반 동시성 제어(2PL, Deadlock), MVCC의 동작 원리와 Snapshot Isolation, Optimistic Concurrency Control의 특징과 적용 사례, 각 기법의 트레이드오프 비교"
+date: "2025-12-15 22:15:30"
+tags: ["Database", "Concurrency", "Lock", "MVCC", "OCC", "Transaction", "2PL"]
+---
+
+## 왜 동시성 제어가 필요한가
+
+은행 계좌 잔액이 10만원인데, 두 개의 트랜잭션이 동시에 5만원씩 출금하려고 한다.
+
+```text
+[초기 잔액: 100,000원]
+
+Transaction A: 잔액 조회 → 100,000원 확인 → 50,000원 출금
+Transaction B: 잔액 조회 → 100,000원 확인 → 50,000원 출금
+
+[최종 잔액: 50,000원 또는 0원???]
+```
+
+동시성 제어가 없으면? 둘 다 10만원이 있다고 판단하고 출금을 허용한다. 실제로는 5만원씩 두 번 출금되어 잔액이 0원이 되어야 하는데, 한 번의 출금이 무시되면서 5만원이 남을 수 있다. 또는 둘 다 진행되어 마이너스 잔액이 될 수도 있다.
+
+이런 문제를 **Lost Update(갱신 손실)**라고 한다. 동시성 제어는 여러 트랜잭션이 동시에 실행될 때 데이터 정합성을 보장하기 위한 메커니즘이다.
+
+## 동시성 제어의 목표
+
+동시성 제어가 달성해야 할 두 가지 목표가 있다.
+
+| 목표 | 설명 |
+|------|------|
+| **Serializability** | 동시 실행 결과가 순차 실행 결과와 동일해야 함 |
+| **Recoverability** | 트랜잭션 실패 시 데이터 일관성 복구 가능해야 함 |
+
+완벽한 Serializability를 보장하려면 트랜잭션을 순차적으로 실행해야 한다. 하지만 그러면 동시성이 0이 되어 성능이 나오지 않는다. 그래서 **"직렬 가능한 수준의 정합성"**을 유지하면서 **"최대한의 동시성"**을 얻는 게 동시성 제어의 핵심 과제다.
+
+```text
+← 완벽한 직렬성 (동시성 ↓)     동시성 제어 기법     높은 동시성 (정합성 ↓) →
+```
+
+주요 동시성 제어 기법은 크게 세 가지다:
+1. **Lock 기반 제어 (Pessimistic)**
+2. **MVCC (Multi-Version Concurrency Control)**
+3. **OCC (Optimistic Concurrency Control)**
+
+## Lock 기반 동시성 제어
+
+가장 전통적인 방식이다. 데이터에 접근하기 전에 락을 획득하고, 사용이 끝나면 락을 해제한다.
+
+### Lock의 종류
+
+| Lock 모드 | 설명 | 호환성 |
+|-----------|------|--------|
+| **Shared Lock (S)** | 읽기 작업, 여러 트랜잭션이 동시에 획득 가능 | S와 호환, X와 충돌 |
+| **Exclusive Lock (X)** | 쓰기 작업, 단독 점유 필요 | 모든 락과 충돌 |
+
+```text
+Lock 호환성 매트릭스:
+        S    X
+    S   O    X
+    X   X    X
+```
+
+### 2PL (Two-Phase Locking)
+
+직렬성을 보장하는 대표적인 Lock 프로토콜이다. 트랜잭션의 실행을 두 단계로 나눈다.
+
+![Two-Phase Locking](/images/2pl-phases.png)
+*2PL의 두 단계 - Growing Phase에서는 락만 획득하고, Shrinking Phase에서는 락만 해제한다*
+
+**Growing Phase (확장 단계)**
+- 락을 획득만 하고 해제하지 않음
+- 필요한 데이터에 대한 락을 계속 모음
+
+**Shrinking Phase (축소 단계)**
+- 락을 해제만 하고 새로 획득하지 않음
+- 트랜잭션 종료 시점까지 락 해제
+
+```sql
+-- Transaction A (2PL 동작 예시)
+BEGIN;
+-- Growing Phase 시작
+SELECT balance FROM accounts WHERE id = 1 FOR UPDATE;  -- X Lock 획득
+UPDATE accounts SET balance = balance - 50000 WHERE id = 1;
+-- Shrinking Phase 시작 (COMMIT 시점)
+COMMIT;  -- 모든 락 해제
+```
+
+2PL을 따르면 Serializability가 보장된다. 하지만 **Deadlock** 가능성이 있다.
+
+### Deadlock (교착 상태)
+
+두 개 이상의 트랜잭션이 서로가 가진 락을 기다리며 무한 대기에 빠지는 상황이다.
+
+```text
+[시간 흐름]
+Transaction A          Transaction B
+-------------------    -------------------
+Lock(X) on Row 1
+                       Lock(X) on Row 2
+Request Lock on Row 2
+  → 대기...
+                       Request Lock on Row 1
+                         → 대기...
+                       (Deadlock 발생!)
+```
+
+실제 예시:
+
+```sql
+-- Transaction A
+BEGIN;
+UPDATE accounts SET balance = balance - 10000 WHERE id = 1;  -- Row 1 Lock
+UPDATE accounts SET balance = balance + 10000 WHERE id = 2;  -- Row 2 Lock 대기...
+
+-- Transaction B (동시 실행)
+BEGIN;
+UPDATE accounts SET balance = balance - 5000 WHERE id = 2;   -- Row 2 Lock
+UPDATE accounts SET balance = balance + 5000 WHERE id = 1;   -- Row 1 Lock 대기...
+```
+
+### Deadlock 해결 방법
+
+| 방법 | 설명 |
+|------|------|
+| **Deadlock Detection** | 주기적으로 Wait-For Graph를 검사하여 사이클 발견 시 희생 트랜잭션 선택 후 롤백 |
+| **Timeout** | 일정 시간 대기 후 트랜잭션 자동 롤백 |
+| **Deadlock Prevention** | 락 획득 순서를 고정하거나, 필요한 락을 모두 한 번에 획득 |
+
+대부분의 DBMS는 **Deadlock Detection + Timeout** 조합을 사용한다.
+
+```sql
+-- MySQL InnoDB 데드락 확인
+SHOW ENGINE INNODB STATUS;
+-- LATEST DETECTED DEADLOCK 섹션에서 확인 가능
+```
+
+### Lock의 한계
+
+Lock 기반 제어는 명확하지만 문제가 있다:
+
+1. **Lock 경합**: 인기 있는 데이터(Hot Row)에 락이 집중되면 대기 시간 증가
+2. **Deadlock 발생**: 복잡한 트랜잭션에서 데드락 가능성 상승
+3. **읽기-쓰기 충돌**: Shared Lock도 Exclusive Lock을 막아서 동시성 저하
+
+특히 읽기가 많은 시스템에서는 읽기끼리는 충돌하지 않는데도 쓰기를 기다려야 해서 비효율적이다. 이 문제를 해결하기 위해 **MVCC**가 등장했다.
+
+## MVCC (Multi-Version Concurrency Control)
+
+락 없이 동시성을 처리하는 기법이다. 데이터를 수정할 때 기존 버전을 유지하고 새 버전을 만든다.
+
+### 핵심 아이디어
+
+데이터를 덮어쓰지 않고 **다중 버전**을 유지한다. 각 트랜잭션은 자신이 시작한 시점의 일관된 스냅샷을 본다.
+
+![MVCC Versioning](/images/mvcc-versions.png)
+*MVCC 버전 관리 - UPDATE 시 기존 버전을 Undo 영역에 보관하고 새 버전을 생성한다*
+
+```text
+[accounts 테이블]
+id | balance | tx_id | valid_from | valid_to
+---|---------|-------|------------|----------
+ 1 | 100,000 |   10  |     10     |    20
+ 1 | 150,000 |   20  |     20     |   NULL   ← 현재 버전
+
+Transaction 15 시작 → v1 (100,000) 보임
+Transaction 25 시작 → v2 (150,000) 보임
+```
+
+### Snapshot Isolation
+
+MVCC는 보통 **Snapshot Isolation**으로 구현된다.
+
+**동작 원리:**
+1. 트랜잭션 시작 시 시스템 **Snapshot 번호** 부여 (Tx ID)
+2. 읽기 시 자신의 Snapshot 시점에 보이는 버전 선택
+3. 쓰기 시 새 버전 생성 및 Tx ID 기록
+4. Commit 시 충돌 검사 (Write-Write Conflict)
+
+```sql
+-- PostgreSQL Snapshot Isolation 예시
+BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+
+-- 트랜잭션 시작 시점의 스냅샷 저장
+-- 이후 다른 트랜잭션이 데이터를 수정해도 기존 버전을 읽음
+
+SELECT balance FROM accounts WHERE id = 1;
+-- 100,000 (스냅샷 기준)
+
+-- 다른 세션에서 UPDATE 후 COMMIT 해도
+
+SELECT balance FROM accounts WHERE id = 1;
+-- 여전히 100,000 (동일한 스냅샷)
+
+COMMIT;
+
+-- 새 트랜잭션 시작 후에는 최신 버전 보임
+SELECT balance FROM accounts WHERE id = 1;
+-- 150,000
+```
+
+### 버전 가시성 규칙
+
+트랜잭션이 어떤 버전을 볼 수 있는지 결정하는 규칙이다.
+
+| 조건 | 가시성 |
+|------|--------|
+| 버전 생성 Tx가 현재 Tx보다 이후 | 보이지 않음 (미래 버전) |
+| 버전 생성 Tx가 아직 커밋 안 됨 | 보이지 않음 (Dirty Read 방지) |
+| 버전이 현재 Tx 이전에 커밋됨 | 보임 |
+| 버전이 현재 Tx에 의해 삭제됨 | 보이지 않음 |
+
+```text
+현재 Tx ID: 100
+
+Version | Created | Committed | Visible?
+--------|---------|-----------|----------
+   v1   |   50    |    60     | O (커밋된 과거 버전)
+   v2   |   80    |    90     | O (커밋된 과거 버전)
+   v3   |  120    |   NULL    | X (미래 버전)
+   v4   |   70    |   NULL    | X (미커밋)
+```
+
+### MVCC의 장점
+
+| 장점 | 설명 |
+|------|------|
+| **읽기-쓰기 충돌 없음** | 읽기가 쓰기를 막지 않고, 쓰기가 읽기를 막지 않음 |
+| **일관된 읽기** | 트랜잭션 시작 시점의 스냅샷을 계속 봄 |
+| **Deadlock 감소** | 읽기에 락이 필요 없어서 데드락 가능성 낮아짐 |
+| **높은 동시성** | 락 경합이 크게 줄어듦 |
+
+전통적인 Lock 방식:
+```text
+Transaction A (읽기) → Shared Lock 획득
+Transaction B (쓰기) → 대기... (Lock 경합)
+```
+
+MVCC 방식:
+```text
+Transaction A (읽기) → 스냅샷 버전 읽음 (락 없음)
+Transaction B (쓰기) → 새 버전 생성 (충돌 없음)
+```
+
+### MVCC의 비용
+
+공짜는 없다. MVCC에도 비용이 있다.
+
+**1. 저장 공간 증가**
+- 여러 버전을 보관하므로 디스크/메모리 사용량 증가
+- Undo Log 또는 버전 체인 유지 필요
+
+**2. 가비지 컬렉션 필요**
+- 더 이상 필요 없는 구버전을 정리해야 함
+- PostgreSQL: VACUUM 프로세스
+- MySQL InnoDB: Purge Thread
+- Oracle: Undo Segment 관리
+
+```sql
+-- PostgreSQL VACUUM 수동 실행
+VACUUM ANALYZE accounts;
+
+-- 자동 VACUUM 설정 확인
+SHOW autovacuum;
+```
+
+**3. Write Skew 문제**
+- Snapshot Isolation은 Serializable이 아님
+- 특정 패턴에서 이상 현상(Write Skew) 발생 가능
+
+### Write Skew 예시
+
+두 의사가 동시에 당직을 빠지려고 하는 시나리오다.
+
+```sql
+-- 규칙: 최소 1명의 의사는 당직을 서야 함
+-- 초기 상태: Alice, Bob 모두 당직 중
+
+-- Transaction A (Alice)
+BEGIN;
+SELECT COUNT(*) FROM doctors WHERE on_call = true;
+-- 결과: 2명 (Alice, Bob 모두 근무 중)
+-- 판단: 내가 빠져도 1명 남으니 OK
+UPDATE doctors SET on_call = false WHERE name = 'Alice';
+COMMIT;
+
+-- Transaction B (Bob, 동시 실행)
+BEGIN;
+SELECT COUNT(*) FROM doctors WHERE on_call = true;
+-- 결과: 2명 (스냅샷 기준)
+-- 판단: 내가 빠져도 1명 남으니 OK
+UPDATE doctors SET on_call = false WHERE name = 'Bob';
+COMMIT;
+
+-- 최종 결과: 0명 근무 중 (규칙 위반!)
+```
+
+Snapshot Isolation은 각자의 스냅샷에서는 규칙이 만족되는 것처럼 보이지만, 최종 결과는 규칙을 위반한다. 이를 **Write Skew**라고 한다.
+
+**해결 방법:**
+1. SERIALIZABLE 격리 수준 사용
+2. SELECT FOR UPDATE로 명시적 락 획득
+3. 애플리케이션 레벨 체크
+
+```sql
+-- 해결: FOR UPDATE로 명시적 락
+BEGIN;
+-- 당직 중인 모든 의사 행에 락 획득
+SELECT * FROM doctors WHERE on_call = true FOR UPDATE;
+-- 2명이 조회되면, 두 행 모두에 락이 걸림
+-- 다른 트랜잭션은 이 행들을 수정할 수 없음
+UPDATE doctors SET on_call = false WHERE name = 'Alice';
+-- Alice가 먼저 실행하면 Bob은 SELECT에서 대기
+COMMIT;
+```
+
+### MVCC를 사용하는 DBMS
+
+| DBMS | 구현 방식 |
+|------|----------|
+| **PostgreSQL** | Tuple 헤더에 트랜잭션 ID 저장, VACUUM으로 정리 |
+| **MySQL InnoDB** | Undo Log에 이전 버전 보관, Purge Thread 정리 |
+| **Oracle** | Undo Segment 사용, Automatic Undo Management |
+| **SQL Server** | Row Versioning, Snapshot Isolation 옵션 제공 |
+
+## OCC (Optimistic Concurrency Control)
+
+낙관적 동시성 제어라고도 한다. 충돌이 드물다고 가정하고 **락 없이 실행**하다가, **커밋 시점에 검증**한다.
+
+### 동작 원리
+
+OCC는 세 단계로 구성된다.
+
+![OCC Phases](/images/occ-phases.png)
+*OCC의 세 단계 - Read, Validation, Write 단계로 구성되며 Validation에서 충돌을 검사한다*
+
+**1. Read Phase (읽기 단계)**
+- 트랜잭션이 데이터를 읽고 수정 작업을 로컬 버퍼에 저장
+- 락을 획득하지 않음
+- 다른 트랜잭션에 영향 없음
+
+**2. Validation Phase (검증 단계)**
+- 커밋 시도 시 충돌 여부 검사
+- 읽은 데이터가 다른 트랜잭션에 의해 수정되었는지 확인
+- 충돌 발견 시 트랜잭션 롤백 및 재시도
+
+**3. Write Phase (쓰기 단계)**
+- 검증 통과 시 로컬 버퍼의 변경사항을 DB에 반영
+- 이 단계는 짧고 원자적으로 수행됨
+
+### 버전 기반 검증
+
+가장 일반적인 검증 방법은 **버전 번호**를 사용하는 것이다.
+
+```sql
+-- 읽기 시 버전 정보 저장
+SELECT id, balance, version FROM accounts WHERE id = 1;
+-- 결과: id=1, balance=100000, version=5
+
+-- 로컬에서 계산
+new_balance = 100000 - 50000
+
+-- 커밋 시 버전 검증
+UPDATE accounts
+SET balance = 50000, version = 6
+WHERE id = 1 AND version = 5;  -- 버전이 같을 때만 성공
+
+-- 영향받은 행이 0이면 충돌 발생 → 롤백 및 재시도
+```
+
+다른 트랜잭션이 먼저 수정했다면 버전이 6이 되어있으므로 UPDATE가 실패한다.
+
+### OCC의 장점
+
+| 장점 | 설명 |
+|------|------|
+| **락 오버헤드 없음** | 대부분의 시간을 락 없이 실행 |
+| **Deadlock 없음** | 락을 사용하지 않으므로 데드락 불가능 |
+| **읽기 성능** | 읽기가 쓰기를 전혀 막지 않음 |
+| **짧은 트랜잭션에 유리** | 충돌 확률이 낮은 환경에서 효율적 |
+
+### OCC의 단점
+
+| 단점 | 설명 |
+|------|------|
+| **재시도 비용** | 충돌 시 트랜잭션 롤백 후 재실행 필요 |
+| **높은 경합 시 비효율** | 충돌이 잦으면 재시도가 반복되어 오히려 느림 |
+| **Starvation 가능** | 계속 실패하는 트랜잭션 발생 가능 |
+
+```text
+충돌률에 따른 성능:
+
+Pessimistic Lock   ━━━━━━━━━━━━━━━━━━━━━━━━  (일정한 성능)
+
+OCC               ━━━━━━━━━━━━╲               (충돌 증가 시 급격히 저하)
+                                ╲╲╲╲╲╲╲╲╲╲
+
+                   낮음         충돌률         높음
+```
+
+### OCC 적용 사례
+
+**1. JPA Optimistic Lock**
+
+Spring Data JPA에서 `@Version`을 사용한다. (JPA 2.0+, Spring Data JPA 2.x+)
+
+```java
+@Entity
+public class Account {
+    @Id
+    private Long id;
+
+    private BigDecimal balance;
+
+    @Version  // OCC를 위한 버전 컬럼
+    private Long version;
+}
+
+// Service Layer
+@Transactional
+public void withdraw(Long accountId, BigDecimal amount) {
+    Account account = accountRepository.findById(accountId)
+        .orElseThrow();
+
+    account.setBalance(account.getBalance().subtract(amount));
+
+    accountRepository.save(account);
+    // 내부적으로 version 검증 쿼리 실행
+    // UPDATE accounts SET balance = ?, version = version + 1
+    // WHERE id = ? AND version = ?
+}
+```
+
+충돌 발생 시 `OptimisticLockException`이 발생한다. 보통 재시도 로직을 추가한다.
+
+```java
+// Spring Retry 라이브러리 필요: org.springframework.retry:spring-retry
+@Retryable(
+    value = OptimisticLockException.class,
+    maxAttempts = 3,
+    backoff = @Backoff(delay = 100)
+)
+public void withdrawWithRetry(Long accountId, BigDecimal amount) {
+    withdraw(accountId, amount);
+}
+```
+
+**2. NoSQL 데이터베이스**
+
+많은 NoSQL DB가 OCC를 기본 동시성 제어로 사용한다.
+
+- **DynamoDB**: Conditional Update로 OCC 구현
+- **MongoDB**: `findAndModify`로 원자적 업데이트
+- **Cassandra**: LWT(Lightweight Transaction)로 OCC 지원
+
+```javascript
+// MongoDB OCC 예시
+db.accounts.findAndModify({
+    query: { _id: accountId, version: 5 },
+    update: {
+        $set: { balance: 50000 },
+        $inc: { version: 1 }
+    }
+});
+// 반환값이 null이면 충돌 발생 → 재시도
+```
+
+## 동시성 제어 기법 비교
+
+각 기법의 특징을 정리하면:
+
+| 기법 | 장점 | 단점 | 적합한 경우 |
+|------|------|------|------------|
+| **Pessimistic Lock** | 충돌 방지 확실, 구현 단순 | 락 경합, 데드락 | 충돌 빈번, 짧은 트랜잭션 |
+| **MVCC** | 읽기-쓰기 충돌 없음, 높은 동시성 | 저장공간, GC 비용, Write Skew | 읽기 위주, 긴 트랜잭션 |
+| **OCC** | 락 없음, 데드락 없음 | 재시도 비용, 높은 경합 시 비효율 | 충돌 드묾, 짧은 트랜잭션 |
+
+### 실무 선택 가이드
+
+| 상황 | 권장 기법 |
+|------|----------|
+| 은행 이체, 결제 | Pessimistic Lock (SELECT FOR UPDATE) |
+| 게시글 조회/작성 | MVCC (기본 격리 수준) |
+| 좋아요, 조회수 증가 | OCC (@Version) 또는 Atomic Increment |
+| 재고 차감 | Pessimistic Lock 또는 분산 락 |
+| 좌석 예약 | Pessimistic Lock |
+| 읽기 전용 리포트 | MVCC (READ COMMITTED) |
+
+```java
+// 예시: 재고 차감 - Pessimistic Lock
+@Transactional
+public void decreaseStock(Long productId, int quantity) {
+    Product product = productRepository
+        .findByIdForUpdate(productId)  // SELECT FOR UPDATE
+        .orElseThrow();
+
+    if (product.getStock() < quantity) {
+        throw new OutOfStockException();
+    }
+
+    product.decreaseStock(quantity);
+}
+
+// 예시: 조회수 증가 - OCC
+@Transactional
+public void increaseViewCount(Long postId) {
+    Post post = postRepository.findById(postId)
+        .orElseThrow();
+
+    post.increaseViewCount();  // version 자동 체크
+    // 실패 시 재시도 (Retryable)
+}
+```
+
+### 하이브리드 접근
+
+실무에서는 여러 기법을 혼합해서 사용한다.
+
+**MySQL InnoDB의 경우:**
+- 기본적으로 MVCC 사용 (REPEATABLE READ)
+- SELECT FOR UPDATE로 Pessimistic Lock 선택 가능
+- 애플리케이션에서 @Version으로 OCC 추가
+
+```sql
+-- MVCC (기본)
+SELECT * FROM orders WHERE user_id = 1;
+
+-- Pessimistic Lock (명시적)
+SELECT * FROM orders WHERE id = 100 FOR UPDATE;
+
+-- OCC (애플리케이션 레벨)
+UPDATE orders SET status = 'COMPLETED', version = version + 1
+WHERE id = 100 AND version = 5;
+```
+
+## 분산 시스템의 동시성 제어
+
+단일 DB가 아닌 분산 환경에서는 더 복잡하다.
+
+### 분산 락
+
+Redis나 ZooKeeper를 사용한 분산 락이다.
+
+```java
+// Redisson 3.x 분산 락 예시
+@Transactional
+public void processOrder(Long orderId) {
+    RLock lock = redissonClient.getLock("order:" + orderId);
+
+    try {
+        // 락 획득 시도 (최대 10초 대기, 30초 후 자동 해제)
+        if (lock.tryLock(10, 30, TimeUnit.SECONDS)) {
+            try {
+                // 비즈니스 로직 실행
+                Order order = orderRepository.findById(orderId).orElseThrow();
+                order.process();
+                orderRepository.save(order);
+            } finally {
+                lock.unlock();
+            }
+        } else {
+            throw new LockAcquisitionException();
+        }
+    } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new RuntimeException(e);
+    }
+}
+```
+
+### 2PC (Two-Phase Commit)
+
+분산 트랜잭션의 원자성을 보장하는 프로토콜이다. 하지만 성능 오버헤드와 단일 장애점 문제로 실무에서는 잘 쓰지 않는다. 대신 **Saga 패턴**이나 **이벤트 기반 최종 일관성**을 선호한다.
+
+## 정리
+
+동시성 제어는 데이터베이스 성능과 정합성의 핵심이다.
+
+- **Pessimistic Lock**: 충돌을 사전에 방지, 2PL로 직렬성 보장, 데드락 주의
+- **MVCC**: 다중 버전 유지로 읽기-쓰기 충돌 없음, 높은 동시성, Write Skew 주의
+- **OCC**: 락 없이 실행 후 커밋 시 검증, 충돌 드문 환경에 적합, 재시도 비용 존재
+- **실무**: 상황에 따라 기법 선택, 혼합 사용 가능
+- **분산 환경**: 분산 락, Saga 패턴, 최종 일관성 고려
+
+데이터 특성과 트랜잭션 패턴을 고려해서 적절한 동시성 제어 전략을 선택하는 게 중요하다.
+
+## 참고문헌
+
+- [Database System Concepts, 7th Edition - Abraham Silberschatz](https://www.db-book.com/)
+- [PostgreSQL Concurrency Control](https://www.postgresql.org/docs/current/mvcc.html)
+- [MySQL InnoDB Locking](https://dev.mysql.com/doc/refman/8.0/en/innodb-locking.html)
+- [A Critique of ANSI SQL Isolation Levels - Microsoft Research](https://www.microsoft.com/en-us/research/publication/a-critique-of-ansi-sql-isolation-levels/)
+- [Optimistic vs Pessimistic Locking - Vlad Mihalcea](https://vladmihalcea.com/optimistic-vs-pessimistic-locking/)
+- [Two-Phase Locking Protocol - GeeksforGeeks](https://www.geeksforgeeks.org/dbms/two-phase-locking-protocol/)
+- [Validation Based Protocol in DBMS - GeeksforGeeks](https://www.geeksforgeeks.org/dbms/validation-based-protocol-in-dbms/)
+- [MVCC in PostgreSQL - Cybertec](https://www.cybertec-postgresql.com/en/mvcc-and-vacuum/)
